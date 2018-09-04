@@ -74,11 +74,11 @@
 !! | lprnt          | flag_print                                                                  | flag for printing diagnostics to output               | flag          |    0 | logical   |           | in     | F        |
 !! | ipr            | horizontal_index_of_printed_column                                          | horizontal index of printed column                    | index         |    0 | integer   |           | in     | F        |
 !! | me             | mpi_rank                                                                    | current MPI-rank                                      | index         |    0 | integer   |           | in     | F        |
-!! | con_g          | gravitational_acceleration                                                  | gravitational acceleration                            | m s-2         |    0 | real      | kind_phys | in     | F        |
-!! | con_rd         | gas_constant_dry_air                                                        | ideal gas constant for dry air                        | J kg-1 K-1    |    0 | real      | kind_phys | in     | F        |
-!! | con_cp         | specific_heat_of_dry_air_at_constant_pressure                               | specific heat of dry air at constant pressure         | J kg-1 K-1    |    0 | real      | kind_phys | in     | F        |
-!! | con_hvap       | latent_heat_of_vaporization_of_water_at_0C                                  | latent heat of evaporation/sublimation                | J kg-1        |    0 | real      | kind_phys | in     | F        |
-!! | con_fvirt      | ratio_of_vapor_to_dry_air_gas_constants_minus_one                           | (rv/rd) - 1 (rv = ideal gas constant for water vapor) | none          |    0 | real      | kind_phys | in     | F        |
+!! | grav           | gravitational_acceleration                                                  | gravitational acceleration                            | m s-2         |    0 | real      | kind_phys | in     | F        |
+!! | rd             | gas_constant_dry_air                                                        | ideal gas constant for dry air                        | J kg-1 K-1    |    0 | real      | kind_phys | in     | F        |
+!! | cp             | specific_heat_of_dry_air_at_constant_pressure                               | specific heat of dry air at constant pressure         | J kg-1 K-1    |    0 | real      | kind_phys | in     | F        |
+!! | hvap           | latent_heat_of_vaporization_of_water_at_0C                                  | latent heat of evaporation/sublimation                | J kg-1        |    0 | real      | kind_phys | in     | F        |
+!! | fv             | ratio_of_vapor_to_dry_air_gas_constants_minus_one                           | (rv/rd) - 1 (rv = ideal gas constant for water vapor) | none          |    0 | real      | kind_phys | in     | F        |
 !! | errmsg         | ccpp_error_message                                                          | error message for error handling in CCPP              | none          |    0 | character | len=*     | out    | F        |
 !! | errflg         | ccpp_error_flag                                                             | error flag for error handling in CCPP                 | flag          |    0 | integer   |           | out    | F        |
 !!
@@ -89,7 +89,7 @@
      &                     prsi,del,prsl,prslk,phii,phil,delt,
      &                     dusfc,dvsfc,dtsfc,dqsfc,dkt,hpbl,
      &                     kinver,xkzm_m,xkzm_h,xkzm_s,lprnt,ipr,me,
-     &                     con_g, con_rd, con_cp, con_hvap, con_fvirt,
+     &                     grav, rd, cp, hvap, fv,
      &                     errmsg,errflg)
 !
       use machine  , only : kind_phys
@@ -106,8 +106,8 @@
 
       real(kind=kind_phys),                     intent(in) :: delt,
      &  xkzm_m, xkzm_h, xkzm_s
-      real(kind=kind_phys),                     intent(in) :: con_g,
-     &  con_rd, con_cp, con_hvap, con_fvirt
+      real(kind=kind_phys),                     intent(in) :: grav,
+     &  rd, cp, hvap, fv
       real(kind=kind_phys), dimension(im),      intent(in) :: psk,
      &  rbsoil, zorl, u10m, v10m, fm, fh, tsea, heat, evap, stress, spd1
       real(kind=kind_phys), dimension(ix,km),   intent(in) :: u1, v1,
@@ -149,16 +149,22 @@
      &,                    ttend,  utend, vtend,  qtend
      &,                    spdk2,  rbint, ri,     zol1, robn, bvf2
 !
-      real(kind=kind_phys), parameter ::  gravi=1.0/grav, zolcr=0.2,
+      real(kind=kind_phys), parameter ::  zolcr=0.2,
      &                      zolcru=-0.5,  rimin=-100.,    sfcfrac=0.1,
      &                      crbcon=0.25,  crbmin=0.15,    crbmax=0.35,
      &                      qmin=1.e-8,   zfmin=1.e-8,    qlmin=1.e-12,
      &                      aphi5=5.,     aphi16=16.,     f0=1.e-4
-     &,                     cont=cp/grav, conq=hvap/grav, conw=1.0/grav
      &,                     dkmin=0.0,    dkmax=1000.
 !    &,                     dkmin=0.0,    dkmax=1000.,    xkzminv=0.3
-     &,                     gocp=grav/cp, prmin=0.25,     prmax=4.0
+     &,                     prmin=0.25,     prmax=4.0
      &,                     vk=0.4, cfac=6.5
+      real(kind=kind_phys) :: gravi, cont, conq, conw, gocp
+
+      gravi = 1.0/grav
+      cont = cp/grav
+      conq = hvap/grav
+      conw = 1.0/grav
+      gocp = grav/cp
 
 ! Initialize CCPP error handling variables
       errmsg = ''
