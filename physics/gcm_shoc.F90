@@ -152,7 +152,7 @@ subroutine shoc_run (ix, nx, nzm, shocaftcnv, mg3_as_mg2, imp_physics, imp_physi
            clw_liquid(i,k) = gq0_cloud_liquid(i,k)                    ! water
            !GF - since gq0(ntlnc/ntinc) are passed in directly, no need to copy
            ncpl(i,k)  = gq0_cloud_liq_nc(i,k)
-           ncpi(i,k)  = qq0_cloud_ice_nc(i,k)
+           ncpi(i,k)  = gq0_cloud_ice_nc(i,k)
          enddo
        enddo
        if (abs(fprcp) == 1 .or. mg3_as_mg2) then
