@@ -201,12 +201,12 @@ subroutine shoc_run (ix, nx, nzm, shocaftcnv, mg3_as_mg2, imp_physics, imp_physi
     !GFDL lat has no meaning inside of shoc - changed to "1"
 
 
-    ! call shoc_work (ix, nx, 1, nzm, nzm+1, dtp, me, 1, prsl,  &
-    !           phii, phil, u, v, omega, gt0,  &
-    !           gq0_water_vapor, clw_ice, clw_liquid, qsnw, gq0_rain,  &
-    !           rhc, supice, pcrit, cefac, cesfac, tkef1, dis_opt, &
-    !           cld_sgs, tke, hflx, evap, prnum, tkh, wthv_sec, .false., 1, ncpl, ncpi, &
-    !           con_cp, con_g, con_hvap, con_hfus, con_rv, con_rd, con_pi, con_fvirt)
+    call shoc_work (ix, nx, 1, nzm, nzm+1, dtp, me, 1, prsl,  &
+              phii, phil, u, v, omega, gt0,  &
+              gq0_water_vapor, clw_ice, clw_liquid, qsnw, gq0_rain,  &
+              rhc, supice, pcrit, cefac, cesfac, tkef1, dis_opt, &
+              cld_sgs, tke, hflx, evap, prnum, tkh, wthv_sec, .false., 1, ncpl, ncpi, &
+              con_cp, con_g, con_hvap, con_hfus, con_rv, con_rd, con_pi, con_fvirt)
 
     !GF since gq0(ntlnc/ntinc) are passed in directly, no need to copy back
     ! if (ntlnc > 0 .and. ntinc > 0 .and. ncld >= 2) then
