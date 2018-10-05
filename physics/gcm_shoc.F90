@@ -9,7 +9,7 @@ module shoc
 
   private
 
-  public shoc_run, shoc_init, shoc_finalize, shoc_work
+  public shoc_run, shoc_init, shoc_finalize
 
 contains
 
@@ -19,7 +19,7 @@ end subroutine shoc_init
 subroutine shoc_finalize ()
 end subroutine shoc_finalize
 
-!> \section arg_table_shoc_run Argument Table
+!> \section arg_table_shoc_run_orig Argument Table
 !! | local_name                 | standard_name                                                               | long_name                                                                                   | units         | rank | type       |    kind   | intent | optional |
 !! |----------------------------|-----------------------------------------------------------------------------|---------------------------------------------------------------------------------------------|---------------|------|------------|-----------|--------|----------|
 !! | ix                         | horizontal_dimension                                                        | horizontal dimension                                                                        | count         |    0 | integer    |           | in     | F        |
@@ -80,142 +80,142 @@ end subroutine shoc_finalize
 !! | errmsg                     | ccpp_error_message                                                          | error message for error handling in CCPP                                                    | none          |    0 | character  | len=*     | out    | F        |
 !! | errflg                     | ccpp_error_flag                                                             | error flag for error handling in CCPP                                                       | flag          |    0 | integer    |           | out    | F        |
 !!
-subroutine shoc_run (ix, nx, nzm, shocaftcnv, mg3_as_mg2, imp_physics, imp_physics_gfdl, imp_physics_zhao_carr,              &
-    imp_physics_zhao_carr_pdf, imp_physics_mg, fprcp, tcr, tcrf, con_cp, con_g, con_hvap, con_hfus, con_rv, con_rd, con_pi,  &
-    con_fvirt, gq0_cloud_ice, gq0_rain, gq0_snow, gq0_graupel, dtp, me, prsl, phii, phil, u, v, omega, rhc, supice, pcrit,   &
-    cefac, cesfac, tkef1, dis_opt, hflx, evap, prnum,                                                                        &
-    skip_macro, clw_ice, clw_liquid, gq0_cloud_liquid, ncpl, ncpi, gt0, gq0_water_vapor, cld_sgs, tke, tkh, wthv_sec,        &
-    errmsg, errflg)
-
-   implicit none
-
-    integer, intent(in) :: ix, nx, nzm, imp_physics, imp_physics_gfdl, imp_physics_zhao_carr, imp_physics_zhao_carr_pdf, &
-     imp_physics_mg, fprcp, me
-    logical, intent(in) :: shocaftcnv, mg3_as_mg2
-    real(kind=kind_phys), intent(in) :: tcr, tcrf, con_cp, con_g, con_hvap, con_hfus, con_rv, con_rd, con_pi, con_fvirt, &
-      dtp, supice, pcrit, cefac, cesfac, tkef1, dis_opt
-  !
-    real(kind=kind_phys), intent(in), dimension(nx) :: hflx, evap
-    real(kind=kind_phys), intent(in), dimension(nx,nzm) :: gq0_cloud_ice, gq0_rain, gq0_snow, gq0_graupel, prsl, phil, &
-     u, v, omega, rhc, prnum
-    real(kind=kind_phys), intent(in), dimension(nx,nzm+1) :: phii
-   !
-    logical, intent(inout) :: skip_macro
-    real(kind=kind_phys), intent(inout), dimension(nx,nzm) :: clw_ice, clw_liquid, gq0_cloud_liquid, ncpl, ncpi, gt0, &
-     gq0_water_vapor, cld_sgs, tke, tkh, wthv_sec
-
-   character(len=*), intent(out) :: errmsg
-   integer,          intent(out) :: errflg
-
-   real(kind=kind_phys), parameter :: epsq    = 1.e-20
-
-   integer :: i, k
-
-   real(kind=kind_phys) :: tem
-   real(kind=kind_phys), dimension(nx,nzm) :: qsnw !qsnw can be local to this routine
-
-! Initialize CCPP error handling variables
-
-    errmsg = ''
-    errflg = 0
-
-    if (shocaftcnv) then
-      if (imp_physics == imp_physics_mg) then
-       skip_macro = .true.
-       if (abs(fprcp) == 1 .or. mg3_as_mg2) then
-         do k=1,nzm
-           do i=1,nx
-             !GF - gq0(ntrw) is passed in directly, no need to copy
-             !qrn(i,k)  = gq0_rain(i,k)
-             qsnw(i,k) = gq0_snow(i,k)
-           enddo
-         enddo
-       elseif (fprcp > 1) then
-         do k=1,nzm
-           do i=1,nx
-             !qrn(i,k)  = gq0_rain(i,k)
-             qsnw(i,k) = gq0_snow(i,k) + gq0_graupel(i,k)
-           enddo
-         enddo
-       endif
-      endif
-    else
-      if (imp_physics == imp_physics_mg) then
-       skip_macro = .true.
-       do k=1,nzm
-         do i=1,nx
-           clw_ice(i,k) = gq0_cloud_ice(i,k)                    ! ice
-           clw_liquid(i,k) = gq0_cloud_liquid(i,k)                    ! water
-           !GF - since gq0(ntlnc/ntinc) are passed in directly, no need to copy
-           !ncpl(i,k)  = Stateout%gq0(i,k,ntlnc)
-           !ncpi(i,k)  = Stateout%gq0(i,k,ntinc)
-         enddo
-       enddo
-       if (abs(fprcp) == 1 .or. mg3_as_mg2) then
-         do k=1,nzm
-           do i=1,nx
-             !GF - gq0(ntrw) is passed in directly, no need to copy
-             !qrn(i,k)  = gq0_rain(i,k)
-             qsnw(i,k) = gq0_snow(i,k)
-           enddo
-         enddo
-       elseif (fprcp > 1) then
-         do k=1,nzm
-           do i=1,nx
-             !qrn(i,k)  = gq0_rain(i,k)
-             qsnw(i,k) = gq0_snow(i,k) + gq0_graupel(i,k)
-           enddo
-         enddo
-       endif
-      elseif (imp_physics == imp_physics_gfdl) then  ! GFDL MP - needs modify for condensation
-       do k=1,nzm
-         do i=1,nx
-           clw_ice(i,k) = gq0_cloud_ice(i,k)                    ! ice
-           clw_liquid(i,k) = gq0_cloud_liquid(i,k)                    ! water
-           !qrn(i,k)   = gq0_rain(i,k)
-           qsnw(i,k)  = gq0_snow(i,k)
-         enddo
-       enddo
-      elseif (imp_physics == imp_physics_zhao_carr .or. imp_physics == imp_physics_zhao_carr_pdf) then
-       do k=1,nzm
-         do i=1,nx
-           if (abs(gq0_cloud_liquid(i,k)) < epsq) then
-             gq0_cloud_liquid(i,k) = 0.0
-           endif
-           tem = gq0_cloud_liquid(i,k) * max(0.0, MIN(1.0, (tcr-gt0(i,k))*tcrf))
-           clw_ice(i,k) = tem                              ! ice
-           clw_liquid(i,k) = gq0_cloud_liquid(i,k) - tem              ! water
-         enddo
-       enddo
-      endif
-    endif !shocaftcnv
-
-    !     phy_f3d(1,1,ntot3d-2) - shoc determined sgs clouds
-    !     phy_f3d(1,1,ntot3d-1) - shoc determined diffusion coefficients
-    !     phy_f3d(1,1,ntot3d  ) - shoc determined  w'theta'
-
-    !GFDL lat has no meaning inside of shoc - changed to "1"
-
-
-    call shoc_work (ix, nx, 1, nzm, nzm+1, dtp, me, 1, prsl,  &
-              phii, phil, u, v, omega, gt0,  &
-              gq0_water_vapor, clw_ice, clw_liquid, qsnw, gq0_rain,  &
-              rhc, supice, pcrit, cefac, cesfac, tkef1, dis_opt, &
-              cld_sgs, tke, hflx, evap, prnum, tkh, wthv_sec, .false., 1, ncpl, ncpi, &
-              con_cp, con_g, con_hvap, con_hfus, con_rv, con_rd, con_pi, con_fvirt)
-
-    !GF since gq0(ntlnc/ntinc) are passed in directly, no need to copy back
-    !  if (ntlnc > 0 .and. ntinc > 0 .and. ncld >= 2) then
-    !    do k=1,nzm
-    !      do i=1,nx
-    !        Stateout%gq0(i,k,ntlnc) = ncpl(i,k)
-    !        Stateout%gq0(i,k,ntinc) = ncpi(i,k)
-    !      enddo
-    !    enddo
-    !  endif
-
-
-end subroutine shoc_run
+! subroutine shoc_run (ix, nx, nzm, shocaftcnv, mg3_as_mg2, imp_physics, imp_physics_gfdl, imp_physics_zhao_carr,              &
+!     imp_physics_zhao_carr_pdf, imp_physics_mg, fprcp, tcr, tcrf, con_cp, con_g, con_hvap, con_hfus, con_rv, con_rd, con_pi,  &
+!     con_fvirt, gq0_cloud_ice, gq0_rain, gq0_snow, gq0_graupel, dtp, me, prsl, phii, phil, u, v, omega, rhc, supice, pcrit,   &
+!     cefac, cesfac, tkef1, dis_opt, hflx, evap, prnum,                                                                        &
+!     skip_macro, clw_ice, clw_liquid, gq0_cloud_liquid, ncpl, ncpi, gt0, gq0_water_vapor, cld_sgs, tke, tkh, wthv_sec,        &
+!     errmsg, errflg)
+!
+!    implicit none
+!
+!     integer, intent(in) :: ix, nx, nzm, imp_physics, imp_physics_gfdl, imp_physics_zhao_carr, imp_physics_zhao_carr_pdf, &
+!      imp_physics_mg, fprcp, me
+!     logical, intent(in) :: shocaftcnv, mg3_as_mg2
+!     real(kind=kind_phys), intent(in) :: tcr, tcrf, con_cp, con_g, con_hvap, con_hfus, con_rv, con_rd, con_pi, con_fvirt, &
+!       dtp, supice, pcrit, cefac, cesfac, tkef1, dis_opt
+!   !
+!     real(kind=kind_phys), intent(in), dimension(nx) :: hflx, evap
+!     real(kind=kind_phys), intent(in), dimension(nx,nzm) :: gq0_cloud_ice, gq0_rain, gq0_snow, gq0_graupel, prsl, phil, &
+!      u, v, omega, rhc, prnum
+!     real(kind=kind_phys), intent(in), dimension(nx,nzm+1) :: phii
+!    !
+!     logical, intent(inout) :: skip_macro
+!     real(kind=kind_phys), intent(inout), dimension(nx,nzm) :: clw_ice, clw_liquid, gq0_cloud_liquid, ncpl, ncpi, gt0, &
+!      gq0_water_vapor, cld_sgs, tke, tkh, wthv_sec
+!
+!    character(len=*), intent(out) :: errmsg
+!    integer,          intent(out) :: errflg
+!
+!    real(kind=kind_phys), parameter :: epsq    = 1.e-20
+!
+!    integer :: i, k
+!
+!    real(kind=kind_phys) :: tem
+!    real(kind=kind_phys), dimension(nx,nzm) :: qsnw !qsnw can be local to this routine
+!
+! ! Initialize CCPP error handling variables
+!
+!     errmsg = ''
+!     errflg = 0
+!
+!     if (shocaftcnv) then
+!       if (imp_physics == imp_physics_mg) then
+!        skip_macro = .true.
+!        if (abs(fprcp) == 1 .or. mg3_as_mg2) then
+!          do k=1,nzm
+!            do i=1,nx
+!              !GF - gq0(ntrw) is passed in directly, no need to copy
+!              !qrn(i,k)  = gq0_rain(i,k)
+!              qsnw(i,k) = gq0_snow(i,k)
+!            enddo
+!          enddo
+!        elseif (fprcp > 1) then
+!          do k=1,nzm
+!            do i=1,nx
+!              !qrn(i,k)  = gq0_rain(i,k)
+!              qsnw(i,k) = gq0_snow(i,k) + gq0_graupel(i,k)
+!            enddo
+!          enddo
+!        endif
+!       endif
+!     else
+!       if (imp_physics == imp_physics_mg) then
+!        skip_macro = .true.
+!        do k=1,nzm
+!          do i=1,nx
+!            clw_ice(i,k) = gq0_cloud_ice(i,k)                    ! ice
+!            clw_liquid(i,k) = gq0_cloud_liquid(i,k)                    ! water
+!            !GF - since gq0(ntlnc/ntinc) are passed in directly, no need to copy
+!            !ncpl(i,k)  = Stateout%gq0(i,k,ntlnc)
+!            !ncpi(i,k)  = Stateout%gq0(i,k,ntinc)
+!          enddo
+!        enddo
+!        if (abs(fprcp) == 1 .or. mg3_as_mg2) then
+!          do k=1,nzm
+!            do i=1,nx
+!              !GF - gq0(ntrw) is passed in directly, no need to copy
+!              !qrn(i,k)  = gq0_rain(i,k)
+!              qsnw(i,k) = gq0_snow(i,k)
+!            enddo
+!          enddo
+!        elseif (fprcp > 1) then
+!          do k=1,nzm
+!            do i=1,nx
+!              !qrn(i,k)  = gq0_rain(i,k)
+!              qsnw(i,k) = gq0_snow(i,k) + gq0_graupel(i,k)
+!            enddo
+!          enddo
+!        endif
+!       elseif (imp_physics == imp_physics_gfdl) then  ! GFDL MP - needs modify for condensation
+!        do k=1,nzm
+!          do i=1,nx
+!            clw_ice(i,k) = gq0_cloud_ice(i,k)                    ! ice
+!            clw_liquid(i,k) = gq0_cloud_liquid(i,k)                    ! water
+!            !qrn(i,k)   = gq0_rain(i,k)
+!            qsnw(i,k)  = gq0_snow(i,k)
+!          enddo
+!        enddo
+!       elseif (imp_physics == imp_physics_zhao_carr .or. imp_physics == imp_physics_zhao_carr_pdf) then
+!        do k=1,nzm
+!          do i=1,nx
+!            if (abs(gq0_cloud_liquid(i,k)) < epsq) then
+!              gq0_cloud_liquid(i,k) = 0.0
+!            endif
+!            tem = gq0_cloud_liquid(i,k) * max(0.0, MIN(1.0, (tcr-gt0(i,k))*tcrf))
+!            clw_ice(i,k) = tem                              ! ice
+!            clw_liquid(i,k) = gq0_cloud_liquid(i,k) - tem              ! water
+!          enddo
+!        enddo
+!       endif
+!     endif !shocaftcnv
+!
+!     !     phy_f3d(1,1,ntot3d-2) - shoc determined sgs clouds
+!     !     phy_f3d(1,1,ntot3d-1) - shoc determined diffusion coefficients
+!     !     phy_f3d(1,1,ntot3d  ) - shoc determined  w'theta'
+!
+!     !GFDL lat has no meaning inside of shoc - changed to "1"
+!
+!
+!     call shoc_work (ix, nx, 1, nzm, nzm+1, dtp, me, 1, prsl,  &
+!               phii, phil, u, v, omega, gt0,  &
+!               gq0_water_vapor, clw_ice, clw_liquid, qsnw, gq0_rain,  &
+!               rhc, supice, pcrit, cefac, cesfac, tkef1, dis_opt, &
+!               cld_sgs, tke, hflx, evap, prnum, tkh, wthv_sec, .false., 1, ncpl, ncpi, &
+!               con_cp, con_g, con_hvap, con_hfus, con_rv, con_rd, con_pi, con_fvirt)
+!
+!     !GF since gq0(ntlnc/ntinc) are passed in directly, no need to copy back
+!     !  if (ntlnc > 0 .and. ntinc > 0 .and. ncld >= 2) then
+!     !    do k=1,nzm
+!     !      do i=1,nx
+!     !        Stateout%gq0(i,k,ntlnc) = ncpl(i,k)
+!     !        Stateout%gq0(i,k,ntinc) = ncpi(i,k)
+!     !      enddo
+!     !    enddo
+!     !  endif
+!
+!
+! end subroutine shoc_run
 
  ! Implementation of the Simplified High Order Closure (SHOC) scheme
  ! of Bogenschutz and Krueger (2013), J. Adv. Model. Earth Syst, 5, 195-211,
@@ -230,13 +230,61 @@ end subroutine shoc_run
  !                        pressures below a critical value pcrit
  ! S Moorthi - 04-12-17 - fixed a bug in the definition of hl on input
  !                        replacing fac_fus by fac_sub
- subroutine shoc_work (ix, nx, ny, nzm, nz, dtn, me, lat,        &
+
+ !> \section arg_table_shoc_run Argument Table
+ !! | local_name                 | standard_name                                                               | long_name                                                                                   | units         | rank | type       |    kind   | intent | optional |
+ !! |----------------------------|-----------------------------------------------------------------------------|---------------------------------------------------------------------------------------------|---------------|------|------------|-----------|--------|----------|
+ !! | ix                         | horizontal_dimension                                                        | horizontal dimension                                                                        | count         |    0 | integer    |           | in     | F        |
+ !! | nx                         | horizontal_loop_extent                                                      | horizontal loop extent                                                                      | count         |    0 | integer    |           | in     | F        |
+ !! | nzm                        | vertical_dimension                                                          | vertical layer dimension                                                                    | count         |    0 | integer    |           | in     | F        |
+ !! | dtn                        | time_step_for_physics                                                       | time step for physics                                                                       | s             |    0 | real       | kind_phys | in     | F        |
+ !! | me                         | mpi_rank                                                                    | current MPI-rank                                                                            | index         |    0 | integer    |           | in     | F        |
+ !! | prsl                       | air_pressure                                                                | mean layer pressure                                                                         | Pa            |    2 | real       | kind_phys | in     | F        |
+ !! | phii                       | geopotential_at_interface                                                   | geopotential at model layer interfaces                                                      | m2 s-2        |    2 | real       | kind_phys | in     | F        |
+ !! | phil                       | geopotential                                                                | geopotential at model layer centers                                                         | m2 s-2        |    2 | real       | kind_phys | in     | F        |
+ !! | u                          | x_wind_updated_by_physics                                                   | zonal wind updated by physics                                                               | m s-1         |    2 | real       | kind_phys | in     | F        |
+ !! | v                          | y_wind_updated_by_physics                                                   | meridional wind updated by physics                                                          | m s-1         |    2 | real       | kind_phys | in     | F        |
+ !! | omega                      | omega                                                                       | layer mean vertical velocity                                                                | Pa s-1        |    2 | real       | kind_phys | in     | F        |
+ !! | tabs                       | air_temperature_updated_by_physics                                          | temperature updated by physics                                                              | K             |    2 | real       | kind_phys | inout  | F        |
+ !! | qwv                        | water_vapor_specific_humidity_updated_by_physics                            | water vapor specific humidity updated by physics                                            | kg kg-1       |    2 | real       | kind_phys | inout  | F        |
+ !! | qi                         | cloud_ice_mixing_ratio                                                      | moist cloud ice mixing ratio                                                                | kg kg-1       |    2 | real       | kind_phys | inout  | F        |
+ !! | qc                         | cloud_liquid_water_mixing_ratio                                             | moist cloud water mixing ratio                                                              | kg kg-1       |    2 | real       | kind_phys | inout  | F        |
+ !! | qpi                        | local_snow_water_mixing_ratio                                               | local snow water mixing ratio                                                               | kg kg-1       |    2 | real       | kind_phys | in     | F        |
+ !! | qpl                        | local_rain_water_mixing_ratio                                               | local rain water mixing ratio                                                               | kg kg-1       |    2 | real       | kind_phys | in     | F        |
+ !! | rhc                        | critical_relative_humidity                                                  | critical relative humidity                                                                  | frac          |    2 | real       | kind_phys | in     | F        |
+ !! | supice                     | ice_supersaturation_threshold                                               | ice supersaturation parameter for PDF clouds                                                | none          |    0 | real       | kind_phys | in     | F        |
+ !! | pcrit                      | shoc_tke_dissipatation_pressure_threshold                                   | pressure below which extra TKE diss. is applied in SHOC                                     | Pa            |    0 | real       | kind_phys | in     | F        |
+ !! | cefac                      | shoc_tke_dissipation_tunable_parameter                                      | mult. tuning parameter for TKE diss. in SHOC                                                | none          |    0 | real       | kind_phys | in     | F        |
+ !! | cesfac                     | shoc_tke_dissipation_tunable_parameter_near_surface                         | mult. tuning parameter for TKE diss. at surface in SHOC                                     | none          |    0 | real       | kind_phys | in     | F        |
+ !! | tkef1                      | shoc_implicit_TKE_integration_uncentering_term                              | uncentering term for TKE integration in SHOC                                                | none          |    0 | real       | kind_phys | in     | F        |
+ !! | dis_opt                    | shoc_flag_for_optional_surface_TKE_dissipation                              | flag for alt. TKE diss. near surface in SHOC (>0 = ON)                                      | none          |    0 | real       | kind_phys | in     | F        |
+ !! | cld_sgs                    | subgrid_scale_cloud_fraction_from_shoc                                      | subgrid-scale cloud fraction from the SHOC scheme                                           | frac          |    2 | real       | kind_phys | inout  | F        |
+ !! | tke                        | turbulence_kinetic_energy                                                   | turbulence kinetic energy                                                                   | m2 s-2        |    2 | real       | kind_phys | inout  | F        |
+ !! | hflx                       | kinematic_surface_upward_sensible_heat_flux                                 | kinematic surface upward sensible heat flux                                                 | K m s-1       |    1 | real       | kind_phys | in     | F        |
+ !! | evap                       | kinematic_surface_upward_latent_heat_flux                                   | kinematic surface upward latent heat flux                                                   | kg kg-1 m s-1 |    1 | real       | kind_phys | in     | F        |
+ !! | prnum                      | prandtl_number                                                              | turbulent Prandtl number                                                                    | none          |    2 | real       | kind_phys | in     | F        |
+ !! | tkh                        | atmosphere_heat_diffusivity_from_shoc                                       | diffusivity for heat from the SHOC scheme                                                   | m2 s-1        |    2 | real       | kind_phys | inout  | F        |
+ !! | wthv_sec                   | kinematic_buoyancy_flux_from_shoc                                           | upward kinematic buoyancy flux from the SHOC scheme                                         | K m s-1       |    2 | real       | kind_phys | inout  | F        |
+ !! | ncpl                       | local_cloud_droplet_number_concentration                                    | cloud droplet number concentration local to physics                                         | m-3           |    2 | real       | kind_phys | inout  | F        |
+ !! | ncpi                       | local_cloud_ice_number_concentration                                        | cloud ice number concentration local to physics                                             | m-3           |    2 | real       | kind_phys | inout  | F        |
+ !! | cp                         | specific_heat_of_dry_air_at_constant_pressure                               | specific heat of dry air at constant pressure                                               | J kg-1 K-1    |    0 | real       | kind_phys | in     | F        |
+ !! | ggr                        | gravitational_acceleration                                                  | gravitational acceleration                                                                  | m s-2         |    0 | real       | kind_phys | in     | F        |
+ !! | lcond                      | latent_heat_of_vaporization_of_water_at_0C                                  | latent heat of evaporation/sublimation                                                      | J kg-1        |    0 | real       | kind_phys | in     | F        |
+ !! | lfus                       | latent_heat_of_fusion_of_water_at_0C                                        | latent heat of fusion                                                                       | J kg-1        |    0 | real       | kind_phys | in     | F        |
+ !! | rv                         | gas_constant_water_vapor                                                    | ideal gas constant for water vapor                                                          | J kg-1 K-1    |    0 | real       | kind_phys | in     | F        |
+ !! | rgas                       | gas_constant_dry_air                                                        | ideal gas constant for dry air                                                              | J kg-1 K-1    |    0 | real       | kind_phys | in     | F        |
+ !! | pi                         | pi                                                                          | ratio of a circle's circumference to its diameter                                           | radians       |    0 | real       | kind_phys | in     | F        |
+ !! | epsv                       | ratio_of_vapor_to_dry_air_gas_constants_minus_one                           | (rv/rd) - 1 (rv = ideal gas constant for water vapor)                                       | none          |    0 | real       | kind_phys | in     | F        |
+ !! | errmsg                     | ccpp_error_message                                                          | error message for error handling in CCPP                                                    | none          |    0 | character  | len=*     | out    | F        |
+ !! | errflg                     | ccpp_error_flag                                                             | error flag for error handling in CCPP                                                       | flag          |    0 | integer    |           | out    | F        |
+ !!
+ subroutine shoc_run (ix, nx, nzm, dtn, me,         &
                  prsl, phii, phil, u, v, omega, tabs,            &
                  qwv, qi, qc, qpi, qpl, rhc, supice,             &
                  pcrit, cefac, cesfac, tkef1, dis_opt,           &
                  cld_sgs, tke, hflx, evap, prnum, tkh,           &
-                 wthv_sec, lprnt, ipr, ncpl, ncpi,               &
-                 cp, ggr, lcond, lfus, rv, rgas, pi, epsv)
+                 wthv_sec, ncpl, ncpi,               &
+                 cp, ggr, lcond, lfus, rv, rgas, pi, epsv, errmsg, errflg)
 
   use funcphys , only : fpvsl, fpvsi, fpvs    ! saturation vapor pressure for water & ice
 
@@ -245,12 +293,12 @@ end subroutine shoc_run
   real, intent(in)    :: cp, ggr, lcond, lfus, rv, rgas, pi, epsv
   integer, intent(in) :: ix      ! max number of points in the physics window in the x
   integer, intent(in) :: nx      ! Number of points in the physics window in the x
-  integer, intent(in) :: ny      ! and y directions
+  integer, parameter :: ny = 1     ! and y directions
   integer, intent(in) :: me      ! MPI rank
-  integer, intent(in) :: lat     ! latitude
+  integer, parameter :: lat = 1     ! latitude
 
   integer, intent(in) :: nzm     ! Number of vertical layers
-  integer, intent(in) :: nz      ! Number of layer interfaces  (= nzm + 1)
+  integer, parameter :: nz = 65      ! Number of layer interfaces  (= nzm + 1)
   real,    intent(in) :: dtn     ! Physics time step, s
 
   real,    intent(in) :: pcrit   ! pressure in Pa below which additional tke dissipation is applied
@@ -265,7 +313,7 @@ end subroutine shoc_run
 ! The interface is talored to GFS in a sense that input variables are 2D
 
   real, intent(in)    :: prsl   (ix,ny,nzm)   ! mean layer presure
-  real, intent(in)    :: phii   (ix,ny,nz )   ! interface geopotential height
+  real, intent(in)    :: phii   (:,:,: )   ! interface geopotential height
   real, intent(in)    :: phil   (ix,ny,nzm)   ! layer geopotential height
   real, intent(in)    :: u      (ix,ny,nzm)   ! u-wind, m/s
   real, intent(in)    :: v      (ix,ny,nzm)   ! v-wind, m/s
@@ -288,6 +336,9 @@ end subroutine shoc_run
   real, intent(inout) :: tkh    (ix,ny,nzm)   ! eddy diffusivity
   real, intent(in)    :: prnum  (nx,ny,nzm)   ! turbulent Prandtl number
   real, intent(inout) :: wthv_sec (ix,ny,nzm) ! Buoyancy flux, K*m/s
+
+  character(len=*), intent(out) :: errmsg
+  integer,          intent(out) :: errflg
 
   real, parameter :: zero=0.0,  one=1.0,  half=0.5, two=2.0,    eps=0.622,           &
                      three=3.0, oneb3=one/three, twoby3=two/three
@@ -451,6 +502,11 @@ end subroutine shoc_run
 
   integer i,j,k,km1,ku,kd,ka,kb
 
+  errmsg = ''
+  errflg = 0
+  y=1
+  lprnt = .false.
+  ipr = 1
 !calculate derived constants
   lsub = lcond+lfus
   fac_cond = lcond/cp
