@@ -205,8 +205,12 @@ subroutine shoc_run (ix, nx, nzm, shocaftcnv, mg3_as_mg2, imp_physics, imp_physi
               phii, phil, u, v, omega, gt0,  &
               gq0_water_vapor, clw_ice, clw_liquid, qsnw, gq0_rain,  &
               rhc, supice, pcrit, cefac, cesfac, tkef1, dis_opt, &
-              cld_sgs, tke, hflx, evap, prnum, tkh, wthv_sec, .false., 1, ncpl, ncpi, &
-              con_cp, con_g, con_hvap, con_hfus, con_rv, con_rd, con_pi, con_fvirt)
+              cld_sgs, tke, hflx, evap, prnum, tkh, wthv_sec, .false., 1, ncpl, ncpi)!, &
+              !con_cp, con_g, con_hvap, con_hfus, con_rv, con_rd, con_pi, con_fvirt)
+
+    write(0,*) 'cld_sgs = ',cld_sgs
+    write(0,*) 'tkh = ',tkh
+    write(0,*) 'wthv_sec = ',wthv_sec
 
     !GF since gq0(ntlnc/ntinc) are passed in directly, no need to copy back
     ! if (ntlnc > 0 .and. ntinc > 0 .and. ncld >= 2) then
@@ -239,14 +243,23 @@ end subroutine shoc_run
                  qwv, qi, qc, qpi, qpl, rhc, supice,             &
                  pcrit, cefac, cesfac, tkef1, dis_opt,           &
                  cld_sgs, tke, hflx, evap, prnum, tkh,           &
-                 wthv_sec, lprnt, ipr, ncpl, ncpi,               &
-                 cp, ggr, lcond, lfus, rv, rgas, pi, epsv)
+                 wthv_sec, lprnt, ipr, ncpl, ncpi)!,               &
+                 !cp, ggr, lcond, lfus, rv, rgas, pi, epsv)
 
   use funcphys , only : fpvsl, fpvsi, fpvs    ! saturation vapor pressure for water & ice
 
+  use physcons, cp    => con_cp,      & ! Specific heat of air, J/kg/K
+                ggr   => con_g,       & ! Gravity acceleration, m/s2
+                lcond => con_hvap,    & ! Latent heat of condensation, J/kg
+                lfus  => con_hfus,    & ! Latent heat of fusion, J/kg
+                rv    => con_rv,      & ! Gas constant for water vapor, J/kg/K
+                rgas  => con_rd,      & ! Gas constant for dry air, J/kg/K
+                pi    => con_pi,      & ! Pi
+                epsv  => con_fvirt
+
   implicit none
 
-  real, intent(in)    :: cp, ggr, lcond, lfus, rv, rgas, pi, epsv
+  !real, intent(in)    :: cp, ggr, lcond, lfus, rv, rgas, pi, epsv
   integer, intent(in) :: ix      ! max number of points in the physics window in the x
   integer, intent(in) :: nx      ! Number of points in the physics window in the x
   integer, intent(in) :: ny      ! and y directions
@@ -295,11 +308,19 @@ end subroutine shoc_run
 
   real, parameter :: zero=0.0,  one=1.0,  half=0.5, two=2.0,    eps=0.622,           &
                      three=3.0, oneb3=one/three, twoby3=two/three
-  real, parameter :: sqrt2 = sqrt(two), twoby15 = two / 15.0,                        &
-                     skew_facw=1.2, skew_fact=0.0,                                   &
-                     tkhmax=300.0, scrit=2.0e-6
-  real :: lsub, fac_cond, fac_fus, cpolv, fac_sub, ggri, kapa, gocp, rog, sqrtpii,   &
-                     epsterm, onebeps, onebrvcp
+   real, parameter :: lsub = lcond+lfus, fac_cond = lcond/cp, fac_fus = lfus/cp,      &
+                      cpolv = cp/lcond,                                               &
+                      fac_sub = lsub/cp, ggri = 1.0/ggr,      kapa = rgas/cp,         &
+                      gocp = ggr/cp,     rog = rgas*ggri,     sqrt2 = sqrt(two),      &
+                      sqrtpii = one/sqrt(pi+pi), epsterm = rgas/rv,                   &
+                      onebeps = one/epsterm, twoby15 = two / 15.0,                    &
+                      onebrvcp= one/(rv*cp), skew_facw=1.2, skew_fact=0.0,            &
+                      tkhmax=300.0, scrit=2.0e-6
+  ! real, parameter :: sqrt2 = sqrt(two), twoby15 = two / 15.0,                        &
+  !                    skew_facw=1.2, skew_fact=0.0,                                   &
+  !                    tkhmax=300.0, scrit=2.0e-6
+  ! real :: lsub, fac_cond, fac_fus, cpolv, fac_sub, ggri, kapa, gocp, rog, sqrtpii,   &
+  !                    epsterm, onebeps, onebrvcp
 !                    onebrvcp= 1.0/(rv*cp), skew_facw=1.2, skew_fact=1.0,            &
 !                    tkef1=0.5, tkef2=1.0-tkef1, tkhmax=1000.0, cefac=3.0,           &
 !                    tkef1=0.5, tkef2=1.0-tkef1, tkhmax=1000.0, cefac=1.5,           &
@@ -456,19 +477,19 @@ end subroutine shoc_run
   integer i,j,k,km1,ku,kd,ka,kb
 
 !calculate derived constants
-  lsub = lcond+lfus
-  fac_cond = lcond/cp
-  fac_fus = lfus/cp
-  cpolv = cp/lcond
-  fac_sub = lsub/cp
-  ggri = 1.0/ggr
-  kapa = rgas/cp
-  gocp = ggr/cp
-  rog = rgas*ggri
-  sqrtpii = one/sqrt(pi+pi)
-  epsterm = rgas/rv
-  onebeps = one/epsterm
-  onebrvcp= one/(rv*cp)
+  ! lsub = lcond+lfus
+  ! fac_cond = lcond/cp
+  ! fac_fus = lfus/cp
+  ! cpolv = cp/lcond
+  ! fac_sub = lsub/cp
+  ! ggri = 1.0/ggr
+  ! kapa = rgas/cp
+  ! gocp = ggr/cp
+  ! rog = rgas*ggri
+  ! sqrtpii = one/sqrt(pi+pi)
+  ! epsterm = rgas/rv
+  ! onebeps = one/epsterm
+  ! onebrvcp= one/(rv*cp)
 
 ! Map GFS variables to those of SHOC - SHOC operates on 3D fields
 ! Here a Y-dimension is added to the input variables, along with some unit conversions
