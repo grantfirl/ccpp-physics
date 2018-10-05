@@ -2001,6 +2001,6 @@ contains
     dtqsati = 100.0*0.622*dtesati(t)/p
   end function dtqsati
 
-end subroutine shoc_work
+end subroutine shoc_run
 
 end module shoc
