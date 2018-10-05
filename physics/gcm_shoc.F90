@@ -9,7 +9,7 @@ module shoc
 
   private
 
-  public shoc_run, shoc_init, shoc_finalize
+  public shoc_run, shoc_init, shoc_finalize, shoc_work
 
 contains
 
@@ -119,82 +119,82 @@ subroutine shoc_run (ix, nx, nzm, shocaftcnv, mg3_as_mg2, imp_physics, imp_physi
     errmsg = ''
     errflg = 0
 
-    ! if (shocaftcnv) then
-    !   if (imp_physics == imp_physics_mg) then
-    !    skip_macro = .true.
-    !    if (abs(fprcp) == 1 .or. mg3_as_mg2) then
-    !      do k=1,nzm
-    !        do i=1,nx
-    !          !GF - gq0(ntrw) is passed in directly, no need to copy
-    !          !qrn(i,k)  = gq0_rain(i,k)
-    !          qsnw(i,k) = gq0_snow(i,k)
-    !        enddo
-    !      enddo
-    !    elseif (fprcp > 1) then
-    !      do k=1,nzm
-    !        do i=1,nx
-    !          !qrn(i,k)  = gq0_rain(i,k)
-    !          qsnw(i,k) = gq0_snow(i,k) + gq0_graupel(i,k)
-    !        enddo
-    !      enddo
-    !    endif
-    !   endif
-    ! else
-    !   if (imp_physics == imp_physics_mg) then
-    !    skip_macro = .true.
-    !    do k=1,nzm
-    !      do i=1,nx
-    !        clw_ice(i,k) = gq0_cloud_ice(i,k)                    ! ice
-    !        clw_liquid(i,k) = gq0_cloud_liquid(i,k)                    ! water
-    !        !GF - since gq0(ntlnc/ntinc) are passed in directly, no need to copy
-    !        !ncpl(i,k)  = Stateout%gq0(i,k,ntlnc)
-    !        !ncpi(i,k)  = Stateout%gq0(i,k,ntinc)
-    !      enddo
-    !    enddo
-    !    if (abs(fprcp) == 1 .or. mg3_as_mg2) then
-    !      do k=1,nzm
-    !        do i=1,nx
-    !          !GF - gq0(ntrw) is passed in directly, no need to copy
-    !          !qrn(i,k)  = gq0_rain(i,k)
-    !          qsnw(i,k) = gq0_snow(i,k)
-    !        enddo
-    !      enddo
-    !    elseif (fprcp > 1) then
-    !      do k=1,nzm
-    !        do i=1,nx
-    !          !qrn(i,k)  = gq0_rain(i,k)
-    !          qsnw(i,k) = gq0_snow(i,k) + gq0_graupel(i,k)
-    !        enddo
-    !      enddo
-    !    endif
-    !   elseif (imp_physics == imp_physics_gfdl) then  ! GFDL MP - needs modify for condensation
-    !    do k=1,nzm
-    !      do i=1,nx
-    !        clw_ice(i,k) = gq0_cloud_ice(i,k)                    ! ice
-    !        clw_liquid(i,k) = gq0_cloud_liquid(i,k)                    ! water
-    !        !qrn(i,k)   = gq0_rain(i,k)
-    !        qsnw(i,k)  = gq0_snow(i,k)
-    !      enddo
-    !    enddo
-    !   elseif (imp_physics == imp_physics_zhao_carr .or. imp_physics == imp_physics_zhao_carr_pdf) then
-    !    do k=1,nzm
-    !      do i=1,nx
-    !        if (abs(gq0_cloud_liquid(i,k)) < epsq) then
-    !          gq0_cloud_liquid(i,k) = 0.0
-    !        endif
-    !        tem = gq0_cloud_liquid(i,k) * max(0.0, MIN(1.0, (tcr-gt0(i,k))*tcrf))
-    !        clw_ice(i,k) = tem                              ! ice
-    !        clw_liquid(i,k) = gq0_cloud_liquid(i,k) - tem              ! water
-    !      enddo
-    !    enddo
-    !   endif
-    ! endif !shocaftcnv
-    !
-    ! !     phy_f3d(1,1,ntot3d-2) - shoc determined sgs clouds
-    ! !     phy_f3d(1,1,ntot3d-1) - shoc determined diffusion coefficients
-    ! !     phy_f3d(1,1,ntot3d  ) - shoc determined  w'theta'
-    !
-    ! !GFDL lat has no meaning inside of shoc - changed to "1"
+    if (shocaftcnv) then
+      if (imp_physics == imp_physics_mg) then
+       skip_macro = .true.
+       if (abs(fprcp) == 1 .or. mg3_as_mg2) then
+         do k=1,nzm
+           do i=1,nx
+             !GF - gq0(ntrw) is passed in directly, no need to copy
+             !qrn(i,k)  = gq0_rain(i,k)
+             qsnw(i,k) = gq0_snow(i,k)
+           enddo
+         enddo
+       elseif (fprcp > 1) then
+         do k=1,nzm
+           do i=1,nx
+             !qrn(i,k)  = gq0_rain(i,k)
+             qsnw(i,k) = gq0_snow(i,k) + gq0_graupel(i,k)
+           enddo
+         enddo
+       endif
+      endif
+    else
+      if (imp_physics == imp_physics_mg) then
+       skip_macro = .true.
+       do k=1,nzm
+         do i=1,nx
+           clw_ice(i,k) = gq0_cloud_ice(i,k)                    ! ice
+           clw_liquid(i,k) = gq0_cloud_liquid(i,k)                    ! water
+           !GF - since gq0(ntlnc/ntinc) are passed in directly, no need to copy
+           !ncpl(i,k)  = Stateout%gq0(i,k,ntlnc)
+           !ncpi(i,k)  = Stateout%gq0(i,k,ntinc)
+         enddo
+       enddo
+       if (abs(fprcp) == 1 .or. mg3_as_mg2) then
+         do k=1,nzm
+           do i=1,nx
+             !GF - gq0(ntrw) is passed in directly, no need to copy
+             !qrn(i,k)  = gq0_rain(i,k)
+             qsnw(i,k) = gq0_snow(i,k)
+           enddo
+         enddo
+       elseif (fprcp > 1) then
+         do k=1,nzm
+           do i=1,nx
+             !qrn(i,k)  = gq0_rain(i,k)
+             qsnw(i,k) = gq0_snow(i,k) + gq0_graupel(i,k)
+           enddo
+         enddo
+       endif
+      elseif (imp_physics == imp_physics_gfdl) then  ! GFDL MP - needs modify for condensation
+       do k=1,nzm
+         do i=1,nx
+           clw_ice(i,k) = gq0_cloud_ice(i,k)                    ! ice
+           clw_liquid(i,k) = gq0_cloud_liquid(i,k)                    ! water
+           !qrn(i,k)   = gq0_rain(i,k)
+           qsnw(i,k)  = gq0_snow(i,k)
+         enddo
+       enddo
+      elseif (imp_physics == imp_physics_zhao_carr .or. imp_physics == imp_physics_zhao_carr_pdf) then
+       do k=1,nzm
+         do i=1,nx
+           if (abs(gq0_cloud_liquid(i,k)) < epsq) then
+             gq0_cloud_liquid(i,k) = 0.0
+           endif
+           tem = gq0_cloud_liquid(i,k) * max(0.0, MIN(1.0, (tcr-gt0(i,k))*tcrf))
+           clw_ice(i,k) = tem                              ! ice
+           clw_liquid(i,k) = gq0_cloud_liquid(i,k) - tem              ! water
+         enddo
+       enddo
+      endif
+    endif !shocaftcnv
+
+    !     phy_f3d(1,1,ntot3d-2) - shoc determined sgs clouds
+    !     phy_f3d(1,1,ntot3d-1) - shoc determined diffusion coefficients
+    !     phy_f3d(1,1,ntot3d  ) - shoc determined  w'theta'
+
+    !GFDL lat has no meaning inside of shoc - changed to "1"
 
 
     call shoc_work (ix, nx, 1, nzm, nzm+1, dtp, me, 1, prsl,  &
