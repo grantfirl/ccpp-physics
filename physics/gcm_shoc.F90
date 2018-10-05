@@ -313,7 +313,7 @@ end subroutine shoc_finalize
 ! The interface is talored to GFS in a sense that input variables are 2D
 
   real, intent(in)    :: prsl   (ix,ny,nzm)   ! mean layer presure
-  real, intent(in)    :: phii   (:,:,: )   ! interface geopotential height
+  real, intent(in)    :: phii   (ix,ny,nz)   ! interface geopotential height
   real, intent(in)    :: phil   (ix,ny,nzm)   ! layer geopotential height
   real, intent(in)    :: u      (ix,ny,nzm)   ! u-wind, m/s
   real, intent(in)    :: v      (ix,ny,nzm)   ! v-wind, m/s
