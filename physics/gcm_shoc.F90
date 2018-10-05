@@ -504,7 +504,6 @@ end subroutine shoc_finalize
 
   errmsg = ''
   errflg = 0
-  y=1
   lprnt = .false.
   ipr = 1
 !calculate derived constants
