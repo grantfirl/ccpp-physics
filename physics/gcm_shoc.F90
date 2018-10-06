@@ -238,12 +238,12 @@ subroutine shoc_run (ix, nx, nzm, shocaftcnv, mg3_as_mg2, imp_physics, imp_physi
     write(0,*) 'ncpl = ',ncpl(1,1:5)
     write(0,*) 'ncpi = ',ncpi(1,1:5)
 
-    ! call shoc_work (ix, nx, 1, nzm, nzm+1, dtp, me, 1, prsl,  &
-    !           phii, phil, u, v, omega, gt0,  &
-    !           gq0_water_vapor, clw_ice, clw_liquid, qsnw, qrn,  &
-    !           rhc, supice, pcrit, cefac, cesfac, tkef1, dis_opt, &
-    !           cld_sgs, tke, hflx, evap, prnum, tkh, wthv_sec, .false., 1, ncpl, ncpi)!, &
-    !           !con_cp, con_g, con_hvap, con_hfus, con_rv, con_rd, con_pi, con_fvirt)
+    call shoc_work (ix, nx, 1, nzm, nzm+1, dtp, me, 1, prsl,  &
+              phii, phil, u, v, omega, gt0,  &
+              gq0_water_vapor, clw_ice, clw_liquid, qsnw, qrn,  &
+              rhc, supice, pcrit, cefac, cesfac, tkef1, dis_opt, &
+              cld_sgs, tke, hflx, evap, prnum, tkh, wthv_sec, .false., 1, ncpl, ncpi)!, &
+              !con_cp, con_g, con_hvap, con_hfus, con_rv, con_rd, con_pi, con_fvirt)
 
 
 
@@ -273,15 +273,16 @@ end subroutine shoc_run
  !                        pressures below a critical value pcrit
  ! S Moorthi - 04-12-17 - fixed a bug in the definition of hl on input
  !                        replacing fac_fus by fac_sub
- subroutine shoc_work (ix, nx, ny, nzm, nz, dtn, me, lat,        &
+ subroutine shoc_work (ix, nx, ny, nzm, nz, dtn, me, lat,              &
                  prsl, phii, phil, u, v, omega, tabs,            &
                  qwv, qi, qc, qpi, qpl, rhc, supice,             &
                  pcrit, cefac, cesfac, tkef1, dis_opt,           &
                  cld_sgs, tke, hflx, evap, prnum, tkh,           &
-                 wthv_sec, lprnt, ipr, ncpl, ncpi)!,               &
-                 !cp, ggr, lcond, lfus, rv, rgas, pi, epsv)
+                 wthv_sec, lprnt, ipr, ncpl, ncpi)
 
   use funcphys , only : fpvsl, fpvsi, fpvs    ! saturation vapor pressure for water & ice
+
+! Map constants of the NCEP GFS to those of SHOC
 
   use physcons, cp    => con_cp,      & ! Specific heat of air, J/kg/K
                 ggr   => con_g,       & ! Gravity acceleration, m/s2
@@ -294,7 +295,38 @@ end subroutine shoc_run
 
   implicit none
 
-  !real, intent(in)    :: cp, ggr, lcond, lfus, rv, rgas, pi, epsv
+  real, parameter :: zero=0.0,  one=1.0,  half=0.5, two=2.0,    eps=0.622,           &
+                     three=3.0, oneb3=one/three, twoby3=two/three
+  real, parameter :: lsub = lcond+lfus, fac_cond = lcond/cp, fac_fus = lfus/cp,      &
+                     cpolv = cp/lcond,                                               &
+                     fac_sub = lsub/cp, ggri = 1.0/ggr,      kapa = rgas/cp,         &
+                     gocp = ggr/cp,     rog = rgas*ggri,     sqrt2 = sqrt(two),      &
+                     sqrtpii = one/sqrt(pi+pi), epsterm = rgas/rv,                   &
+                     onebeps = one/epsterm, twoby15 = two / 15.0,                    &
+                     onebrvcp= one/(rv*cp), skew_facw=1.2, skew_fact=0.0,            &
+                     tkhmax=300.0, scrit=2.0e-6
+
+!                    onebrvcp= 1.0/(rv*cp), skew_facw=1.2, skew_fact=1.0,            &
+!                    tkef1=0.5, tkef2=1.0-tkef1, tkhmax=1000.0, cefac=3.0,           &
+!                    tkef1=0.5, tkef2=1.0-tkef1, tkhmax=1000.0, cefac=1.5,           &
+!                    tkef1=0.5, tkef2=1.0-tkef1, tkhmax=200.0,  cefac=1.5,           &
+!                    tkef1=0.7, tkef2=1.0-tkef1, tkhmax=1000.0, cefac=1.5,           &
+!                    tkef1=0.7, tkef2=1.0-tkef1, tkhmax=300.0,  cefac=1.0,           &
+!                    tkef1=0.7, tkef2=1.0-tkef1, tkhmax=300.0,  cefac=1.5,           &
+!                    tkef1=1.1, tkef2=1.0-tkef1, tkhmax=200.0,  cefac=1.5,           &
+!                    tkef1=0.7, tkef2=1.0-tkef1, tkhmax=1000.0, cefac=1.5,           &
+
+!                    scrit=5.0e-8
+!                    scrit=3.0e-6
+!                    scrit=1.0e-5
+!                    scrit=5.0e-6
+!                    scrit=1.0e-5
+!                    scrit=1.0e-6
+
+! real, parameter :: supice=1.05
+
+  logical lprnt
+  integer ipr
   integer, intent(in) :: ix      ! max number of points in the physics window in the x
   integer, intent(in) :: nx      ! Number of points in the physics window in the x
   integer, intent(in) :: ny      ! and y directions
@@ -329,51 +361,17 @@ end subroutine shoc_run
 ! Anning Cheng 03/11/2016 SHOC feedback to number concentration
   real, intent(inout) :: ncpl   (nx,ny,nzm)   ! cloud water number concentration,/m^3
   real, intent(inout) :: ncpi   (nx,ny,nzm)   ! cloud ice   number concentration,/m^3
-  real, intent(in)    :: qpl    (nx,ny,nzm)   ! rain mixing ratio, kg/kg
-  real, intent(in)    :: qpi    (nx,ny,nzm)   ! snow mixing ratio, kg/kg
-  real, intent(in)    :: rhc    (nx,ny,nzm)   ! critical relative humidity
+  real, intent(inout) :: qpl    (nx,ny,nzm)   ! rain mixing ratio, kg/kg
+  real, intent(inout) :: qpi    (nx,ny,nzm)   ! snow mixing ratio, kg/kg
+  real, intent(inout) :: rhc    (nx,ny,nzm)   ! critical relative humidity
   real, intent(in)    :: supice               ! ice supersaturation parameter
   real, intent(inout) :: cld_sgs(ix,ny,nzm)   ! sgs cloud fraction
 ! real, intent(inout) :: cld_sgs(nx,ny,nzm)   ! sgs cloud fraction
   real, intent(inout) :: tke    (ix,ny,nzm)   ! turbulent kinetic energy. m**2/s**2
 ! real, intent(inout) :: tk     (nx,ny,nzm)   ! eddy viscosity
   real, intent(inout) :: tkh    (ix,ny,nzm)   ! eddy diffusivity
-  real, intent(in)    :: prnum  (nx,ny,nzm)   ! turbulent Prandtl number
+  real, intent(inout) :: prnum  (nx,ny,nzm)   ! turbulent Prandtl number
   real, intent(inout) :: wthv_sec (ix,ny,nzm) ! Buoyancy flux, K*m/s
-
-  real, parameter :: zero=0.0,  one=1.0,  half=0.5, two=2.0,    eps=0.622,           &
-                     three=3.0, oneb3=one/three, twoby3=two/three
-   real, parameter :: lsub = lcond+lfus, fac_cond = lcond/cp, fac_fus = lfus/cp,      &
-                      cpolv = cp/lcond,                                               &
-                      fac_sub = lsub/cp, ggri = 1.0/ggr,      kapa = rgas/cp,         &
-                      gocp = ggr/cp,     rog = rgas*ggri,     sqrt2 = sqrt(two),      &
-                      sqrtpii = one/sqrt(pi+pi), epsterm = rgas/rv,                   &
-                      onebeps = one/epsterm, twoby15 = two / 15.0,                    &
-                      onebrvcp= one/(rv*cp), skew_facw=1.2, skew_fact=0.0,            &
-                      tkhmax=300.0, scrit=2.0e-6
-  ! real, parameter :: sqrt2 = sqrt(two), twoby15 = two / 15.0,                        &
-  !                    skew_facw=1.2, skew_fact=0.0,                                   &
-  !                    tkhmax=300.0, scrit=2.0e-6
-  ! real :: lsub, fac_cond, fac_fus, cpolv, fac_sub, ggri, kapa, gocp, rog, sqrtpii,   &
-  !                    epsterm, onebeps, onebrvcp
-!                    onebrvcp= 1.0/(rv*cp), skew_facw=1.2, skew_fact=1.0,            &
-!                    tkef1=0.5, tkef2=1.0-tkef1, tkhmax=1000.0, cefac=3.0,           &
-!                    tkef1=0.5, tkef2=1.0-tkef1, tkhmax=1000.0, cefac=1.5,           &
-!                    tkef1=0.5, tkef2=1.0-tkef1, tkhmax=200.0,  cefac=1.5,           &
-!                    tkef1=0.7, tkef2=1.0-tkef1, tkhmax=1000.0, cefac=1.5,           &
-!                    tkef1=0.7, tkef2=1.0-tkef1, tkhmax=300.0,  cefac=1.0,           &
-!                    tkef1=0.7, tkef2=1.0-tkef1, tkhmax=300.0,  cefac=1.5,           &
-!                    tkef1=1.1, tkef2=1.0-tkef1, tkhmax=200.0,  cefac=1.5,           &
-!                    tkef1=0.7, tkef2=1.0-tkef1, tkhmax=1000.0, cefac=1.5,           &
-
-!                    scrit=5.0e-8
-!                    scrit=3.0e-6
-!                    scrit=1.0e-5
-!                    scrit=5.0e-6
-!                    scrit=1.0e-5
-!                    scrit=1.0e-6
-
-! real, parameter :: supice=1.05
 
 ! SHOC tunable parameters
 
@@ -429,8 +427,6 @@ end subroutine shoc_run
   integer, parameter :: nitr=6
 
 ! Local variables. Note that pressure is in millibars in the SHOC code.
-  logical lprnt
-  integer ipr
 
   real zl      (nx,ny,nzm)  ! height of the pressure levels above surface, m
   real zi      (nx,ny,nz)   ! height of the interface levels, m
@@ -510,21 +506,6 @@ end subroutine shoc_run
 
 
   integer i,j,k,km1,ku,kd,ka,kb
-
-!calculate derived constants
-  ! lsub = lcond+lfus
-  ! fac_cond = lcond/cp
-  ! fac_fus = lfus/cp
-  ! cpolv = cp/lcond
-  ! fac_sub = lsub/cp
-  ! ggri = 1.0/ggr
-  ! kapa = rgas/cp
-  ! gocp = ggr/cp
-  ! rog = rgas*ggri
-  ! sqrtpii = one/sqrt(pi+pi)
-  ! epsterm = rgas/rv
-  ! onebeps = one/epsterm
-  ! onebrvcp= one/(rv*cp)
 
 ! Map GFS variables to those of SHOC - SHOC operates on 3D fields
 ! Here a Y-dimension is added to the input variables, along with some unit conversions
@@ -2006,5 +1987,3 @@ contains
   end function dtqsati
 
 end subroutine shoc_work
-
-end module shoc
