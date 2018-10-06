@@ -1987,3 +1987,5 @@ contains
   end function dtqsati
 
 end subroutine shoc_work
+
+end module shoc
