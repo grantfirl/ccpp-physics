@@ -238,12 +238,12 @@ subroutine shoc_run (ix, nx, nzm, shocaftcnv, mg3_as_mg2, imp_physics, imp_physi
     write(0,*) 'ncpl = ',ncpl(1,1:5)
     write(0,*) 'ncpi = ',ncpi(1,1:5)
 
-    call shoc_work (ix, nx, 1, nzm, nzm+1, dtp, me, 1, prsl,  &
-              phii, phil, u, v, omega, gt0,  &
-              gq0_water_vapor, clw_ice, clw_liquid, qsnw, qrn,  &
-              rhc, supice, pcrit, cefac, cesfac, tkef1, dis_opt, &
-              cld_sgs, tke, hflx, evap, prnum, tkh, wthv_sec, .false., 1, ncpl, ncpi)!, &
-              !con_cp, con_g, con_hvap, con_hfus, con_rv, con_rd, con_pi, con_fvirt)
+    ! call shoc_work (ix, nx, 1, nzm, nzm+1, dtp, me, 1, prsl,  &
+    !           phii, phil, u, v, omega, gt0,  &
+    !           gq0_water_vapor, clw_ice, clw_liquid, qsnw, qrn,  &
+    !           rhc, supice, pcrit, cefac, cesfac, tkef1, dis_opt, &
+    !           cld_sgs, tke, hflx, evap, prnum, tkh, wthv_sec, .false., 1, ncpl, ncpi)!, &
+    !           !con_cp, con_g, con_hvap, con_hfus, con_rv, con_rd, con_pi, con_fvirt)
 
 
 
