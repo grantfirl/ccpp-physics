@@ -57,7 +57,7 @@ end subroutine shoc_finalize
 !! | u                          | x_wind_updated_by_physics                                                   | zonal wind updated by physics                                                               | m s-1         |    2 | real       | kind_phys | in     | F        |
 !! | v                          | y_wind_updated_by_physics                                                   | meridional wind updated by physics                                                          | m s-1         |    2 | real       | kind_phys | in     | F        |
 !! | omega                      | omega                                                                       | layer mean vertical velocity                                                                | Pa s-1        |    2 | real       | kind_phys | in     | F        |
-!! | rhc                        | critical_relative_humidity                                                  | critical relative humidity                                                                  | frac          |    2 | real       | kind_phys | in     | F        |
+!! | rhc                        | critical_relative_humidity                                                  | critical relative humidity                                                                  | frac          |    2 | real       | kind_phys | inout  | F        |
 !! | supice                     | ice_supersaturation_threshold                                               | ice supersaturation parameter for PDF clouds                                                | none          |    0 | real       | kind_phys | in     | F        |
 !! | pcrit                      | shoc_tke_dissipatation_pressure_threshold                                   | pressure below which extra TKE diss. is applied in SHOC                                     | Pa            |    0 | real       | kind_phys | in     | F        |
 !! | cefac                      | shoc_tke_dissipation_tunable_parameter                                      | mult. tuning parameter for TKE diss. in SHOC                                                | none          |    0 | real       | kind_phys | in     | F        |
@@ -66,7 +66,7 @@ end subroutine shoc_finalize
 !! | dis_opt                    | shoc_flag_for_optional_surface_TKE_dissipation                              | flag for alt. TKE diss. near surface in SHOC (>0 = ON)                                      | none          |    0 | real       | kind_phys | in     | F        |
 !! | hflx                       | kinematic_surface_upward_sensible_heat_flux                                 | kinematic surface upward sensible heat flux                                                 | K m s-1       |    1 | real       | kind_phys | in     | F        |
 !! | evap                       | kinematic_surface_upward_latent_heat_flux                                   | kinematic surface upward latent heat flux                                                   | kg kg-1 m s-1 |    1 | real       | kind_phys | in     | F        |
-!! | prnum                      | prandtl_number                                                              | turbulent Prandtl number                                                                    | none          |    2 | real       | kind_phys | in     | F        |
+!! | prnum                      | prandtl_number                                                              | turbulent Prandtl number                                                                    | none          |    2 | real       | kind_phys | inout  | F        |
 !! | skip_macro                 | flag_skip_macro                                                             | flag to skip cloud macrophysics in Morrison scheme                                          | flag          |    0 | logical    |           | inout  | F        |
 !! | qrn                        | local_rain_water_mixing_ratio                                               | local rain water mixing ratio                                                               | kg kg-1       |    2 | real       | kind_phys | inout  | F        |
 !! | qsnw                       | local_snow_water_mixing_ratio                                               | local snow water mixing ratio                                                               | kg kg-1       |    2 | real       | kind_phys | inout  | F        |
@@ -101,12 +101,12 @@ subroutine shoc_run (ix, nx, nzm, shocaftcnv, mg3_as_mg2, imp_physics, imp_physi
   !
     real(kind=kind_phys), intent(in), dimension(nx) :: hflx, evap
     real(kind=kind_phys), intent(in), dimension(nx,nzm) :: gq0_cloud_ice, gq0_rain, gq0_snow, gq0_graupel, gq0_cloud_liq_nc, &
-      gq0_cloud_ice_nc, prsl, phil, u, v, omega, rhc, prnum
+      gq0_cloud_ice_nc, prsl, phil, u, v, omega
     real(kind=kind_phys), intent(in), dimension(nx,nzm+1) :: phii
    !
     logical, intent(inout) :: skip_macro
     real(kind=kind_phys), intent(inout), dimension(nx,nzm) :: qrn, qsnw, clw_ice, clw_liquid, gq0_cloud_liquid, ncpl, ncpi, gt0, &
-     gq0_water_vapor, cld_sgs, tke, tkh, wthv_sec
+     gq0_water_vapor, cld_sgs, tke, tkh, wthv_sec, rhc, prnum
 
    character(len=*), intent(out) :: errmsg
    integer,          intent(out) :: errflg
