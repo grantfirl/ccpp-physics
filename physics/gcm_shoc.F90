@@ -200,17 +200,52 @@ subroutine shoc_run (ix, nx, nzm, shocaftcnv, mg3_as_mg2, imp_physics, imp_physi
 
     !GFDL lat has no meaning inside of shoc - changed to "1"
 
+    write(0,*) 'values to be passed into CCPP-SHOC'
+    write(0,*) 'ix = ',ix
+    write(0,*) 'nx = ',nx
+    write(0,*) 'ny = ',1
+    write(0,*) 'nzm = ',nzm
+    write(0,*) 'dtp = ',dtp
+    write(0,*) 'me = ',me
+    write(0,*) 'prsl = ',prsl(1,1:5)
+    write(0,*) 'phii = ',phii(1,1:5)
+    write(0,*) 'phil = ',phil(1,1:5)
+    write(0,*) 'u = ',u(1,1:5)
+    write(0,*) 'v = ',v(1,1:5)
+    write(0,*) 'omega = ',omega(1,1:5)
+    write(0,*) 'gt0 = ',gt0(1,1:5)
+    write(0,*) 'gq0_water_vapor = ',gq0_water_vapor(1,1:5)
+    write(0,*) 'clw_ice = ',clw_ice(1,1:5)
+    write(0,*) 'clw_liquid = ',clw_liquid(1,1:5)
+    write(0,*) 'qsnw = ',qsnw(1,1:5)
+    write(0,*) 'qrn = ',qrn(1,1:5)
+    write(0,*) 'rhc = ',rhc(1,1:5)
+    write(0,*) 'supice = ',supice
+    write(0,*) 'pcrit = ',pcrit
+    write(0,*) 'cefac = ',cefac
+    write(0,*) 'cesfac = ',cesfac
+    write(0,*) 'tkef1 = ',tkef1
+    write(0,*) 'dis_opt = ',dis_opt
+    write(0,*) 'cld_sgs = ',cld_sgs(1,1:5)
+    write(0,*) 'tke = ',tke(1,1:5)
+    write(0,*) 'hflx = ',hflx(1)
+    write(0,*) 'evap = ',evap(1)
+    write(0,*) 'prnum = ',prnum(1,1:5)
+    write(0,*) 'tkh = ',tkh(1,1:5)
+    write(0,*) 'wthv_sec = ',wthv_sec(1,1:5)
+    write(0,*) 'lprnt = .false.'
+    write(0,*) 'ipr = ',1
+    write(0,*) 'ncpl = ',ncpl(1,1:5)
+    write(0,*) 'ncpi = ',ncpi(1,1:5)
 
-    call shoc_work (ix, nx, 1, nzm, nzm+1, dtp, me, 1, prsl,  &
-              phii, phil, u, v, omega, gt0,  &
-              gq0_water_vapor, clw_ice, clw_liquid, qsnw, gq0_rain,  &
-              rhc, supice, pcrit, cefac, cesfac, tkef1, dis_opt, &
-              cld_sgs, tke, hflx, evap, prnum, tkh, wthv_sec, .false., 1, ncpl, ncpi)!, &
-              !con_cp, con_g, con_hvap, con_hfus, con_rv, con_rd, con_pi, con_fvirt)
+    ! call shoc_work (ix, nx, 1, nzm, nzm+1, dtp, me, 1, prsl,  &
+    !           phii, phil, u, v, omega, gt0,  &
+    !           gq0_water_vapor, clw_ice, clw_liquid, qsnw, qrn,  &
+    !           rhc, supice, pcrit, cefac, cesfac, tkef1, dis_opt, &
+    !           cld_sgs, tke, hflx, evap, prnum, tkh, wthv_sec, .false., 1, ncpl, ncpi)!, &
+    !           !con_cp, con_g, con_hvap, con_hfus, con_rv, con_rd, con_pi, con_fvirt)
 
-    write(0,*) 'cld_sgs = ',cld_sgs
-    write(0,*) 'tkh = ',tkh
-    write(0,*) 'wthv_sec = ',wthv_sec
+
 
     !GF since gq0(ntlnc/ntinc) are passed in directly, no need to copy back
     ! if (ntlnc > 0 .and. ntinc > 0 .and. ncld >= 2) then
