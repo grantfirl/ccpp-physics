@@ -523,16 +523,16 @@
    real(kind=kind_phys), intent(out) ::                          &
      &                      dusfc(im),   dvsfc(im)
 !Output (optional):
-   real(kind=kind_phys), intent(out), optional ::                &
-     &                      dusfc_ls(im),dvsfc_ls(im),           &
-     &                      dusfc_bl(im),dvsfc_bl(im),           &
-     &                      dusfc_ss(im),dvsfc_ss(im),           &
-     &                      dusfc_fd(im),dvsfc_fd(im)
-   real(kind=kind_phys), intent(out), optional ::                &
-     &         dtaux2d_ls(im,km),dtauy2d_ls(im,km),              &
-     &         dtaux2d_bl(im,km),dtauy2d_bl(im,km),              &
-     &         dtaux2d_ss(im,km),dtauy2d_ss(im,km),              &
-     &         dtaux2d_fd(im,km),dtauy2d_fd(im,km)
+   real(kind=kind_phys), intent(out) ::                          &
+     &                      dusfc_ls(:),dvsfc_ls(:),             &
+     &                      dusfc_bl(:),dvsfc_bl(:),             &
+     &                      dusfc_ss(:),dvsfc_ss(:),             &
+     &                      dusfc_fd(:),dvsfc_fd(:)
+   real(kind=kind_phys), intent(out) ::                          &
+     &         dtaux2d_ls(:,:),dtauy2d_ls(:,:),                  &
+     &         dtaux2d_bl(:,:),dtauy2d_bl(:,:),                  &
+     &         dtaux2d_ss(:,:),dtauy2d_ss(:,:),                  &
+     &         dtaux2d_fd(:,:),dtauy2d_fd(:,:)
 
 !Misc arrays
    real, dimension(im,km)     :: dtaux2d, dtauy2d
