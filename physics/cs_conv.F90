@@ -301,7 +301,7 @@ module cs_conv
                           lprnt  , ipr, kcnv,                               &
                           QLCN, QICN, w_upi, cf_upi, CNV_MFD,               & ! for coupling to MG microphysics
                           CNV_DQLDT,CLCN,CNV_FICE,CNV_NDROP,CNV_NICE,       &
-                          mp_phys,errmsg,errflg)
+                          mp_phys,dTdt_mult,errmsg,errflg)
 
 
    implicit none
@@ -322,7 +322,7 @@ module cs_conv
    real(r8), intent(in)    :: zm(IM,KMAX)         ! geopotential at mid-layer (m)
    real(r8), intent(in)    :: zi(IM,KMAX+1)       ! geopotential at boundaries (m)
    real(r8), intent(in)    :: fscav(ntr), fswtr(ntr), wcbmaxm(ijsdim)
-   real(r8), intent(in)    :: precz0in, preczhin, clmdin
+   real(r8), intent(in)    :: precz0in, preczhin, clmdin, dTdt_mult
 ! added for cs_convr
    real(r8), intent(inout) :: u(IM,KMAX)          ! zonal wind at mid-layer (m/s)
    real(r8), intent(inout) :: v(IM,KMAX)          ! meridional wind at mid-layer (m/s)
@@ -566,6 +566,8 @@ module cs_conv
 !
    do k=1,KMAX
      do i=1,IJSDIM
+       GTT(i,k)      = dTdt_mult*GTT(i,k)
+
        q(i,k)        = max(zero, GDQ(i,k,1)  + GTQ(i,k,1) * delta)
        t(i,k)        = GDT(i,k)    + GTT(i,k)   * delta
        u(i,k)        = GDU(i,k)    + GTU(i,k)   * delta
