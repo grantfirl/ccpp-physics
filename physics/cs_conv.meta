@@ -707,6 +707,15 @@
   type = integer
   intent = in
   optional = F
+[dTdt_mult]
+  standard_name = temperature_tendency_multiplication_factor_for_deep_convection
+  long_name = temperature tendency multiplication factor for deep convection schemes
+  units = none
+  dimensions = ()
+  type = real
+  kind = kind_phys
+  intent = in
+  optional = F
 [errmsg]
   standard_name = ccpp_error_message
   long_name = error message for error handling in CCPP
