@@ -198,9 +198,9 @@
       real :: smax,ashape,sz2h, sksfc,skmax,ashape1,skminusk0, hmax
 cc
       parameter(gravi=1.0/grav)
-      parameter(g=grav)
-      parameter(gocp=g/cp)
-      parameter(cont=cp/g,conq=hvap/g,conw=1.0/g)               ! for del in pa
+      !parameter(g=grav)
+      parameter(gocp=grav/cp)
+      parameter(cont=cp/grav,conq=hvap/grav,conw=1.0/grav)               ! for del in pa
 !     parameter(cont=1000.*cp/grav,conq=1000.*hvap/grav,conw=1000./grav) ! for del in kpa
       parameter(rlam=30.0,vk=0.4,vk2=vk*vk)
       parameter(prmin=0.25,prmax=4.,zolcr=0.2,zolcru=-0.5)
@@ -421,7 +421,7 @@ C      conq=hvap/grav
       enddo
 !>  - Calculate \f$\frac{g}{\theta}\f$ (govrth), \f$\beta = \frac{\Delta t}{\Delta z}\f$ (beta), \f$u_*\f$ (ustar), total surface flux (sflux), and set pblflag to false if the total surface energy flux is into the surface
       do i = 1,im
-        govrth(i) = g/theta(i,1)
+        govrth(i) = grav/theta(i,1)
       enddo
 !
       do i=1,im
@@ -498,7 +498,7 @@ C      conq=hvap/grav
           rbdn(i) = rbup(i)
           spdk2   = max((u1(i,k)**2+v1(i,k)**2),1.)
           rbup(i) = (thvx(i,k)-thermal(i))*
-     &              (g*zl(i,k)/thvx(i,1))/spdk2
+     &              (grav*zl(i,k)/thvx(i,1))/spdk2
           kpbl(i) = k
           flg(i)  = rbup(i) > crb(i)
         endif
@@ -608,7 +608,7 @@ C      conq=hvap/grav
           rbdn(i) = rbup(i)
           spdk2   = max((u1(i,k)**2+v1(i,k)**2),1.)
           rbup(i) = (thvx(i,k)-thermal(i))*
-     &              (g*zl(i,k)/thvx(i,1))/spdk2
+     &              (grav*zl(i,k)/thvx(i,1))/spdk2
           kpbl(i) = k
           flg(i)  = rbup(i) > crb(i)
         endif
@@ -1022,7 +1022,7 @@ C      conq=hvap/grav
       do k = 1, km1
          do i=1,im
             if(k >= kpbl(i)) then
-               bvf2 = g*bf(i,k)*ti(i,k)
+               bvf2 = grav*bf(i,k)*ti(i,k)
                ri   = max(bvf2/shr2(i,k),rimin)
                zk   = vk*zi(i,k+1)
                if(ri < 0.) then ! unstable regime
@@ -1307,7 +1307,7 @@ C      conq=hvap/grav
 !
       do k = 1,km1
         do i = 1,im
-          diss(i,k) = dku(i,k)*shr2(i,k)-g*ti(i,k)*dkt(i,k)*bf(i,k)
+          diss(i,k) = dku(i,k)*shr2(i,k)-grav*ti(i,k)*dkt(i,k)*bf(i,k)
 !         diss(i,k) = dku(i,k)*shr2(i,k)
         enddo
       enddo
