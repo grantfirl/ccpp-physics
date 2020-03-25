@@ -542,7 +542,7 @@
   kind = kind_phys
   intent = in
   optional = F
-[grav]
+[grav_arg]
   standard_name = gravitational_acceleration
   long_name = gravitational acceleration
   units = m s-2
@@ -551,7 +551,7 @@
   kind = kind_phys
   intent = in
   optional = F
-[cp]
+[cp_arg]
   standard_name = specific_heat_of_dry_air_at_constant_pressure
   long_name = specific heat of dry air at constant pressure
   units = J kg-1 K-1
@@ -560,7 +560,7 @@
   kind = kind_phys
   intent = in
   optional = F
-[hvap]
+[hvap_arg]
   standard_name = latent_heat_of_vaporization_of_water_at_0C
   long_name = latent heat of evaporation/sublimation
   units = J kg-1
@@ -569,7 +569,7 @@
   kind = kind_phys
   intent = in
   optional = F
-[fv]
+[fv_arg]
   standard_name = ratio_of_vapor_to_dry_air_gas_constants_minus_one
   long_name = (rv/rd) - 1 (rv = ideal gas constant for water vapor)
   units = none
