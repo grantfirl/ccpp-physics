@@ -182,8 +182,9 @@
      &                     ptem,    ptem1,  ptem2, tx1(im), tx2(im)
 !
       real(kind=kind_phys) zstblmax,h1,     h2,     qlcr,  actei,
-     &                     cldtime, ttend_fac
-     
+     &                     cldtime
+      real :: ttend_fac
+      
       !! for hurricane application
       real(kind=kind_phys) wspm(im,km-1)
       integer kLOC ! RGF
