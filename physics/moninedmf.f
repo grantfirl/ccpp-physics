@@ -65,13 +65,13 @@
      &   dusfc,dvsfc,dtsfc,dqsfc,hpbl,hgamt,hgamq,dkt,                  &
      &   kinver,xkzm_m,xkzm_h,xkzm_s,lprnt,ipr,                         &
      &   xkzminv,moninq_fac,hurr_pbl,islimsk,var_ric,                   &
-     &   coef_ric_l,coef_ric_s,grav_arg,cp_arg,hvap_arg,fv_arg,         &
+     &   coef_ric_l,coef_ric_s,grav_arg,cp_arg,hvap_arg,fv,             &
      &   errmsg,errflg)
 !
       use machine  , only : kind_phys
       use funcphys , only : fpvs
-      use physcons, grav => con_g, rd => con_rd, cp => con_cp
-     &,             hvap => con_hvap, fv => con_fvirt
+      use physcons, grav => con_g, cp => con_cp
+     &,             hvap => con_hvap
 
       implicit none
 !
@@ -85,7 +85,7 @@
 !
       real(kind=kind_phys), intent(in) :: delt, xkzm_m, xkzm_h, xkzm_s
       real(kind=kind_phys), intent(in) :: grav_arg, cp_arg, hvap_arg,   &
-     &                                    fv_arg
+     &                                    fv
       real(kind=kind_phys), intent(in) :: xkzminv, moninq_fac, var_ric, &
      &                     coef_ric_l, coef_ric_s
       real(kind=kind_phys), intent(inout) :: dv(im,km),     du(im,km),  &

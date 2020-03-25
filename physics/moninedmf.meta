@@ -569,7 +569,7 @@
   kind = kind_phys
   intent = in
   optional = F
-[fv_arg]
+[fv]
   standard_name = ratio_of_vapor_to_dry_air_gas_constants_minus_one
   long_name = (rv/rd) - 1 (rv = ideal gas constant for water vapor)
   units = none
