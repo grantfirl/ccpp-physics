@@ -65,12 +65,15 @@
      &   dusfc,dvsfc,dtsfc,dqsfc,hpbl,hgamt,hgamq,dkt,                  &
      &   kinver,xkzm_m,xkzm_h,xkzm_s,lprnt,ipr,                         &
      &   xkzminv,moninq_fac,hurr_pbl,islimsk,var_ric,                   &
-     &   coef_ric_l,coef_ric_s,grav_arg,cp,hvap,fv,                     &
-     &   errmsg,errflg)
+     &   coef_ric_l,coef_ric_s,errmsg,errflg)
 !
       use machine  , only : kind_phys
       use funcphys , only : fpvs
-      use physcons, grav => con_g
+      !GJF: Note that sending these constants through the argument list
+      !results in regression test failures with "PROD" mode compilation
+      !flags (specifically, grav and cp)
+      use physcons, grav => con_g, cp => con_cp,
+     &              hvap => con_hvap, fv => con_fvirt
 
       implicit none
 !
@@ -83,7 +86,6 @@
 
 !
       real(kind=kind_phys), intent(in) :: delt, xkzm_m, xkzm_h, xkzm_s
-      real(kind=kind_phys), intent(in) :: grav_arg, cp, hvap, fv
       real(kind=kind_phys), intent(in) :: xkzminv, moninq_fac, var_ric, &
      &                     coef_ric_l, coef_ric_s
       real(kind=kind_phys), intent(inout) :: dv(im,km),     du(im,km),  &
@@ -165,7 +167,7 @@
      &                     dq1,     dsdz2,  dsdzq,  dsdzt,
      &                     dsdzu,   dsdzv,
      &                     dsig,    dt2,    dthe1,  dtodsd,
-     &                     dtodsu,  dw2,    dw2min, g,
+     &                     dtodsu,  dw2,    dw2min,
      &                     gamcrq,  gamcrt, gocp,
      &                     gravi,   f0,
      &                     prnum,   prmax,  prmin,  pfac,  crbcon,
@@ -196,10 +198,8 @@
       real :: smax,ashape,sz2h, sksfc,skmax,ashape1,skminusk0, hmax
 cc
       parameter(gravi=1.0/grav)
-      !parameter(g=grav)
-      !parameter(gocp=grav/cp)
-      parameter(conw=1.0/grav)               ! for del in pa
-!     parameter(cont=cp/grav,conq=hvap/grav,conw=1.0/grav)               ! for del in pa
+      parameter(gocp=grav/cp)
+      parameter(cont=cp/grav,conq=hvap/grav,conw=1.0/grav)               ! for del in pa
 !     parameter(cont=1000.*cp/grav,conq=1000.*hvap/grav,conw=1000./grav) ! for del in kpa
       parameter(rlam=30.0,vk=0.4,vk2=vk*vk)
       parameter(prmin=0.25,prmax=4.,zolcr=0.2,zolcru=-0.5)
@@ -250,11 +250,6 @@ c
       errmsg = ''
       errflg = 0
 
-!>  ## Compute preliminary variables from input arguments
-C      gravi=1.0/grav
-      gocp=grav/cp
-      cont=cp/grav
-      conq=hvap/grav
 ! compute preliminary variables
 !
       if (ix .lt. im) stop
