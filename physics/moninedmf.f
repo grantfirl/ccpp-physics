@@ -65,12 +65,12 @@
      &   dusfc,dvsfc,dtsfc,dqsfc,hpbl,hgamt,hgamq,dkt,                  &
      &   kinver,xkzm_m,xkzm_h,xkzm_s,lprnt,ipr,                         &
      &   xkzminv,moninq_fac,hurr_pbl,islimsk,var_ric,                   &
-     &   coef_ric_l,coef_ric_s,grav_arg,cp_arg,hvap,fv,                 &
+     &   coef_ric_l,coef_ric_s,grav_arg,cp,hvap,fv,                     &
      &   errmsg,errflg)
 !
       use machine  , only : kind_phys
       use funcphys , only : fpvs
-      use physcons, grav => con_g, cp => con_cp
+      use physcons, grav => con_g
 
       implicit none
 !
@@ -83,8 +83,7 @@
 
 !
       real(kind=kind_phys), intent(in) :: delt, xkzm_m, xkzm_h, xkzm_s
-      real(kind=kind_phys), intent(in) :: grav_arg, cp_arg, hvap,       &
-     &                                    fv
+      real(kind=kind_phys), intent(in) :: grav_arg, cp, hvap, fv
       real(kind=kind_phys), intent(in) :: xkzminv, moninq_fac, var_ric, &
      &                     coef_ric_l, coef_ric_s
       real(kind=kind_phys), intent(inout) :: dv(im,km),     du(im,km),  &
@@ -198,8 +197,8 @@
 cc
       parameter(gravi=1.0/grav)
       !parameter(g=grav)
-      parameter(gocp=grav/cp)
-      parameter(cont=cp/grav,conw=1.0/grav)               ! for del in pa
+      !parameter(gocp=grav/cp)
+      parameter(conw=1.0/grav)               ! for del in pa
 !     parameter(cont=cp/grav,conq=hvap/grav,conw=1.0/grav)               ! for del in pa
 !     parameter(cont=1000.*cp/grav,conq=1000.*hvap/grav,conw=1000./grav) ! for del in kpa
       parameter(rlam=30.0,vk=0.4,vk2=vk*vk)
@@ -253,8 +252,8 @@ c
 
 !>  ## Compute preliminary variables from input arguments
 C      gravi=1.0/grav
-C      gocp=grav/cp
-C      cont=cp/grav
+      gocp=grav/cp
+      cont=cp/grav
       conq=hvap/grav
 ! compute preliminary variables
 !
