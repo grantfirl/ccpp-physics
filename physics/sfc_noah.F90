@@ -231,13 +231,17 @@
                    xsda_qfx, hfx_phy, qfx_phy, xqnorm, fasdas,       &    !fasdas
                    hcpct_fasdas,                                     &    !fasdas
                    errflg, errmsg)
-          write(*,*) i,'shdfac = ',shdfac(i)
+          
           write(*,*) i,'albbrd = ',albbrd(i)
           write(*,*) i,'z0brd = ',z0brd(i)
           write(*,*) i,'z0k = ',z0k(i)
           write(*,*) i,'emissi = ',emissi(i)
           write(*,*) i,'embrd = ',embrd(i)
           write(*,*) i,'cmc = ',cmc(i)
+          write(*,*) i,'shdfac = ',shdfac(i)
+          write(*,*) i,'vegtyp = ',vegtyp(i)
+          write(*,*) i,'soiltyp = ',soiltyp(i)
+          write(*,*) i,'slopetyp = ',slopetyp(i)
           write(*,*) i,'t1 = ',t1(i)
           write(*,*) i,'stc = ',stc(i,:)
           write(*,*) i,'smc = ',smc(i,:)
