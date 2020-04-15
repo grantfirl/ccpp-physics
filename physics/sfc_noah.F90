@@ -220,7 +220,7 @@
           ! write(*,*) i,'in swc = ',swc(i,:)
           ! write(*,*) i,'in snowhk = ',snowhk(i)
           ! write(*,*) i,'in sneqv = ',sneqv(i)
-          ! write(*,*) i,'in chk = ',chk(i)
+          write(*,*) i,'in chk = ',chk(i)
           write(*,*) i,'in eta = ',eta
           write(*,*) i,'in sheat = ',sheat(i)
           ! write(*,*) i,'in eta_k = ',eta_kinematic(i)
