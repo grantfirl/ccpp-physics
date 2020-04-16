@@ -2303,6 +2303,7 @@
       RAD = FNET / RCH + TH2- SFCTMP
 !      A = ELCP * (Q2SAT - Q2)
       A = ELCP1 * (Q2SAT - Q2)
+      write(*,*) 'penman: A, RR, RAD, DELTA',A, RR, RAD, DELTA
       EPSCA = (A * RR + RAD * DELTA) / (DELTA + RR)
 ! Fei-Mike
       IF (EPSCA>0.) EPSCA = EPSCA * AOASIS
