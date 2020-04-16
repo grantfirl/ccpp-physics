@@ -65,15 +65,6 @@
   type = integer
   intent = inout
   optional = F
-[sthick]
-  standard_name = soil_layer_thickness
-  long_name = soil layer thickness
-  units = m
-  dimensions = (soil_vertical_dimension)
-  type = real
-  kind = kind_phys
-  intent = inout
-  optional = F
 [errmsg]
   standard_name = ccpp_error_message
   long_name = error message for error handling in CCPP
@@ -679,6 +670,15 @@
   long_name = latent heat flux due to snow and frz rain
   units = W m-2
   dimensions = (horizontal_loop_extent)
+  type = real
+  kind = kind_phys
+  intent = inout
+  optional = F
+[sthick]
+  standard_name = soil_layer_thickness
+  long_name = soil layer thickness
+  units = m
+  dimensions = (soil_vertical_dimension)
   type = real
   kind = kind_phys
   intent = inout
