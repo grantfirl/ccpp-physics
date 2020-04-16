@@ -105,6 +105,7 @@
       do k = 2, nsoil
         sthick(k) = zsoil(k-1) - zsoil(k)
       enddo
+      write(*,*) 'sfc_noah_GFS_pre_init, sthick=',sthick
       
       is_initialized = .True.
       

@@ -413,7 +413,7 @@
       DO KZ = 2,NSOIL
          ZSOIL (KZ) = - SLDPTH (KZ) + ZSOIL (KZ -1)
       END DO
-
+      write(*,*) 'sflx: zsoil = ',zsoil
 ! ----------------------------------------------------------------------
 ! NEXT IS CRUCIAL CALL TO SET THE LAND-SURFACE PARAMETERS, INCLUDING
 ! SOIL-TYPE AND VEG-TYPE DEPENDENT PARAMETERS.
@@ -720,7 +720,7 @@
 ! PENMAN.
          T2V = SFCTMP * (1.0+ 0.61 * Q2 )
 
-         iout=0
+         iout=1
          if(iout.eq.1) then
          print*,'before penman'
          print*,' SFCTMP',SFCTMP,'SFCPRS',SFCPRS,'CH',CH,'T2V',T2V,      &
@@ -2137,6 +2137,7 @@
       ELSE
          BETA = ETA / ETP
       END IF
+      write(*,*) 'nopac: beta, eta, etp',beta, eta, etp
 
 ! ----------------------------------------------------------------------
 ! CONVERT MODELED EVAPOTRANSPIRATION COMPONENTS 'M S-1' TO 'KG M-2 S-1'.
