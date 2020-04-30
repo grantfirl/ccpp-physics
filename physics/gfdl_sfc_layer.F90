@@ -288,7 +288,6 @@
               
               if (wind10(i) <= 1.0e-10 .or. wind10(i) > 150.0) then
                  wind10(i)=sqrt(u1(i)*u1(i)+v1(i)*v1(i))*alog(10.0/(0.01*znt_lnd(i)))/alog(z1(i)/(0.01*znt_lnd(i))) !m s-1
-                 write(*,*) '######## GFDL_SFC_LAYER #######',znt_lnd(i),t1(i),pkmax(i),pspc(i),z1(i)
               end if
               wind10(i)=wind10(i)*100.0   !! m/s to cm/s
               
@@ -546,7 +545,10 @@
         !   enddo
         ! endif
         
-      end subroutine gfdl_sfc_layer_run
+        write(*,*) ustar_lnd(i), znt_lnd(i), rib_lnd(i), cdm_lnd(i), ch_lnd(i), stress_lnd(i), &
+            fm_lnd(i), fm10_lnd(i), fh_lnd(i), fh2_lnd(i)
+        STOP 
+        end subroutine gfdl_sfc_layer_run
 
 !---------------------------------
 !GJF (2020/04/21): The starting point for the MFLUX2 subroutine here was module_sf_gfdl.F in WRF
