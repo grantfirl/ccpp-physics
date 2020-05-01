@@ -79,7 +79,7 @@
 !> \section arg_table_gfdl_sfc_layer_run Argument Table
 !! \htmlinclude gfdl_sfc_layer_run.html
 !!
-      subroutine gfdl_sfc_layer_run (im, nsoil, km, flag_iter, lsm, lsm_noah,  &
+      subroutine gfdl_sfc_layer_run (im, nsoil, km, xlat, xlon, flag_iter, lsm, lsm_noah,  &
         lsm_noahmp, lsm_ruc, lsm_noah_wrfv4, icoef_sf, cplwav, cplwav2atm,     &
         lcurr_sf, pert_Cd, ntsflg, sfenth, z1, dt, wet, dry,                   &
         icy, isltyp, rd, grav, ep1, ep2, smois, psfc, prsl1, q1, t1, u1, v1,   &
@@ -112,7 +112,7 @@
         real(kind=kind_phys), intent(in) :: rd, grav, ep1, ep2
         real(kind=kind_phys), intent(in), dimension(im,nsoil) :: smois
         real(kind=kind_phys), intent(in), dimension(im) :: psfc, prsl1, q1, t1,&
-                                                           u1, v1, u10, v10, gsw, glw, z1
+                                                           u1, v1, u10, v10, gsw, glw, z1, xlat, xlon
         
         real(kind=kind_phys), intent(inout), dimension(im) :: tskin_ocn,       &
             tskin_lnd, tskin_ice, ustar_ocn, ustar_lnd, ustar_ice,             &
@@ -522,7 +522,7 @@
             !flqc_ocn(i)=rho1(i)*chs_ocn(i)
             !cqs2_ocn(i)=chs2_ocn(i)
             write(*,*) 'gfdl_sfc_layer:',ustar_lnd(i), znt_lnd(i), rib_lnd(i), cdm_lnd(i), ch_lnd(i), stress_lnd(i), &
-                fm_lnd(i), fm10_lnd(i), fh_lnd(i), fh2_lnd(i), dry(i), icy(i), wet(i)
+                fm_lnd(i), fm10_lnd(i), fh_lnd(i), fh2_lnd(i), dry(i), icy(i), wet(i), xlat(i), xlon(i)
           end if !flag_iter
         end do
         
