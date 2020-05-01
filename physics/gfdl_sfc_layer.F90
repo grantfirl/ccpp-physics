@@ -285,7 +285,7 @@
               !  errflg = 1
               !  return
               !end if
-              !znt_lnd(i) = max(1.0e-4, min(znt_lnd(i),100.0*zkmax(i)))
+              znt_lnd(i) = max(1.0e-4, min(znt_lnd(i),min(200.0,100.0*zkmax(i))))
               
               if (wind10(i) <= 1.0e-10 .or. wind10(i) > 150.0) then
                  wind10(i)=sqrt(u1(i)*u1(i)+v1(i)*v1(i))*alog(10.0/(0.01*znt_lnd(i)))/alog(z1(i)/(0.01*znt_lnd(i))) !m s-1
@@ -521,8 +521,10 @@
             !flhc_ocn(i)=cpm(i)*rho1(i)*chs_ocn(i)
             !flqc_ocn(i)=rho1(i)*chs_ocn(i)
             !cqs2_ocn(i)=chs2_ocn(i)
-            write(*,*) 'gfdl_sfc_layer:',ustar_lnd(i), znt_lnd(i), rib_lnd(i), cdm_lnd(i), ch_lnd(i), stress_lnd(i), &
+            if (dry(i) .and. fh2_lnd(i) < 0.0) then
+              write(*,*) 'gfdl_sfc_layer:',ustar_lnd(i), znt_lnd(i), rib_lnd(i), cdm_lnd(i), ch_lnd(i), stress_lnd(i), &
                 fm_lnd(i), fm10_lnd(i), fh_lnd(i), fh2_lnd(i), dry(i), icy(i), wet(i), xlat(i), xlon(i)
+            end if
           end if !flag_iter
         end do
         
