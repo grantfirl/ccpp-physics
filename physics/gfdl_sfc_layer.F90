@@ -137,7 +137,7 @@
         real(kind=kind_phys) :: ens_Cdamp !turn this into intent(in) and namelist option
         
         real(kind=kind_phys), dimension(im)   :: wetc, pspc, pkmax, tstrc, upc,&
-                     vpc, mznt, slwdc, wspd, wind10, qfx, qgh, zkmax
+                     vpc, mznt, slwdc, wspd, wind10, qfx, qgh, zkmax, z1_cm
         real(kind=kind_phys), dimension(im)   :: u10_lnd, u10_ocn, u10_ice, v10_lnd, v10_ocn, v10_ice
         real(kind=kind_phys), dimension(im)   :: charn, msang, scurx, scury
         real(kind=kind_phys), dimension(im)   :: fxh, fxe, fxmx, fxmy, xxfh,   &
@@ -249,6 +249,7 @@
             
             !zkmax(i) = -rd*t1(i)*alog(pkmax(i)/pspc(i))/grav !m
             zkmax(i) = z1(i)
+            z1_cm(i) = 100.0*z1(i)
             
             !slwdc... GFDL downward net flux in units of cal/(cm**2/min)
             !also divide by 10**4 to convert from /m**2 to /cm**2
@@ -284,7 +285,7 @@
               !  errflg = 1
               !  return
               !end if
-              znt_lnd(i) = max(1.0e-4, min(znt_lnd(i),100.0*zkmax(i)))
+              !znt_lnd(i) = max(1.0e-4, min(znt_lnd(i),100.0*zkmax(i)))
               
               if (wind10(i) <= 1.0e-10 .or. wind10(i) > 150.0) then
                  wind10(i)=sqrt(u1(i)*u1(i)+v1(i)*v1(i))*alog(10.0/(0.01*znt_lnd(i)))/alog(z1(i)/(0.01*znt_lnd(i))) !m s-1
@@ -293,7 +294,7 @@
               
               call mflux2 (fxh(i), fxe(i), fxmx(i), fxmy(i), cdm_lnd(i), rib_lnd(i), &
                 xxfh(i), znt_lnd(i), mznt(i), tstrc(i),   &
-                pspc(i), pkmax(i), wetc(i), slwdc(i), z1(i)*100.0, icoef_sf, iwavecpl, lcurr_sf, charn(i), msang(i), &
+                pspc(i), pkmax(i), wetc(i), slwdc(i), z1_cm(i), icoef_sf, iwavecpl, lcurr_sf, charn(i), msang(i), &
                 scurx(i), scury(i), pert_Cd, ens_random_seed, ens_Cdamp, upc(i), vpc(i), t1(i), q1(i), &
                 dt, wind10(i), xxfh2(i), ntsflg, sfenth, tzot(i), errmsg, &
                 errflg)
@@ -370,7 +371,7 @@
               !   errflg = 1
               !   return
               ! end if
-              znt_ice(i) = max(1.0e-4, min(znt_ice(i),100.0*zkmax(i)))
+              !znt_ice(i) = max(1.0e-4, min(znt_ice(i),100.0*zkmax(i)))
               
               if (wind10(i) <= 1.0e-10 .or. wind10(i) > 150.0) then
                  wind10(i)=sqrt(u1(i)*u1(i)+v1(i)*v1(i))*alog(10.0/(0.01*znt_ice(i)))/alog(z1(i)/(0.01*znt_ice(i)))
@@ -379,7 +380,7 @@
               
               call mflux2 (fxh(i), fxe(i), fxmx(i), fxmy(i), cdm_ice(i), rib_ice(i), &
                 xxfh(i), znt_ice(i), mznt(i), tstrc(i),   &
-                pspc(i), pkmax(i), wetc(i), slwdc(i), z1(i)*100.0, icoef_sf, iwavecpl, lcurr_sf, charn(i), msang(i), &
+                pspc(i), pkmax(i), wetc(i), slwdc(i), z1_cm(i), icoef_sf, iwavecpl, lcurr_sf, charn(i), msang(i), &
                 scurx(i), scury(i), pert_Cd, ens_random_seed, ens_Cdamp, upc(i), vpc(i), t1(i), q1(i), &
                 dt, wind10(i), xxfh2(i), ntsflg, sfenth, tzot(i), errmsg, &
                 errflg)
@@ -448,7 +449,7 @@
               !   errflg = 1
               !   return
               ! end if
-              znt_ocn(i) = max(1.0e-4, min(znt_ocn(i),100.0*zkmax(i)))
+              !znt_ocn(i) = max(1.0e-4, min(znt_ocn(i),100.0*zkmax(i)))
               
               if (wind10(i) <= 1.0e-10 .or. wind10(i) > 150.0) then
                  wind10(i)=sqrt(u1(i)*u1(i)+v1(i)*v1(i))*alog(10.0/(0.01*znt_ocn(i)))/alog(z1(i)/(0.01*znt_ocn(i)))
@@ -460,7 +461,7 @@
               
               call mflux2 (fxh(i), fxe(i), fxmx(i), fxmy(i), cdm_ocn(i), rib_ocn(i), &
                 xxfh(i), znt_ocn(i), mznt(i), tstrc(i),   &
-                pspc(i), pkmax(i), wetc(i), slwdc(i), z1(i)*100.0, icoef_sf, iwavecpl, lcurr_sf, charn(i), msang(i), &
+                pspc(i), pkmax(i), wetc(i), slwdc(i), z1_cm(i), icoef_sf, iwavecpl, lcurr_sf, charn(i), msang(i), &
                 scurx(i), scury(i), pert_Cd, ens_random_seed, ens_Cdamp, upc(i), vpc(i), t1(i), q1(i), &
                 dt, wind10(i), xxfh2(i), ntsflg, sfenth, tzot(i), errmsg, &
                 errflg)
@@ -520,6 +521,8 @@
             !flhc_ocn(i)=cpm(i)*rho1(i)*chs_ocn(i)
             !flqc_ocn(i)=rho1(i)*chs_ocn(i)
             !cqs2_ocn(i)=chs2_ocn(i)
+            write(*,*) 'gfdl_sfc_layer:',ustar_lnd(i), znt_lnd(i), rib_lnd(i), cdm_lnd(i), ch_lnd(i), stress_lnd(i), &
+                fm_lnd(i), fm10_lnd(i), fh_lnd(i), fh2_lnd(i), dry(i), icy(i), wet(i)
           end if !flag_iter
         end do
         
@@ -545,9 +548,7 @@
         !   enddo
         ! endif
         
-        write(*,*) ustar_lnd(i), znt_lnd(i), rib_lnd(i), cdm_lnd(i), ch_lnd(i), stress_lnd(i), &
-            fm_lnd(i), fm10_lnd(i), fh_lnd(i), fh2_lnd(i)
-        STOP 
+         
         end subroutine gfdl_sfc_layer_run
 
 !---------------------------------
