@@ -355,11 +355,7 @@
 !
         endif                ! end of if(flagiter) loop
       enddo
-      
-      write(*,*) ustar_lnd(i), z0rl_lnd(i), rb_lnd(i), cm_lnd(i), ch_lnd(i), stress_lnd(i), &
-          fm_lnd(i), fm10_lnd(i), fh_lnd(i), fh2_lnd(i)
-      STOP 
-      
+
       return
       end subroutine sfc_diff_run
 !> @}
