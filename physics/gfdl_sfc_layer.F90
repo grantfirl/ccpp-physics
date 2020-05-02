@@ -143,7 +143,7 @@
         real(kind=kind_phys), dimension(im)   :: fxh, fxe, fxmx, fxmy, xxfh,   &
                                                  xxfh2, tzot
         real(kind=kind_phys), dimension(1:30) :: maxsmc, drysmc
-        real(kind=kind_phys)                  :: smcmax, smcdry, zhalf, cd10, esat
+        real(kind=kind_phys)                  :: smcmax, smcdry, zhalf, cd10, esat, fm_lnd_old, fh_lnd_old
         
         !"SCURX"       "Surface Currents(X)"                    "m s-1"
         !"SCURY"       "Surface Currents(Y)"                     "m s-1
@@ -347,7 +347,10 @@
               ! chs2_lnd(i)=amin1(chs2_lnd(i), 0.05)
               ! if (chs2_lnd(i) < 0) chs2_lnd(i)=1.0e-6
               if (fh_lnd(i) + fm_lnd(i) < 20.0*karman*karman*wspd(i)) then
-                write(*,*) 'GFDL SFC LAYER: violation of fm + fh constraint'
+                fh_lnd_old = fh_lnd(i)
+                fm_lnd_old = fm_lnd(i)
+                fh_lnd(i) = fh_lnd_old + 0.5*(20.0*karman*karman*wspd(i) - (fm_lnd_old + fh_lnd_old))
+                fm_lnd(i) = fm_lnd_old + 0.5*(20.0*karman*karman*wspd(i) - (fm_lnd_old + fh_lnd_old))
               end if  
               fh2_lnd(i) = min(fh_lnd(i), max(fh2_lnd(i),20.0*ustar_lnd(i)/karman))
               
