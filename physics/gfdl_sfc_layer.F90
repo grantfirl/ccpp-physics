@@ -346,6 +346,10 @@
               ! chs_lnd(i)=amin1(chs_lnd(i), 0.05)
               ! chs2_lnd(i)=amin1(chs2_lnd(i), 0.05)
               ! if (chs2_lnd(i) < 0) chs2_lnd(i)=1.0e-6
+              if (fh_lnd(i) + fm_lnd(i) < 20.0*karman*karman*wspd(i)) then
+                write(*,*) 'GFDL SFC LAYER: violation of fm + fh constraint'
+              end if  
+              fh2_lnd(i) = min(fh_lnd(i), max(fh2_lnd(i),20.0*ustar_lnd(i)/karman))
               
               if (diag_qss) then
                 esat = fpvs(tskin_lnd(i))
