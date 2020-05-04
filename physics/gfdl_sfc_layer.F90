@@ -285,6 +285,7 @@
               !  errflg = 1
               !  return
               !end if
+              !znt_lnd(i) = max(1.0e-4, min(znt_lnd(i),100.0*zkmax(i)))
               znt_lnd(i) = max(1.0e-4, min(znt_lnd(i),min(200.0,100.0*zkmax(i))))
               
               if (wind10(i) <= 1.0e-10 .or. wind10(i) > 150.0) then
