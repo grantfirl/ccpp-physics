@@ -79,9 +79,9 @@
 !> \section arg_table_gfdl_sfc_layer_run Argument Table
 !! \htmlinclude gfdl_sfc_layer_run.html
 !!
-      subroutine gfdl_sfc_layer_run (im, nsoil, km, flag_iter, lsm, lsm_noah,  &
+      subroutine gfdl_sfc_layer_run (im, nsoil, km, xlat, xlon, flag_iter, lsm, lsm_noah,  &
         lsm_noahmp, lsm_ruc, lsm_noah_wrfv4, icoef_sf, cplwav, cplwav2atm,     &
-        lcurr_sf, pert_Cd, ntsflg, sfenth, dt, wet, dry,                       &
+        lcurr_sf, pert_Cd, ntsflg, sfenth, z1, dt, wet, dry,                   &
         icy, isltyp, rd, grav, ep1, ep2, smois, psfc, prsl1, q1, t1, u1, v1,   &
         u10, v10, gsw, glw, tskin_ocn, tskin_lnd, tskin_ice, ustar_ocn,        &
         ustar_lnd, ustar_ice, znt_ocn, znt_lnd, znt_ice, cdm_ocn, cdm_lnd,     &
@@ -112,7 +112,7 @@
         real(kind=kind_phys), intent(in) :: rd, grav, ep1, ep2
         real(kind=kind_phys), intent(in), dimension(im,nsoil) :: smois
         real(kind=kind_phys), intent(in), dimension(im) :: psfc, prsl1, q1, t1,&
-                                                           u1, v1, u10, v10, gsw, glw
+                                                           u1, v1, u10, v10, gsw, glw, z1, xlat, xlon
         
         real(kind=kind_phys), intent(inout), dimension(im) :: tskin_ocn,       &
             tskin_lnd, tskin_ice, ustar_ocn, ustar_lnd, ustar_ice,             &
@@ -137,13 +137,13 @@
         real(kind=kind_phys) :: ens_Cdamp !turn this into intent(in) and namelist option
         
         real(kind=kind_phys), dimension(im)   :: wetc, pspc, pkmax, tstrc, upc,&
-                     vpc, mznt, slwdc, wspd, wind10, qfx, qgh, zkmax
+                     vpc, mznt, slwdc, wspd, wind10, qfx, qgh, zkmax, z1_cm
         real(kind=kind_phys), dimension(im)   :: u10_lnd, u10_ocn, u10_ice, v10_lnd, v10_ocn, v10_ice
         real(kind=kind_phys), dimension(im)   :: charn, msang, scurx, scury
         real(kind=kind_phys), dimension(im)   :: fxh, fxe, fxmx, fxmy, xxfh,   &
                                                  xxfh2, tzot
         real(kind=kind_phys), dimension(1:30) :: maxsmc, drysmc
-        real(kind=kind_phys)                  :: smcmax, smcdry, zhalf, cd10, esat
+        real(kind=kind_phys)                  :: smcmax, smcdry, zhalf, cd10, esat, fm_lnd_old, fh_lnd_old
         
         !"SCURX"       "Surface Currents(X)"                    "m s-1"
         !"SCURY"       "Surface Currents(Y)"                     "m s-1
@@ -243,11 +243,13 @@
             !      use previous u10 v10 to compute wind10, input to MFLUX to compute z0
             wind10(i)=sqrt(u10(i)*u10(i)+v10(i)*v10(i)) !m s-1
             !first time step, u10 and v10 may be zero
-            if (wind10(i) <= 1.0e-10 .or. wind10(i) > 150.0) then
-              zhalf = -rd*t1(i)*alog(pkmax(i)/pspc(i))/grav !m
-            endif
+            ! if (wind10(i) <= 1.0e-10 .or. wind10(i) > 150.0) then
+            !   zhalf = -rd*t1(i)*alog(pkmax(i)/pspc(i))/grav !m
+            ! endif
             
-            zkmax(i) = -rd*t1(i)*alog(pkmax(i)/pspc(i))/grav !m
+            !zkmax(i) = -rd*t1(i)*alog(pkmax(i)/pspc(i))/grav !m
+            zkmax(i) = z1(i)
+            z1_cm(i) = 100.0*z1(i)
             
             !slwdc... GFDL downward net flux in units of cal/(cm**2/min)
             !also divide by 10**4 to convert from /m**2 to /cm**2
@@ -284,15 +286,16 @@
               !  return
               !end if
               !znt_lnd(i) = max(1.0e-4, min(znt_lnd(i),100.0*zkmax(i)))
+              znt_lnd(i) = max(1.0e-4, min(znt_lnd(i),min(200.0,100.0*zkmax(i))))
               
               if (wind10(i) <= 1.0e-10 .or. wind10(i) > 150.0) then
-                 wind10(i)=sqrt(u1(i)*u1(i)+v1(i)*v1(i))*alog(10.0/(0.01*znt_lnd(i)))/alog(zhalf/(0.01*znt_lnd(i))) !m s-1
+                 wind10(i)=sqrt(u1(i)*u1(i)+v1(i)*v1(i))*alog(10.0/(0.01*znt_lnd(i)))/alog(z1(i)/(0.01*znt_lnd(i))) !m s-1
               end if
               wind10(i)=wind10(i)*100.0   !! m/s to cm/s
               
               call mflux2 (fxh(i), fxe(i), fxmx(i), fxmy(i), cdm_lnd(i), rib_lnd(i), &
                 xxfh(i), znt_lnd(i), mznt(i), tstrc(i),   &
-                pspc(i), pkmax(i), wetc(i), slwdc(i), icoef_sf, iwavecpl, lcurr_sf, charn(i), msang(i), &
+                pspc(i), pkmax(i), wetc(i), slwdc(i), z1_cm(i), icoef_sf, iwavecpl, lcurr_sf, charn(i), msang(i), &
                 scurx(i), scury(i), pert_Cd, ens_random_seed, ens_Cdamp, upc(i), vpc(i), t1(i), q1(i), &
                 dt, wind10(i), xxfh2(i), ntsflg, sfenth, tzot(i), errmsg, &
                 errflg)
@@ -344,6 +347,13 @@
               ! chs_lnd(i)=amin1(chs_lnd(i), 0.05)
               ! chs2_lnd(i)=amin1(chs2_lnd(i), 0.05)
               ! if (chs2_lnd(i) < 0) chs2_lnd(i)=1.0e-6
+              if (fh_lnd(i) + fm_lnd(i) < 20.0*karman*karman*wspd(i)) then
+                fh_lnd_old = fh_lnd(i)
+                fm_lnd_old = fm_lnd(i)
+                fh_lnd(i) = fh_lnd_old + 0.5*(20.0*karman*karman*wspd(i) - (fm_lnd_old + fh_lnd_old))
+                fm_lnd(i) = fm_lnd_old + 0.5*(20.0*karman*karman*wspd(i) - (fm_lnd_old + fh_lnd_old))
+              end if  
+              fh2_lnd(i) = min(fh_lnd(i), max(fh2_lnd(i),20.0*ustar_lnd(i)/karman))
               
               if (diag_qss) then
                 esat = fpvs(tskin_lnd(i))
@@ -372,13 +382,13 @@
               !znt_ice(i) = max(1.0e-4, min(znt_ice(i),100.0*zkmax(i)))
               
               if (wind10(i) <= 1.0e-10 .or. wind10(i) > 150.0) then
-                 wind10(i)=sqrt(u1(i)*u1(i)+v1(i)*v1(i))*alog(10.0/(0.01*znt_ice(i)))/alog(zhalf/(0.01*znt_ice(i)))
+                 wind10(i)=sqrt(u1(i)*u1(i)+v1(i)*v1(i))*alog(10.0/(0.01*znt_ice(i)))/alog(z1(i)/(0.01*znt_ice(i)))
               end if
               wind10(i)=wind10(i)*100.0   !! m/s to cm/s
               
               call mflux2 (fxh(i), fxe(i), fxmx(i), fxmy(i), cdm_ice(i), rib_ice(i), &
                 xxfh(i), znt_ice(i), mznt(i), tstrc(i),   &
-                pspc(i), pkmax(i), wetc(i), slwdc(i), icoef_sf, iwavecpl, lcurr_sf, charn(i), msang(i), &
+                pspc(i), pkmax(i), wetc(i), slwdc(i), z1_cm(i), icoef_sf, iwavecpl, lcurr_sf, charn(i), msang(i), &
                 scurx(i), scury(i), pert_Cd, ens_random_seed, ens_Cdamp, upc(i), vpc(i), t1(i), q1(i), &
                 dt, wind10(i), xxfh2(i), ntsflg, sfenth, tzot(i), errmsg, &
                 errflg)
@@ -450,7 +460,7 @@
               !znt_ocn(i) = max(1.0e-4, min(znt_ocn(i),100.0*zkmax(i)))
               
               if (wind10(i) <= 1.0e-10 .or. wind10(i) > 150.0) then
-                 wind10(i)=sqrt(u1(i)*u1(i)+v1(i)*v1(i))*alog(10.0/(0.01*znt_ocn(i)))/alog(zhalf/(0.01*znt_ocn(i)))
+                 wind10(i)=sqrt(u1(i)*u1(i)+v1(i)*v1(i))*alog(10.0/(0.01*znt_ocn(i)))/alog(z1(i)/(0.01*znt_ocn(i)))
               end if
               wind10(i)=wind10(i)*100.0   !! m/s to cm/s
               
@@ -459,7 +469,7 @@
               
               call mflux2 (fxh(i), fxe(i), fxmx(i), fxmy(i), cdm_ocn(i), rib_ocn(i), &
                 xxfh(i), znt_ocn(i), mznt(i), tstrc(i),   &
-                pspc(i), pkmax(i), wetc(i), slwdc(i), icoef_sf, iwavecpl, lcurr_sf, charn(i), msang(i), &
+                pspc(i), pkmax(i), wetc(i), slwdc(i), z1_cm(i), icoef_sf, iwavecpl, lcurr_sf, charn(i), msang(i), &
                 scurx(i), scury(i), pert_Cd, ens_random_seed, ens_Cdamp, upc(i), vpc(i), t1(i), q1(i), &
                 dt, wind10(i), xxfh2(i), ntsflg, sfenth, tzot(i), errmsg, &
                 errflg)
@@ -519,6 +529,10 @@
             !flhc_ocn(i)=cpm(i)*rho1(i)*chs_ocn(i)
             !flqc_ocn(i)=rho1(i)*chs_ocn(i)
             !cqs2_ocn(i)=chs2_ocn(i)
+            if (dry(i) .and. fh2_lnd(i) < 0.0) then
+              write(*,*) 'gfdl_sfc_layer:',ustar_lnd(i), znt_lnd(i), rib_lnd(i), cdm_lnd(i), ch_lnd(i), stress_lnd(i), &
+                fm_lnd(i), fm10_lnd(i), fh_lnd(i), fh2_lnd(i), dry(i), icy(i), wet(i), xlat(i), xlon(i)
+            end if
           end if !flag_iter
         end do
         
@@ -544,12 +558,13 @@
         !   enddo
         ! endif
         
-      end subroutine gfdl_sfc_layer_run
+         
+        end subroutine gfdl_sfc_layer_run
 
 !---------------------------------
 !GJF (2020/04/21): The starting point for the MFLUX2 subroutine here was module_sf_gfdl.F in WRF
       SUBROUTINE MFLUX2( fxh,fxe,fxmx,fxmy,cdm,rib,xxfh,zoc,mzoc,tstrc,        &    !mzoc KWON
-                         pspc,pkmax,wetc,slwdc,                                &
+                         pspc,pkmax,wetc,slwdc,z1,                             &
                          icoef_sf,iwavecpl,lcurr_sf,alpha,gamma,xcur,ycur,     &
                          pert_Cd, ens_random_seed, ens_Cdamp,                  &
                          upc,vpc,tpc,rpc,dt,wind10,xxfh2,ntsflg,sfenth,        &
@@ -584,36 +599,37 @@
       logical,intent(in)  :: lcurr_sf
       logical,intent(in)  :: pert_Cd 
       integer,intent(in)  :: ens_random_seed
-      real,intent(in)     :: ens_Cdamp
+      real(kind=kind_phys),intent(in)     :: ens_Cdamp
 
-      real, intent (out), dimension (ims :ime ) :: fxh
-      real, intent (out), dimension (ims :ime ) :: fxe
-      real, intent (out), dimension (ims :ime ) :: fxmx
-      real, intent (out), dimension (ims :ime ) :: fxmy
-      real, intent (inout), dimension (ims :ime ) :: cdm
+      real(kind=kind_phys), intent (out), dimension (ims :ime ) :: fxh
+      real(kind=kind_phys), intent (out), dimension (ims :ime ) :: fxe
+      real(kind=kind_phys), intent (out), dimension (ims :ime ) :: fxmx
+      real(kind=kind_phys), intent (out), dimension (ims :ime ) :: fxmy
+      real(kind=kind_phys), intent (inout), dimension (ims :ime ) :: cdm
 !       real, intent (out), dimension (ims :ime ) :: cdm2
-      real, intent (out), dimension (ims :ime ) :: rib
-      real, intent (out), dimension (ims :ime ) :: xxfh
-      real, intent (out), dimension (ims :ime ) :: xxfh2
-      real, intent (out), dimension (ims :ime ) :: wind10
+      real(kind=kind_phys), intent (out), dimension (ims :ime ) :: rib
+      real(kind=kind_phys), intent (out), dimension (ims :ime ) :: xxfh
+      real(kind=kind_phys), intent (out), dimension (ims :ime ) :: xxfh2
+      real(kind=kind_phys), intent (out), dimension (ims :ime ) :: wind10
 
-      real, intent ( inout), dimension (ims :ime ) :: zoc,mzoc    !KWON
-      real, intent ( inout), dimension (ims :ime ) :: tzot        !WANG
-      real, intent ( inout), dimension (ims :ime ) :: tstrc
+      real(kind=kind_phys), intent ( inout), dimension (ims :ime ) :: zoc,mzoc    !KWON
+      real(kind=kind_phys), intent ( inout), dimension (ims :ime ) :: tzot        !WANG
+      real(kind=kind_phys), intent ( inout), dimension (ims :ime ) :: tstrc
 
-      real, intent ( in)                        :: dt
-      real, intent ( in)                        :: sfenth
-      real, intent ( in), dimension (ims :ime ) :: pspc
-      real, intent ( in), dimension (ims :ime ) :: pkmax
-      real, intent ( in), dimension (ims :ime ) :: wetc
-      real, intent ( in), dimension (ims :ime ) :: slwdc
-      real, intent ( in), dimension (ims :ime ) :: alpha, gamma
-      real, intent ( in), dimension (ims :ime ) :: xcur, ycur
+      real(kind=kind_phys), intent ( in)                        :: dt
+      real(kind=kind_phys), intent ( in)                        :: sfenth
+      real(kind=kind_phys), intent ( in), dimension (ims :ime ) :: pspc
+      real(kind=kind_phys), intent ( in), dimension (ims :ime ) :: pkmax
+      real(kind=kind_phys), intent ( in), dimension (ims :ime ) :: wetc
+      real(kind=kind_phys), intent ( in), dimension (ims :ime ) :: slwdc
+      real(kind=kind_phys), intent ( in), dimension (ims :ime ) :: alpha, gamma
+      real(kind=kind_phys), intent ( in), dimension (ims :ime ) :: xcur, ycur
+      real(kind=kind_phys), intent ( in), dimension (ims :ime ) :: z1
 
-      real, intent ( in), dimension (ims :ime ) :: upc
-      real, intent ( in), dimension (ims :ime ) :: vpc
-      real, intent ( in), dimension (ims :ime ) :: tpc
-      real, intent ( in), dimension (ims :ime ) :: rpc
+      real(kind=kind_phys), intent ( in), dimension (ims :ime ) :: upc
+      real(kind=kind_phys), intent ( in), dimension (ims :ime ) :: vpc
+      real(kind=kind_phys), intent ( in), dimension (ims :ime ) :: tpc
+      real(kind=kind_phys), intent ( in), dimension (ims :ime ) :: rpc
       
       character(len=*), intent(out) :: errmsg
       integer,          intent(out) :: errflg
@@ -630,109 +646,109 @@
       integer, dimension(1   :ime) :: it
       integer, dimension(1   :ime) :: iutb
 
-      real, dimension(1   :ime) :: aap
-      real, dimension(1   :ime) :: bq1
-      real, dimension(1   :ime) :: bq1p
-      real, dimension(1   :ime) :: delsrad
-      real, dimension(1   :ime) :: ecof
-      real, dimension(1   :ime) :: ecofp
-      real, dimension(1   :ime) :: estso
-      real, dimension(1   :ime) :: estsop
-      real, dimension(1   :ime) :: fmz1
-      real, dimension(1   :ime) :: fmz10
-      real, dimension(1   :ime) :: fmz2 
-      real, dimension(1   :ime) :: fmzo1
-      real, dimension(1   :ime) :: foft
-      real, dimension(1   :ime) :: foftm
-      real, dimension(1   :ime) :: frac
-      real, dimension(1   :ime) :: land
-      real, dimension(1   :ime) :: pssp
-      real, dimension(1   :ime) :: qf
-      real, dimension(1   :ime) :: rdiff
-      real, dimension(1   :ime) :: rho
-      real, dimension(1   :ime) :: rkmaxp
-      real, dimension(1   :ime) :: rstso
-      real, dimension(1   :ime) :: rstsop
-      real, dimension(1   :ime) :: sf10
-      real, dimension(1   :ime) :: sf2 
-      real, dimension(1   :ime) :: sfm
-      real, dimension(1   :ime) :: sfzo
-      real, dimension(1   :ime) :: sgzm
-      real, dimension(1   :ime) :: slwa
-      real, dimension(1   :ime) :: szeta
-      real, dimension(1   :ime) :: szetam
-      real, dimension(1   :ime) :: t1
-      real, dimension(1   :ime) :: t2
-      real, dimension(1   :ime) :: tab1
-      real, dimension(1   :ime) :: tab2
-      real, dimension(1   :ime) :: tempa1
-      real, dimension(1   :ime) :: tempa2
-      real, dimension(1   :ime) :: theta
-      real, dimension(1   :ime) :: thetap
-      real, dimension(1   :ime) :: tsg
-      real, dimension(1   :ime) :: tsm
-      real, dimension(1   :ime) :: tsp
-      real, dimension(1   :ime) :: tss
-      real, dimension(1   :ime) :: ucom
-      real, dimension(1   :ime) :: uf10
-      real, dimension(1   :ime) :: uf2 
-      real, dimension(1   :ime) :: ufh
-      real, dimension(1   :ime) :: ufm
-      real, dimension(1   :ime) :: ufzo
-      real, dimension(1   :ime) :: ugzm
-      real, dimension(1   :ime) :: uzeta
-      real, dimension(1   :ime) :: uzetam
-      real, dimension(1   :ime) :: vcom
-      real, dimension(1   :ime) :: vrtkx
-      real, dimension(1   :ime) :: vrts
-      real, dimension(1   :ime) :: wind
-      real, dimension(1   :ime) :: windp
-      real, dimension(1   :ime) :: wind10p  !WANG, 10m wind previous step
-      real, dimension(1   :ime) :: uvs1
-!      real, dimension(1   :ime) :: xxfh
-      real, dimension(1   :ime) :: xxfm
-      real, dimension(1   :ime) :: xxsh
-      real, dimension(1   :ime) :: z10
-      real, dimension(1   :ime) :: z2 
-      real, dimension(1   :ime) :: zeta
-      real, dimension(1   :ime) :: zkmax
+      real(kind=kind_phys), dimension(1   :ime) :: aap
+      real(kind=kind_phys), dimension(1   :ime) :: bq1
+      real(kind=kind_phys), dimension(1   :ime) :: bq1p
+      real(kind=kind_phys), dimension(1   :ime) :: delsrad
+      real(kind=kind_phys), dimension(1   :ime) :: ecof
+      real(kind=kind_phys), dimension(1   :ime) :: ecofp
+      real(kind=kind_phys), dimension(1   :ime) :: estso
+      real(kind=kind_phys), dimension(1   :ime) :: estsop
+      real(kind=kind_phys), dimension(1   :ime) :: fmz1
+      real(kind=kind_phys), dimension(1   :ime) :: fmz10
+      real(kind=kind_phys), dimension(1   :ime) :: fmz2 
+      real(kind=kind_phys), dimension(1   :ime) :: fmzo1
+      real(kind=kind_phys), dimension(1   :ime) :: foft
+      real(kind=kind_phys), dimension(1   :ime) :: foftm
+      real(kind=kind_phys), dimension(1   :ime) :: frac
+      real(kind=kind_phys), dimension(1   :ime) :: land
+      real(kind=kind_phys), dimension(1   :ime) :: pssp
+      real(kind=kind_phys), dimension(1   :ime) :: qf
+      real(kind=kind_phys), dimension(1   :ime) :: rdiff
+      real(kind=kind_phys), dimension(1   :ime) :: rho
+      real(kind=kind_phys), dimension(1   :ime) :: rkmaxp
+      real(kind=kind_phys), dimension(1   :ime) :: rstso
+      real(kind=kind_phys), dimension(1   :ime) :: rstsop
+      real(kind=kind_phys), dimension(1   :ime) :: sf10
+      real(kind=kind_phys), dimension(1   :ime) :: sf2 
+      real(kind=kind_phys), dimension(1   :ime) :: sfm
+      real(kind=kind_phys), dimension(1   :ime) :: sfzo
+      real(kind=kind_phys), dimension(1   :ime) :: sgzm
+      real(kind=kind_phys), dimension(1   :ime) :: slwa
+      real(kind=kind_phys), dimension(1   :ime) :: szeta
+      real(kind=kind_phys), dimension(1   :ime) :: szetam
+      real(kind=kind_phys), dimension(1   :ime) :: t1
+      real(kind=kind_phys), dimension(1   :ime) :: t2
+      real(kind=kind_phys), dimension(1   :ime) :: tab1
+      real(kind=kind_phys), dimension(1   :ime) :: tab2
+      real(kind=kind_phys), dimension(1   :ime) :: tempa1
+      real(kind=kind_phys), dimension(1   :ime) :: tempa2
+      real(kind=kind_phys), dimension(1   :ime) :: theta
+      real(kind=kind_phys), dimension(1   :ime) :: thetap
+      real(kind=kind_phys), dimension(1   :ime) :: tsg
+      real(kind=kind_phys), dimension(1   :ime) :: tsm
+      real(kind=kind_phys), dimension(1   :ime) :: tsp
+      real(kind=kind_phys), dimension(1   :ime) :: tss
+      real(kind=kind_phys), dimension(1   :ime) :: ucom
+      real(kind=kind_phys), dimension(1   :ime) :: uf10
+      real(kind=kind_phys), dimension(1   :ime) :: uf2 
+      real(kind=kind_phys), dimension(1   :ime) :: ufh
+      real(kind=kind_phys), dimension(1   :ime) :: ufm
+      real(kind=kind_phys), dimension(1   :ime) :: ufzo
+      real(kind=kind_phys), dimension(1   :ime) :: ugzm
+      real(kind=kind_phys), dimension(1   :ime) :: uzeta
+      real(kind=kind_phys), dimension(1   :ime) :: uzetam
+      real(kind=kind_phys), dimension(1   :ime) :: vcom
+      real(kind=kind_phys), dimension(1   :ime) :: vrtkx
+      real(kind=kind_phys), dimension(1   :ime) :: vrts
+      real(kind=kind_phys), dimension(1   :ime) :: wind
+      real(kind=kind_phys), dimension(1   :ime) :: windp
+      real(kind=kind_phys), dimension(1   :ime) :: wind10p  !WANG, 10m wind previous step
+      real(kind=kind_phys), dimension(1   :ime) :: uvs1
+!      real(kind=kind_phys), dimension(1   :ime) :: xxfh
+      real(kind=kind_phys), dimension(1   :ime) :: xxfm
+      real(kind=kind_phys), dimension(1   :ime) :: xxsh
+      real(kind=kind_phys), dimension(1   :ime) :: z10
+      real(kind=kind_phys), dimension(1   :ime) :: z2 
+      real(kind=kind_phys), dimension(1   :ime) :: zeta
+      real(kind=kind_phys), dimension(1   :ime) :: zkmax
 
-      real, dimension(1   :ime) :: pss
-      real, dimension(1   :ime) :: tstar
-      real, dimension(1   :ime) :: ukmax
-      real, dimension(1   :ime) :: vkmax
-      real, dimension(1   :ime) :: tkmax
-      real, dimension(1   :ime) :: rkmax
-      real, dimension(1   :ime) :: zot
-      real, dimension(1   :ime) :: fhzo1
-      real, dimension(1   :ime) :: sfh
+      real(kind=kind_phys), dimension(1   :ime) :: pss
+      real(kind=kind_phys), dimension(1   :ime) :: tstar
+      real(kind=kind_phys), dimension(1   :ime) :: ukmax
+      real(kind=kind_phys), dimension(1   :ime) :: vkmax
+      real(kind=kind_phys), dimension(1   :ime) :: tkmax
+      real(kind=kind_phys), dimension(1   :ime) :: rkmax
+      real(kind=kind_phys), dimension(1   :ime) :: zot
+      real(kind=kind_phys), dimension(1   :ime) :: fhzo1
+      real(kind=kind_phys), dimension(1   :ime) :: sfh
 
-      real :: ux13, yo, y,xo,x,ux21,ugzzo,ux11,ux12,uzetao,xnum,alll
-      real :: ux1,ugz,x10,uzo,uq,ux2,ux3,xtan,xden,y10,uzet1o,ugz10
-      real :: szet2, zal2,ugz2 
-      real :: rovcp,boycon,cmo2,psps1,zog,enrca,rca,cmo1,amask,en,ca,a,c
-      real :: sgz,zal10,szet10,fmz,szo,sq,fmzo,rzeta1,zal1g,szetao,rzeta2,zal2g
-      real :: hcap,xks,pith,teps,diffot,delten,alevp,psps2,alfus,nstep
-      real :: shfx,sigt4,reflect
-      real :: cor1,cor2,szetho,zal2gh,cons_p000001,cons_7,vis,ustar,restar,rat
-      real :: wndm,ckg
-      real :: windmks,znott,znotm
-      real :: ubot, vbot
+      real(kind=kind_phys) :: ux13, yo, y,xo,x,ux21,ugzzo,ux11,ux12,uzetao,xnum,alll
+      real(kind=kind_phys) :: ux1,ugz,x10,uzo,uq,ux2,ux3,xtan,xden,y10,uzet1o,ugz10
+      real(kind=kind_phys) :: szet2, zal2,ugz2 
+      real(kind=kind_phys) :: rovcp,boycon,cmo2,psps1,zog,enrca,rca,cmo1,amask,en,ca,a,c
+      real(kind=kind_phys) :: sgz,zal10,szet10,fmz,szo,sq,fmzo,rzeta1,zal1g,szetao,rzeta2,zal2g
+      real(kind=kind_phys) :: hcap,xks,pith,teps,diffot,delten,alevp,psps2,alfus,nstep
+      real(kind=kind_phys) :: shfx,sigt4,reflect
+      real(kind=kind_phys) :: cor1,cor2,szetho,zal2gh,cons_p000001,cons_7,vis,ustar,restar,rat
+      real(kind=kind_phys) :: wndm,ckg
+      real(kind=kind_phys) :: windmks,znott,znotm
+      real(kind=kind_phys) :: ubot, vbot
       integer:: i,j,ii,iq,nnest,icnt,ngd,ip
 
 !-----------------------------------------------------------------------
 !     internal variables
 !-----------------------------------------------------------------------
 
-      real, dimension (223) :: tab 
-      real, dimension (223) :: table
-      real, dimension (101) :: tab11
-      real, dimension (41) :: table4
-      real, dimension (42) :: tab3
-      real, dimension (54) :: table2
-      real, dimension (54) :: table3
-      real, dimension (74) :: table1
-      real, dimension (80) :: tab22
+      real(kind=kind_phys), dimension (223) :: tab 
+      real(kind=kind_phys), dimension (223) :: table
+      real(kind=kind_phys), dimension (101) :: tab11
+      real(kind=kind_phys), dimension (41) :: table4
+      real(kind=kind_phys), dimension (42) :: tab3
+      real(kind=kind_phys), dimension (54) :: table2
+      real(kind=kind_phys), dimension (54) :: table3
+      real(kind=kind_phys), dimension (74) :: table1
+      real(kind=kind_phys), dimension (80) :: tab22
 
       character(len=255) :: message
 
@@ -983,7 +999,8 @@
       do i = its,ite
         theta(i) = tkmax(i)/((pkmax(i)/pspc(i))**rovcp)
         vrtkx(i) = 1.0 + boycon*rkmax(i)
-        zkmax(i) = -rgas*tkmax(i)*alog(pkmax(i)/pspc(i))*og
+        !zkmax(i) = -rgas*tkmax(i)*alog(pkmax(i)/pspc(i))*og
+        zkmax(i) = z1(i) !use precalculated height of first model layer center
       enddo
 
 !------------------------------------------------------------------------
