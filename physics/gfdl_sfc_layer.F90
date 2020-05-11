@@ -146,7 +146,7 @@
                                                  xxfh2, tzot
         real(kind=kind_phys), dimension(1:30) :: maxsmc, drysmc
         real(kind=kind_phys)                  :: smcmax, smcdry, zhalf, cd10, esat, fm_lnd_old, fh_lnd_old, &
-                                                 tem1, tem2, czilc
+                                                 tem1, tem2, czilc, cdlimit
         
         !"SCURX"       "Surface Currents(X)"                    "m s-1"
         !"SCURY"       "Surface Currents(Y)"                     "m s-1
@@ -253,6 +253,7 @@
             !zkmax(i) = -rd*t1(i)*alog(pkmax(i)/pspc(i))/grav !m
             zkmax(i) = z1(i)
             z1_cm(i) = 100.0*z1(i)
+            cdlimit  = 1.0e-5/zkmax(i)
             
             !slwdc... GFDL downward net flux in units of cal/(cm**2/min)
             !also divide by 10**4 to convert from /m**2 to /cm**2
@@ -340,7 +341,7 @@
               ztmax(i) = max(ztmax(i), 1.0e-6)
               
               if (wind10(i) <= 1.0e-10 .or. wind10(i) > 150.0) then
-                 wind10(i)=sqrt(u1(i)*u1(i)+v1(i)*v1(i))*alog(10.0/(z0max(i)))/alog(z1(i)/(0.01*z0max(i))) !m s-1
+                 wind10(i)=sqrt(u1(i)*u1(i)+v1(i)*v1(i))*alog(10.0/z0max(i))/alog(z1(i)/z0max(i)) !m s-1
               end if
               wind10(i)=wind10(i)*100.0   !! m/s to cm/s
               
@@ -365,14 +366,9 @@
               end if
               
               !gz1oz0(i) = alog(zkmax(i)/(0.01*znt_lnd(i)))
-              
-              ustar_lnd(i) = 0.01*sqrt(cdm_lnd(i)*   &
-                         (upc(i)*upc(i) + vpc(i)*vpc(i)))
                          
               !taux(i) = fxmx(i)/10.    ! gopal's doing for Ocean coupling
               !tauy(i) = fxmy(i)/10.    ! gopal's doing for Ocean coupling
-              
-              stress_lnd(i) = cdm_lnd(i)*wspd(i)*wspd(i)
               
               fm_lnd(i) = karman/sqrt(cdm_lnd(i))
               fh_lnd(i) = karman*xxfh(i)
@@ -384,6 +380,18 @@
               fh2_lnd(i) = karman*xxfh2(i)
               ch_lnd(i)  = karman*karman/(fm_lnd(i) * fh_lnd(i))
               
+              cdm_lnd(i) = max(cdm_lnd(i), cdlimit)
+              cdm_lnd(i) = min(cdm_lnd(i), 0.1)
+              ch_lnd(i)  = max(ch_lnd(i), cdlimit)
+              ch_lnd(i)  = min(ch_lnd(i), 0.1)
+              ch_lnd(i)  = min(ch_lnd(i), 0.05/wspd(i))
+              
+              ustar_lnd(i) = 0.01*sqrt(cdm_lnd(i)*   &
+                         (upc(i)*upc(i) + vpc(i)*vpc(i)))
+              ustar_lnd(i) = amax1(ustar_lnd(i),0.001)
+                         
+              stress_lnd(i) = cdm_lnd(i)*wspd(i)*wspd(i)
+              
               !!! convert cd, ch to values at 10m, for output
               cd10 = cdm_lnd(i)
               if ( wind10(i) .ge. 0.1 ) then
@@ -394,6 +402,7 @@
               end if
               fm10_lnd(i) = karman/sqrt(cd10)
               
+              
               !chs_lnd(i)=ch_lnd(i)*wspd (i) !conductance
               !chs2_lnd(i)=ustar_lnd(i)*karman/fh2_lnd(i) !2m conductance
               
@@ -401,13 +410,14 @@
               ! chs_lnd(i)=amin1(chs_lnd(i), 0.05)
               ! chs2_lnd(i)=amin1(chs2_lnd(i), 0.05)
               ! if (chs2_lnd(i) < 0) chs2_lnd(i)=1.0e-6
-              if (fh_lnd(i) + fm_lnd(i) < 20.0*karman*karman*wspd(i)) then
-                fh_lnd_old = fh_lnd(i)
-                fm_lnd_old = fm_lnd(i)
-                fh_lnd(i) = fh_lnd_old + 0.5*(20.0*karman*karman*wspd(i) - (fm_lnd_old + fh_lnd_old))
-                fm_lnd(i) = fm_lnd_old + 0.5*(20.0*karman*karman*wspd(i) - (fm_lnd_old + fh_lnd_old))
-              end if  
-              fh2_lnd(i) = min(fh_lnd(i), max(fh2_lnd(i),20.0*ustar_lnd(i)/karman))
+              
+              ! if (fh_lnd(i) + fm_lnd(i) < 20.0*karman*karman*wspd(i)) then
+              !   fh_lnd_old = fh_lnd(i)
+              !   fm_lnd_old = fm_lnd(i)
+              !   fh_lnd(i) = fh_lnd_old + 0.5*(20.0*karman*karman*wspd(i) - (fm_lnd_old + fh_lnd_old))
+              !   fm_lnd(i) = fm_lnd_old + 0.5*(20.0*karman*karman*wspd(i) - (fm_lnd_old + fh_lnd_old))
+              ! end if  
+              ! fh2_lnd(i) = min(fh_lnd(i), max(fh2_lnd(i),20.0*ustar_lnd(i)/karman))
               
               if (diag_qss) then
                 esat = fpvs(tskin_lnd(i))
@@ -436,11 +446,6 @@
               ! end if
               !znt_ice(i) = max(1.0e-4, min(znt_ice(i),100.0*zkmax(i)))
               
-              if (wind10(i) <= 1.0e-10 .or. wind10(i) > 150.0) then
-                 wind10(i)=sqrt(u1(i)*u1(i)+v1(i)*v1(i))*alog(10.0/(0.01*znt_ice(i)))/alog(z1(i)/(0.01*znt_ice(i)))
-              end if
-              wind10(i)=wind10(i)*100.0   !! m/s to cm/s
-              
               z0max(i) = max(1.0e-6, min(0.01 * znt_ice(i), zkmax(i)))
   !** xubin's new z0  over land and sea ice
               tem1  = 1.0 - shdmax(i)
@@ -448,7 +453,6 @@
               tem1  = 1.0  - tem2
 
               if( ivegsrc == 1 ) then
-
                 z0max(i) = exp( tem2*log01 + tem1*log(z0max(i)) )
               elseif (ivegsrc == 2 ) then
                 z0max(i) = exp( tem2*log01 + tem1*log(z0max(i)) )
@@ -464,6 +468,11 @@
               ztmax(i) = z0max(i)*exp( - tem1*tem1 &
        &                     * czilc*karman*sqrt(ustar_ice(i)*(0.01/1.5e-05)))
               ztmax(i) = max(ztmax(i), 1.0e-6)
+              
+              if (wind10(i) <= 1.0e-10 .or. wind10(i) > 150.0) then
+                 wind10(i)=sqrt(u1(i)*u1(i)+v1(i)*v1(i))*alog(10.0/z0max(i))/alog(z1(i)/z0max(i))
+              end if
+              wind10(i)=wind10(i)*100.0   !! m/s to cm/s
               
               ztmax(i) = ztmax(i)*100.0 !m to cm
               z0max(i) = z0max(i)*100.0 !m to cm
@@ -487,13 +496,8 @@
               
               !gz1oz0(i) = alog(zkmax(i)/znt_ice(i))
               
-              ustar_ice(i) = 0.01*sqrt(cdm_ice(i)*   &
-                         (upc(i)*upc(i) + vpc(i)*vpc(i)))
-              
               !taux(i) = fxmx(i)/10.    ! gopal's doing for Ocean coupling
               !tauy(i) = fxmy(i)/10.    ! gopal's doing for Ocean coupling
-              
-              stress_ice(i) = cdm_ice(i)*wspd(i)*wspd(i)
               
               fm_ice(i) = karman/sqrt(cdm_ice(i))
               fh_ice(i) = karman*xxfh(i)
@@ -504,6 +508,18 @@
               
               fh2_ice(i) = karman*xxfh2(i)
               ch_ice(i)  = karman*karman/(fm_ice(i) * fh_ice(i))
+              
+              cdm_ice(i) = max(cdm_ice(i), cdlimit)
+              cdm_ice(i) = min(cdm_ice(i), 0.1)
+              ch_ice(i)  = max(ch_ice(i), cdlimit)
+              ch_ice(i)  = min(ch_ice(i), 0.1)
+              ch_ice(i)  = min(ch_ice(i), 0.05/wspd(i))
+              
+              ustar_ice(i) = 0.01*sqrt(cdm_ice(i)*   &
+                         (upc(i)*upc(i) + vpc(i)*vpc(i)))
+              ustar_ice(i) = amax1(ustar_ice(i),0.001)
+              
+              stress_ice(i) = cdm_ice(i)*wspd(i)*wspd(i)
               
               !!! convert cd, ch to values at 10m, for output
               cd10 = cdm_ice(i)
@@ -571,14 +587,9 @@
               
               !gz1oz0(i) = alog(zkmax(i)/znt_ocn(i))
               
-              ustar_ocn(i) = 0.01*sqrt(cdm_ocn(i)*   &
-                         (upc(i)*upc(i) + vpc(i)*vpc(i)))
-              
               !taux(i) = fxmx(i)/10.    ! gopal's doing for Ocean coupling
               !tauy(i) = fxmy(i)/10.    ! gopal's doing for Ocean coupling
-              
-              stress_ocn(i) = cdm_ocn(i)*wspd(i)*wspd(i)
-              
+            
               fm_ocn(i) = karman/sqrt(cdm_ocn(i))
               fh_ocn(i) = karman*xxfh(i)
               
@@ -588,6 +599,17 @@
               
               fh2_ocn(i) = karman*xxfh2(i)
               ch_ocn(i)  = karman*karman/(fm_ocn(i) * fh_ocn(i))
+              
+              cdm_ocn(i) = max(cdm_ocn(i), cdlimit)
+              cdm_ocn(i) = min(cdm_ocn(i), 0.1)
+              ch_ocn(i)  = max(ch_ocn(i), cdlimit)
+              ch_ocn(i)  = min(ch_ocn(i), 0.1)
+              ch_ocn(i)  = min(ch_ocn(i), 0.05/wspd(i))
+              
+              ustar_ocn(i) = 0.01*sqrt(cdm_ocn(i)*   &
+                         (upc(i)*upc(i) + vpc(i)*vpc(i)))
+              
+              stress_ocn(i) = cdm_ocn(i)*wspd(i)*wspd(i)
               
               !!! convert cd, ch to values at 10m, for output
               cd10 = cdm_ocn(i)
@@ -611,10 +633,10 @@
             !flhc_ocn(i)=cpm(i)*rho1(i)*chs_ocn(i)
             !flqc_ocn(i)=rho1(i)*chs_ocn(i)
             !cqs2_ocn(i)=chs2_ocn(i)
-            if (dry(i) .and. fh2_lnd(i) < 0.0) then
-              write(*,*) 'gfdl_sfc_layer:',ustar_lnd(i), znt_lnd(i), rib_lnd(i), cdm_lnd(i), ch_lnd(i), stress_lnd(i), &
-                fm_lnd(i), fm10_lnd(i), fh_lnd(i), fh2_lnd(i), dry(i), icy(i), wet(i), xlat(i), xlon(i)
-            end if
+            ! if (dry(i) .and. fh2_lnd(i) < 0.0) then
+            !   write(*,*) 'gfdl_sfc_layer:',ustar_lnd(i), znt_lnd(i), rib_lnd(i), cdm_lnd(i), ch_lnd(i), stress_lnd(i), &
+            !     fm_lnd(i), fm10_lnd(i), fh_lnd(i), fh2_lnd(i), dry(i), icy(i), wet(i), xlat(i), xlon(i)
+            ! end if
           end if !flag_iter
         end do
         
