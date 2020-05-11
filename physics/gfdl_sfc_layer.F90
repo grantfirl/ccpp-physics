@@ -81,9 +81,9 @@
 !!
       subroutine gfdl_sfc_layer_run (im, nsoil, km, xlat, xlon, flag_iter, lsm, lsm_noah,  &
         lsm_noahmp, lsm_ruc, lsm_noah_wrfv4, icoef_sf, cplwav, cplwav2atm,     &
-        lcurr_sf, pert_Cd, ntsflg, sfenth, z1, dt, wet, dry,                   &
+        lcurr_sf, pert_Cd, ntsflg, sfenth, z1, shdmax, ivegsrc, vegtype, sigmaf, dt, wet, dry, &
         icy, isltyp, rd, grav, ep1, ep2, smois, psfc, prsl1, q1, t1, u1, v1,   &
-        u10, v10, gsw, glw, tskin_ocn, tskin_lnd, tskin_ice, ustar_ocn,        &
+        u10, v10, gsw, glw, tsurf_lnd, tsurf_ice, tskin_ocn, tskin_lnd, tskin_ice, ustar_ocn,        &
         ustar_lnd, ustar_ice, znt_ocn, znt_lnd, znt_ice, cdm_ocn, cdm_lnd,     &
         cdm_ice, stress_ocn, stress_lnd, stress_ice, rib_ocn, rib_lnd, rib_ice,&
         fm_ocn, fm_lnd, fm_ice, fh_ocn, fh_lnd, fh_ice, fh2_ocn, fh2_lnd,      &
@@ -101,18 +101,19 @@
         
         implicit none
 
-        integer, intent(in) :: im, nsoil, km
+        integer, intent(in) :: im, nsoil, km, ivegsrc
         integer, intent(in) :: lsm, lsm_noah, lsm_noahmp, lsm_ruc, lsm_noah_wrfv4, icoef_sf, ntsflg
         logical, intent(in) :: cplwav, cplwav2atm !GJF: this scheme has not been tested with these on
         logical, intent(in) :: lcurr_sf !GJF: this scheme has not been tested with this option turned on; the variables scurx and scury need to be input in order to use this
         logical, intent(in) :: pert_Cd !GJF: this scheme has not been tested with this option turned on; the variables ens_random_seed and ens_Cdamp need to be input in order to use this
         real(kind=kind_phys), intent(in) :: dt, sfenth
         logical, dimension(im), intent(in) :: flag_iter, wet, dry, icy
-        integer, dimension(im), intent(in) :: isltyp
+        integer, dimension(im), intent(in) :: isltyp, vegtype
         real(kind=kind_phys), intent(in) :: rd, grav, ep1, ep2
         real(kind=kind_phys), intent(in), dimension(im,nsoil) :: smois
         real(kind=kind_phys), intent(in), dimension(im) :: psfc, prsl1, q1, t1,&
-                                                           u1, v1, u10, v10, gsw, glw, z1, xlat, xlon
+                                                           u1, v1, u10, v10, gsw, glw, z1, shdmax, sigmaf, xlat, xlon,&
+                                                           tsurf_lnd, tsurf_ice
         
         real(kind=kind_phys), intent(inout), dimension(im) :: tskin_ocn,       &
             tskin_lnd, tskin_ice, ustar_ocn, ustar_lnd, ustar_ice,             &
@@ -131,19 +132,21 @@
         
         !GJF: the vonKarman constant should come in through the CCPP and be defined by the host model
         real (kind=kind_phys), parameter :: karman = 0.4
+        real (kind=kind_phys), parameter :: log01=log(0.01), log05=log(0.05), log07=log(0.07)
         
         integer :: iwavecpl, ens_random_seed, issflx !turn these into intent(in) and namelist options
         logical :: diag_wind10m, diag_qss !turn these into intent(in) and namelist options
         real(kind=kind_phys) :: ens_Cdamp !turn this into intent(in) and namelist option
         
         real(kind=kind_phys), dimension(im)   :: wetc, pspc, pkmax, tstrc, upc,&
-                     vpc, mznt, slwdc, wspd, wind10, qfx, qgh, zkmax, z1_cm
+                     vpc, mznt, slwdc, wspd, wind10, qfx, qgh, zkmax, z1_cm, z0max, ztmax
         real(kind=kind_phys), dimension(im)   :: u10_lnd, u10_ocn, u10_ice, v10_lnd, v10_ocn, v10_ice
         real(kind=kind_phys), dimension(im)   :: charn, msang, scurx, scury
         real(kind=kind_phys), dimension(im)   :: fxh, fxe, fxmx, fxmy, xxfh,   &
                                                  xxfh2, tzot
         real(kind=kind_phys), dimension(1:30) :: maxsmc, drysmc
-        real(kind=kind_phys)                  :: smcmax, smcdry, zhalf, cd10, esat, fm_lnd_old, fh_lnd_old
+        real(kind=kind_phys)                  :: smcmax, smcdry, zhalf, cd10, esat, fm_lnd_old, fh_lnd_old, &
+                                                 tem1, tem2, czilc
         
         !"SCURX"       "Surface Currents(X)"                    "m s-1"
         !"SCURY"       "Surface Currents(Y)"                     "m s-1
@@ -277,7 +280,8 @@
               wetc(i)=(smois(i,1)-smcdry)/(smcmax-smcdry)
               wetc(i)=amin1(1.,amax1(wetc(i),0.))
               
-              tstrc(i) = tskin_lnd(i)
+              !averaging tskin_lnd and tsurf_lnd as in GFS surface layer breaks ntsflg functionality
+              tstrc(i) = 0.5*(tskin_lnd(i) + tsurf_lnd(i))
               
               !GJF: GFS surface layer (sfc_diff) makes sure that the roughness length is nonzero with: z0max = max(1.0e-6, min(znt_lnd(i),zkmax))
               !if (znt_lnd(i) == 0.0) then
@@ -286,15 +290,65 @@
               !  return
               !end if
               !znt_lnd(i) = max(1.0e-4, min(znt_lnd(i),100.0*zkmax(i)))
-              znt_lnd(i) = max(1.0e-4, min(znt_lnd(i),min(200.0,100.0*zkmax(i))))
+              !znt_lnd(i) = max(1.0e-4, min(znt_lnd(i),min(200.0,100.0*zkmax(i))))
+              
+              !znt_lnd is in cm
+              z0max(i) = max(1.0e-6, min(0.01 * znt_lnd(i), zkmax(i)))
+              
+              tem1  = 1.0 - shdmax(i)
+              tem2  = tem1 * tem1
+              tem1  = 1.0  - tem2
+              
+              if( ivegsrc == 1 ) then
+                if (vegtype(i) == 10) then
+                  z0max(i) = exp( tem2*log01 + tem1*log07 )
+                elseif (vegtype(i) == 6) then
+                  z0max(i) = exp( tem2*log01 + tem1*log05 )
+                elseif (vegtype(i) == 7) then
+  !               z0max(i) = exp( tem2*log01 + tem1*log01 )
+                  z0max(i) = 0.01
+                elseif (vegtype(i) == 16) then
+  !               z0max(i) = exp( tem2*log01 + tem1*log01 )
+                  z0max(i) = 0.01
+                else
+                  z0max(i) = exp( tem2*log01 + tem1*log(z0max(i)) )
+                endif
+              elseif (ivegsrc == 2 ) then
+                if (vegtype(i) == 7) then
+                  z0max(i) = exp( tem2*log01 + tem1*log07 )
+                elseif (vegtype(i) == 8) then
+                  z0max(i) = exp( tem2*log01 + tem1*log05 )
+                elseif (vegtype(i) == 9) then
+  !               z0max(i) = exp( tem2*log01 + tem1*log01 )
+                  z0max(i) = 0.01
+                elseif (vegtype(i) == 11) then
+  !               z0max(i) = exp( tem2*log01 + tem1*log01 )
+                  z0max(i) = 0.01
+                else
+                  z0max(i) = exp( tem2*log01 + tem1*log(z0max(i)) )
+                endif
+              endif
+              
+              z0max(i) = max(z0max(i), 1.0e-6)
+
+  !           czilc = 10.0 ** (- (0.40/0.07) * z0) ! fei's canopy height dependance of czil
+              czilc = 0.8
+
+              tem1  = 1.0 - sigmaf(i)
+              ztmax(i) = z0max(i)*exp( - tem1*tem1 &
+       &                     * czilc*karman*sqrt(ustar_lnd(i)*(0.01/1.5e-05)))
+              ztmax(i) = max(ztmax(i), 1.0e-6)
               
               if (wind10(i) <= 1.0e-10 .or. wind10(i) > 150.0) then
-                 wind10(i)=sqrt(u1(i)*u1(i)+v1(i)*v1(i))*alog(10.0/(0.01*znt_lnd(i)))/alog(z1(i)/(0.01*znt_lnd(i))) !m s-1
+                 wind10(i)=sqrt(u1(i)*u1(i)+v1(i)*v1(i))*alog(10.0/(z0max(i)))/alog(z1(i)/(0.01*z0max(i))) !m s-1
               end if
               wind10(i)=wind10(i)*100.0   !! m/s to cm/s
               
+              ztmax(i) = ztmax(i)*100.0 !m to cm
+              z0max(i) = z0max(i)*100.0 !m to cm
+              
               call mflux2 (fxh(i), fxe(i), fxmx(i), fxmy(i), cdm_lnd(i), rib_lnd(i), &
-                xxfh(i), znt_lnd(i), mznt(i), tstrc(i),   &
+                xxfh(i), ztmax(i), z0max(i), tstrc(i),   &
                 pspc(i), pkmax(i), wetc(i), slwdc(i), z1_cm(i), icoef_sf, iwavecpl, lcurr_sf, charn(i), msang(i), &
                 scurx(i), scury(i), pert_Cd, ens_random_seed, ens_Cdamp, upc(i), vpc(i), t1(i), q1(i), &
                 dt, wind10(i), xxfh2(i), ntsflg, sfenth, tzot(i), errmsg, &
@@ -371,7 +425,8 @@
               wetc(i)=(smois(i,1)-smcdry)/(smcmax-smcdry)
               wetc(i)=amin1(1.,amax1(wetc(i),0.))
               
-              tstrc(i) = tskin_ice(i)
+              !averaging tskin_lnd and tsurf_lnd as in GFS surface layer breaks ntsflg functionality
+              tstrc(i) = 0.5*(tskin_ice(i) + tsurf_ice(i))
               
               !GJF: GFS surface layer (sfc_diff) makes sure that the roughness length is nonzero with: z0max = max(1.0e-6, min(znt_ice(i),zkmax))
               ! if (znt_ice(i) == 0.0) then
@@ -386,8 +441,35 @@
               end if
               wind10(i)=wind10(i)*100.0   !! m/s to cm/s
               
+              z0max(i) = max(1.0e-6, min(0.01 * znt_ice(i), zkmax(i)))
+  !** xubin's new z0  over land and sea ice
+              tem1  = 1.0 - shdmax(i)
+              tem2  = tem1 * tem1
+              tem1  = 1.0  - tem2
+
+              if( ivegsrc == 1 ) then
+
+                z0max(i) = exp( tem2*log01 + tem1*log(z0max(i)) )
+              elseif (ivegsrc == 2 ) then
+                z0max(i) = exp( tem2*log01 + tem1*log(z0max(i)) )
+              endif
+
+              z0max(i) = max(z0max(i), 1.0e-6)
+
+  !           czilc = 10.0 ** (- (0.40/0.07) * z0) ! fei's canopy height
+  !           dependance of czil
+              czilc = 0.8
+
+              tem1  = 1.0 - sigmaf(i)
+              ztmax(i) = z0max(i)*exp( - tem1*tem1 &
+       &                     * czilc*karman*sqrt(ustar_ice(i)*(0.01/1.5e-05)))
+              ztmax(i) = max(ztmax(i), 1.0e-6)
+              
+              ztmax(i) = ztmax(i)*100.0 !m to cm
+              z0max(i) = z0max(i)*100.0 !m to cm
+              
               call mflux2 (fxh(i), fxe(i), fxmx(i), fxmy(i), cdm_ice(i), rib_ice(i), &
-                xxfh(i), znt_ice(i), mznt(i), tstrc(i),   &
+                xxfh(i), ztmax(i), z0max(i), tstrc(i),   &
                 pspc(i), pkmax(i), wetc(i), slwdc(i), z1_cm(i), icoef_sf, iwavecpl, lcurr_sf, charn(i), msang(i), &
                 scurx(i), scury(i), pert_Cd, ens_random_seed, ens_Cdamp, upc(i), vpc(i), t1(i), q1(i), &
                 dt, wind10(i), xxfh2(i), ntsflg, sfenth, tzot(i), errmsg, &
@@ -512,7 +594,7 @@
               if ( wind10(i) .ge. 0.1 ) then
                 cd10=cdm_ocn(i)* (wspd(i)/(0.01*wind10(i)) )**2
                 !tmp9=0.01*abs(tzot(i))
-                !ch_out(i)=ch_lnd(i)*(wspd(i)/(0.01*wind10(i)) ) * &
+                !ch_out(i)=ch_ocn(i)*(wspd(i)/(0.01*wind10(i)) ) * &
                !           (alog(zkmax(i)/tmp9)/alog(10.0/tmp9))
               end if
               fm10_ocn(i) = karman/sqrt(cd10)
