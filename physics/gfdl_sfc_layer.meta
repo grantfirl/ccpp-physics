@@ -41,6 +41,14 @@
   type = logical
   intent = in
   optional = F
+[ntsflg]
+  standard_name = flag_for_updating_skin_temperatuer_in_surface_layer_scheme
+  long_name = flag for updating skin temperature in the surface layer scheme
+  units = flag
+  dimensions = ()
+  type = integer
+  intent = in
+  optional = F
 [errmsg]
   standard_name = ccpp_error_message
   long_name = error message for error handling in CCPP
@@ -424,6 +432,15 @@
   standard_name = surface_downwelling_longwave_flux
   long_name = surface downwelling longwave flux at current time
   units = W m-2
+  dimensions = (horizontal_loop_extent)
+  type = real
+  kind = kind_phys
+  intent = in
+  optional = F
+[tsurf_ocn]
+  standard_name = surface_skin_temperature_after_iteration_over_ocean
+  long_name = surface skin temperature after iteration over ocean
+  units = K
   dimensions = (horizontal_loop_extent)
   type = real
   kind = kind_phys

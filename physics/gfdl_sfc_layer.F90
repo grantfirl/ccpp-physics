@@ -17,11 +17,12 @@
 !> \section arg_table_gfdl_sfc_layer_init Argument Table
 !! \htmlinclude gfdl_sfc_layer_init.html
 !!        
-      subroutine gfdl_sfc_layer_init (icoef_sf, cplwav, cplwav2atm, lcurr_sf, pert_cd, errmsg, errflg)
+      subroutine gfdl_sfc_layer_init (icoef_sf, cplwav, cplwav2atm, lcurr_sf,   &
+        pert_cd, ntsflg, errmsg, errflg)
         
         implicit none
         
-        integer, intent(in) :: icoef_sf
+        integer, intent(in) :: icoef_sf, ntsflg
         logical, intent(in) :: cplwav, cplwav2atm, lcurr_sf, pert_cd
         
         character(len=*), intent(out) :: errmsg
@@ -32,36 +33,55 @@
         errflg = 0
         
 #if HWRF==1
-        write(errmsg,'(*(a))') 'The GFDL surface layer scheme does not support use of the HWRF preprocessor flag in gfdl_sfc_layer.F90'
+        write(errmsg,'(*(a))') 'The GFDL surface layer scheme does not support '&
+          //'use of the HWRF preprocessor flag in gfdl_sfc_layer.F90'
         errflg = 1
         return
 #endif        
         
         if (icoef_sf < 0 .or. icoef_sf > 8) then
-          write(errmsg,'(*(a))') 'The value of icoef_sf is outside of the supported range (0-8) in gfdl_sfc_layer.F90'
+          write(errmsg,'(*(a))') 'The value of icoef_sf is outside of the '     &
+            //'supported range (0-8) in gfdl_sfc_layer.F90'
           errflg = 1
           return
         end if
         
         if (cplwav .or. cplwav2atm) then
-          write(errmsg,'(*(a))') 'The GFDL surface layer scheme is not set up to be coupled to waves in gfdl_sfc_layer.F90'
+          write(errmsg,'(*(a))') 'The GFDL surface layer scheme is not set up ' &
+            //'to be coupled to waves in gfdl_sfc_layer.F90'
           errflg = 1
           return
         end if
         
         if (lcurr_sf) then
-          write(errmsg,'(*(a))') 'The GFDL surface layer scheme is not set up to be used with the lcurr_sf option in gfdl_sfc_layer.F90'
+          write(errmsg,'(*(a))') 'The GFDL surface layer scheme is not set up ' &
+            //'to be used with the lcurr_sf option in gfdl_sfc_layer.F90'
           errflg = 1
           return
         end if
         
         if (pert_cd) then
-          write(errmsg,'(*(a))') 'The GFDL surface layer scheme is not set up to be used with the pert_cd option in gfdl_sfc_layer.F90'
+          write(errmsg,'(*(a))') 'The GFDL surface layer scheme is not set up ' &
+            //'to be used with the pert_cd option in gfdl_sfc_layer.F90'
           errflg = 1
           return
         end if
         
-        !module_sf_myjsfc/myjsfcinit code (called for GFDL sfc layer scheme in WRF's module_physics_init)
+        if (ntsflg > 0) then
+          !GJF: In order to enable ntsflg > 0, the variable 'tstrc' passed into MFLUX2 should be set
+          !  to the surface_skin_temperature_over_X_interstitial rather than the average of it and
+          !  surface_skin_temperature_after_iteration_over_X
+          write(errmsg,'(*(a))') 'Setting ntsflg > 0 is currently not supported'&
+            //' in gfdl_sfc_layer.F90'
+          errflg = 1
+          return
+        end if 
+        
+        !GJF: Initialization notes: In WRF, the subroutine module_sf_myjsfc/myjsfcinit
+        !     is called for initialization of the GFDL surface layer scheme from
+        !     the module_physics_init subroutine. It contains the following
+        !     initializations which should already have been done by other
+        !     code in UFS-related host models:
         ! IF(.NOT.RESTART)THEN
         !   DO J=JTS,JTE
         !   DO I=ITS,ITF
@@ -69,8 +89,8 @@
         !   ENDDO
         !   ENDDO
         ! ENDIF
+        !also initialize surface roughness length
         
-        !also init z0 from that file?
       end subroutine gfdl_sfc_layer_init
 
       subroutine gfdl_sfc_layer_finalize ()
@@ -79,18 +99,20 @@
 !> \section arg_table_gfdl_sfc_layer_run Argument Table
 !! \htmlinclude gfdl_sfc_layer_run.html
 !!
-      subroutine gfdl_sfc_layer_run (im, nsoil, km, xlat, xlon, flag_iter, lsm, lsm_noah,  &
-        lsm_noahmp, lsm_ruc, lsm_noah_wrfv4, icoef_sf, cplwav, cplwav2atm,     &
-        lcurr_sf, pert_Cd, ntsflg, sfenth, z1, shdmax, ivegsrc, vegtype, sigmaf, dt, wet, dry, &
-        icy, isltyp, rd, grav, ep1, ep2, smois, psfc, prsl1, q1, t1, u1, v1,   &
-        u10, v10, gsw, glw, tsurf_lnd, tsurf_ice, tskin_ocn, tskin_lnd, tskin_ice, ustar_ocn,        &
-        ustar_lnd, ustar_ice, znt_ocn, znt_lnd, znt_ice, cdm_ocn, cdm_lnd,     &
-        cdm_ice, stress_ocn, stress_lnd, stress_ice, rib_ocn, rib_lnd, rib_ice,&
-        fm_ocn, fm_lnd, fm_ice, fh_ocn, fh_lnd, fh_ice, fh2_ocn, fh2_lnd,      &
-        fh2_ice, ch_ocn, ch_lnd, ch_ice, fm10_ocn, fm10_lnd, fm10_ice, qss_ocn,&
-        qss_lnd, qss_ice, errmsg, errflg)
+      subroutine gfdl_sfc_layer_run (im, nsoil, km, xlat, xlon, flag_iter, lsm, & 
+        lsm_noah, lsm_noahmp, lsm_ruc, lsm_noah_wrfv4, icoef_sf, cplwav,        &
+        cplwav2atm, lcurr_sf, pert_Cd, ntsflg, sfenth, z1, shdmax, ivegsrc,     &
+        vegtype, sigmaf, dt, wet, dry, icy, isltyp, rd, grav, ep1, ep2, smois,  &
+        psfc, prsl1, q1, t1, u1, v1, u10, v10, gsw, glw, tsurf_ocn, tsurf_lnd,  &
+        tsurf_ice, tskin_ocn, tskin_lnd, tskin_ice, ustar_ocn, ustar_lnd,       &
+        ustar_ice, znt_ocn, znt_lnd, znt_ice, cdm_ocn, cdm_lnd, cdm_ice,        &
+        stress_ocn, stress_lnd, stress_ice, rib_ocn, rib_lnd, rib_ice, fm_ocn,  &
+        fm_lnd, fm_ice, fh_ocn, fh_lnd, fh_ice, fh2_ocn, fh2_lnd, fh2_ice,      &
+        ch_ocn, ch_lnd, ch_ice, fm10_ocn, fm10_lnd, fm10_ice, qss_ocn, qss_lnd, &
+        qss_ice, errmsg, errflg)
         
         use funcphys, only: fpvs
+        
         !####  GJF: temporarily grab parameters from LSM-specific modules -- should go through CCPP ####
         !           (fixing this involves replacing the functionality of set_soilveg and namelist_soilveg)
         use namelist_soilveg, only: maxsmc_noah => maxsmc, drysmc_noah => drysmc
@@ -101,26 +123,28 @@
         
         implicit none
 
-        integer, intent(in) :: im, nsoil, km, ivegsrc
-        integer, intent(in) :: lsm, lsm_noah, lsm_noahmp, lsm_ruc, lsm_noah_wrfv4, icoef_sf, ntsflg
-        logical, intent(in) :: cplwav, cplwav2atm !GJF: this scheme has not been tested with these on
-        logical, intent(in) :: lcurr_sf !GJF: this scheme has not been tested with this option turned on; the variables scurx and scury need to be input in order to use this
-        logical, intent(in) :: pert_Cd !GJF: this scheme has not been tested with this option turned on; the variables ens_random_seed and ens_Cdamp need to be input in order to use this
-        real(kind=kind_phys), intent(in) :: dt, sfenth
+        integer,                intent(in) :: im, nsoil, km, ivegsrc
+        integer,                intent(in) :: lsm, lsm_noah, lsm_noahmp,        &
+                                              lsm_ruc, lsm_noah_wrfv4, icoef_sf,&
+                                              ntsflg
+        logical,                intent(in) :: cplwav, cplwav2atm !GJF: this scheme has not been tested with these on
+        logical,                intent(in) :: lcurr_sf           !GJF: this scheme has not been tested with this option turned on; the variables scurx and scury need to be input in order to use this
+        logical,                intent(in) :: pert_Cd            !GJF: this scheme has not been tested with this option turned on; the variables ens_random_seed and ens_Cdamp need to be input in order to use this
         logical, dimension(im), intent(in) :: flag_iter, wet, dry, icy
         integer, dimension(im), intent(in) :: isltyp, vegtype
-        real(kind=kind_phys), intent(in) :: rd, grav, ep1, ep2
-        real(kind=kind_phys), intent(in), dimension(im,nsoil) :: smois
-        real(kind=kind_phys), intent(in), dimension(im) :: psfc, prsl1, q1, t1,&
-                                                           u1, v1, u10, v10, gsw, glw, z1, shdmax, sigmaf, xlat, xlon,&
-                                                           tsurf_lnd, tsurf_ice
+        real(kind=kind_phys),                      intent(in) :: dt, sfenth
+        real(kind=kind_phys),                      intent(in) :: rd,grav,ep1,ep2
+        real(kind=kind_phys), dimension(im,nsoil), intent(in) :: smois
+        real(kind=kind_phys), dimension(im),       intent(in) :: psfc, prsl1,   &
+            q1, t1, u1, v1, u10, v10, gsw, glw, z1, shdmax, sigmaf, xlat, xlon, &
+            tsurf_ocn, tsurf_lnd, tsurf_ice
         
-        real(kind=kind_phys), intent(inout), dimension(im) :: tskin_ocn,       &
-            tskin_lnd, tskin_ice, ustar_ocn, ustar_lnd, ustar_ice,             &
-            znt_ocn, znt_lnd, znt_ice, cdm_ocn, cdm_lnd, cdm_ice,              &
-            stress_ocn, stress_lnd, stress_ice, rib_ocn, rib_lnd, rib_ice,     &
-            fm_ocn, fm_lnd, fm_ice, fh_ocn, fh_lnd, fh_ice, fh2_ocn, fh2_lnd,  &
-            fh2_ice, ch_ocn, ch_lnd, ch_ice, fm10_ocn, fm10_lnd, fm10_ice,     &
+        real(kind=kind_phys), intent(inout), dimension(im) :: tskin_ocn,        & 
+            tskin_lnd, tskin_ice, ustar_ocn, ustar_lnd, ustar_ice,              &
+            znt_ocn, znt_lnd, znt_ice, cdm_ocn, cdm_lnd, cdm_ice,               &
+            stress_ocn, stress_lnd, stress_ice, rib_ocn, rib_lnd, rib_ice,      &
+            fm_ocn, fm_lnd, fm_ice, fh_ocn, fh_lnd, fh_ice, fh2_ocn, fh2_lnd,   &
+            fh2_ice, ch_ocn, ch_lnd, ch_ice, fm10_ocn, fm10_lnd, fm10_ice,      &
             qss_ocn, qss_lnd, qss_ice
         
         character(len=*), intent(out) :: errmsg
@@ -132,41 +156,31 @@
         
         !GJF: the vonKarman constant should come in through the CCPP and be defined by the host model
         real (kind=kind_phys), parameter :: karman = 0.4
-        real (kind=kind_phys), parameter :: log01=log(0.01), log05=log(0.05), log07=log(0.07)
+        real (kind=kind_phys), parameter :: log01=log(0.01), log05=log(0.05),   &
+            log07=log(0.07)
         
-        integer :: iwavecpl, ens_random_seed, issflx !turn these into intent(in) and namelist options
-        logical :: diag_wind10m, diag_qss !turn these into intent(in) and namelist options
-        real(kind=kind_phys) :: ens_Cdamp !turn this into intent(in) and namelist option
+        !GJF: if the following variables will be used, they should be turned into intent(in) namelist options
+        integer :: iwavecpl, ens_random_seed, issflx
+        logical :: diag_wind10m, diag_qss
+        real(kind=kind_phys) :: ens_Cdamp
         
-        real(kind=kind_phys), dimension(im)   :: wetc, pspc, pkmax, tstrc, upc,&
-                     vpc, mznt, slwdc, wspd, wind10, qfx, qgh, zkmax, z1_cm, z0max, ztmax
-        real(kind=kind_phys), dimension(im)   :: u10_lnd, u10_ocn, u10_ice, v10_lnd, v10_ocn, v10_ice
+        real(kind=kind_phys), dimension(im)   :: wetc, pspc, pkmax, tstrc, upc, &
+            vpc, mznt, slwdc, wspd, wind10, qfx, qgh, zkmax, z1_cm, z0max, ztmax
+        real(kind=kind_phys), dimension(im)   :: u10_lnd, u10_ocn, u10_ice,     &
+            v10_lnd, v10_ocn, v10_ice
+            
+        !GJF: the following variables are identified as:
+        !"SCURX"       "Surface Currents(X)"                    "m s-1"
+        !"SCURY"       "Surface Currents(Y)"                    "m s-1
+        !"CHARN"       "Charnock Coeff"                         " "
+        !"MSANG"       "Wind/Stress Angle"                      "Radian"
         real(kind=kind_phys), dimension(im)   :: charn, msang, scurx, scury
-        real(kind=kind_phys), dimension(im)   :: fxh, fxe, fxmx, fxmy, xxfh,   &
+        
+        real(kind=kind_phys), dimension(im)   :: fxh, fxe, fxmx, fxmy, xxfh,    &
                                                  xxfh2, tzot
         real(kind=kind_phys), dimension(1:30) :: maxsmc, drysmc
-        real(kind=kind_phys)                  :: smcmax, smcdry, zhalf, cd10, esat, fm_lnd_old, fh_lnd_old, &
-                                                 tem1, tem2, czilc, cdlimit
-        
-        !"SCURX"       "Surface Currents(X)"                    "m s-1"
-        !"SCURY"       "Surface Currents(Y)"                     "m s-1
-        !"CHARN"       "Charnock Coeff"                    " "
-        !"MSANG"       "Wind/Stress Angle"                    "Radian"
-        
-        !GJF: These data should be made consistent with those used in the LSM (namelist_soilveg, namelist_soilveg_ruc, module_sf_noahlsm, etc.)
-        ! intead of being hardcoded here; keeping as-is to be consistent with legacy; the data here also only has nonzero values for
-        ! 16 soil types vs 19 for other STAS datasets
-        ! data maxsmc/0.339, 0.421, 0.434, 0.476, 0.476, 0.439,  &
-        !             0.404, 0.464, 0.465, 0.406, 0.468, 0.468,  &
-        !             0.439, 1.000, 0.200, 0.421, 0.000, 0.000,  &
-        !             0.000, 0.000, 0.000, 0.000, 0.000, 0.000,  &
-        !             0.000, 0.000, 0.000, 0.000, 0.000, 0.000/
-        ! 
-        ! data drysmc/0.010, 0.028, 0.047, 0.084, 0.084, 0.066,     &
-        !             0.067, 0.120, 0.103, 0.100, 0.126, 0.138,     &
-        !             0.066, 0.000, 0.006, 0.028, 0.000, 0.000,     &
-        !             0.000, 0.000, 0.000, 0.000, 0.000, 0.000,     &
-        !             0.000, 0.000, 0.000, 0.000, 0.000, 0.000/
+        real(kind=kind_phys)                  :: smcmax, smcdry, zhalf, cd10,   &
+            esat, fm_lnd_old, fh_lnd_old, tem1, tem2, czilc, cdlimit
         
         !#### This block will become unnecessary when maxsmc and drysmc come through the CCPP ####
         if (lsm == lsm_noah) then
@@ -182,6 +196,10 @@
           maxsmc = maxsmc_noah_wrfv4
           drysmc = drysmc_noah_wrfv4
         else
+          !GJF: These data were from the original GFDL surface layer scheme, but
+          !     rather than being hard-coded here, they should be shared with the
+          !     LSM. These data are kept for legacy purposes. Note that these only
+          !     have nonzero values for 16 soil types vs 19 for other STAS datasets
           data maxsmc/0.339, 0.421, 0.434, 0.476, 0.476, 0.439,  &
                        0.404, 0.464, 0.465, 0.406, 0.468, 0.468,  &
                        0.439, 1.000, 0.200, 0.421, 0.000, 0.000,  &
@@ -203,16 +221,16 @@
         ! end if
         iwavecpl = 0
         
-        !temporary setting of variables that should be moved to namelist is they are used
+        !GJF: temporary setting of variables that should be moved to namelist is they are used
         ens_random_seed = 0   !used for HWRF ensemble?
         ens_Cdamp = 0.0       !used for HWRF ensemble?
 
-        issflx = 0 !1 = calculate surface fluxes, 0 = don't
-        diag_wind10m = .false. !GJF: if one wants 10m wind speeds to come from this scheme, set this to True, 
-                              !put [u,v]10_[lnd/ocn/ice] in the scheme argument list (and metadata), and modify
-                              !GFS_surface_compsites to receive the individual components and calculate an all-grid value
-        diag_qss = .false. !GJF: saturation specific humidities are calculated by LSM, sea surface, and sea ice schemes in
-                           ! GFS-based suites
+        issflx = 0              !GJF:  1 = calculate surface fluxes, 0 = don't
+        diag_wind10m = .false.  !GJF: if one wants 10m wind speeds to come from this scheme, set this to True, 
+                                !  put [u,v]10_[lnd/ocn/ice] in the scheme argument list (and metadata), and modify
+                                !  GFS_surface_compsites to receive the individual components and calculate an all-grid value
+        diag_qss = .false.      !GJF: saturation specific humidities are calculated by LSM, sea surface, and sea ice schemes in
+                                !  GFS-based suites
         
         ! Initialize CCPP error handling variables
         errmsg = ''
@@ -225,34 +243,37 @@
         
         do i=its, ite
           if (flag_iter(i)) then
+            !GJF: Perform data preparation that is the same for all surface types
             
-            !perform data preparation that is the same for all surface types
-            
-            pspc(i) = psfc(i)*10. ! convert from Pa to cgs
-            pkmax(i) = prsl1(i)*10.
-            
-            !upc, vpc in cm s-1
-            upc(i) = u1(i)*100.
-            vpc(i) = v1(i)*100.
+            pspc(i) = psfc(i)*10.     ! convert from Pa to cgs
+            pkmax(i) = prsl1(i)*10.   ! convert from Pa to cgs
+
+            upc(i) = u1(i)*100.       ! convert from m s-1 to cm s-1
+            vpc(i) = v1(i)*100.       ! convert from m s-1 to cm s-1
             
             !GJF: wind speed at the lowest model layer is calculated in a scheme prior to this (if this scheme
             ! is part of a GFS-based suite), but it is recalculated here because this one DOES NOT include
             ! a convective wind enhancement component (convective gustiness factor) to follow the original
-            ! GFDL surface layer scheme
+            ! GFDL surface layer scheme; this may not be necessary
             wspd(i) = sqrt(u1(i)*u1(i) + v1(i)*v1(i))
-            wspd(i) = amax1(wspd(i),1.0)    !wspd in m s-1
+            wspd(i) = amax1(wspd(i),1.0)    !wspd is in m s-1
             
-            !Wang, calulate height of the first half level
-            !      use previous u10 v10 to compute wind10, input to MFLUX to compute z0
+            !Wang:  use previous u10 v10 to compute wind10, input to MFLUX2 to compute z0 (for first time step, u10 and v10 may be zero)
             wind10(i)=sqrt(u10(i)*u10(i)+v10(i)*v10(i)) !m s-1
-            !first time step, u10 and v10 may be zero
+            
+            !Wang: calulate height of the first half level
             ! if (wind10(i) <= 1.0e-10 .or. wind10(i) > 150.0) then
             !   zhalf = -rd*t1(i)*alog(pkmax(i)/pspc(i))/grav !m
             ! endif
             
+            !GJF: rather than calculate the height of the first half level, if it is precalculated
+            !  in a different scheme, pass it in and use it; note that in FV3, calculating via the hypsometric equation
+            !  occasionally produced values much shallower than those passed in
             !zkmax(i) = -rd*t1(i)*alog(pkmax(i)/pspc(i))/grav !m
             zkmax(i) = z1(i)
             z1_cm(i) = 100.0*z1(i)
+            
+            !GJF: this drag coefficient lower limit was suggested by Chunxi Zhang via his module_sf_sfclayrev.f90
             cdlimit  = 1.0e-5/zkmax(i)
             
             !slwdc... GFDL downward net flux in units of cal/(cm**2/min)
@@ -271,29 +292,31 @@
               qgh(i) = ep2*esat/(psfc(i)-esat)
             end if
             
+            !GJF: these vars are not needed in a GFS-based suite
             !rho1(i)=prsl1(i)/(rd*t1(i)*(1.+ep1*q1(i)))
             !cpm(i)=cp*(1.+0.8*q1(i))
             
-            !perform data preparation that depends on surface types and call the mflux2 subroutine for each surface type
+            !GJF: perform data preparation that depends on surface types and call the mflux2 subroutine for each surface type
+            !  Note that this is different than the original WRF module_sf_gfdl.F where mflux2 is called once for all surface
+            !  types, with negative roughness lengths denoting open ocean.
             if (dry(i)) then
+              !GJF: from WRF's module_sf_gfdl.F
               smcdry=drysmc(isltyp(i))
               smcmax=maxsmc(isltyp(i))
               wetc(i)=(smois(i,1)-smcdry)/(smcmax-smcdry)
               wetc(i)=amin1(1.,amax1(wetc(i),0.))
               
-              !averaging tskin_lnd and tsurf_lnd as in GFS surface layer breaks ntsflg functionality
-              tstrc(i) = 0.5*(tskin_lnd(i) + tsurf_lnd(i))
+              !GJF: the lower boundary temperature passed in to MFLUX2 either follows GFS:
+              tstrc(i) = 0.5*(tskin_lnd(i) + tsurf_lnd(i)) !averaging tskin_lnd and tsurf_lnd as in GFS surface layer breaks ntsflg functionality
+              !GJF: or WRF module_sf_gfdl.F:
+              !tstrc(i) = tskin_lnd(i)
               
-              !GJF: GFS surface layer (sfc_diff) makes sure that the roughness length is nonzero with: z0max = max(1.0e-6, min(znt_lnd(i),zkmax))
-              !if (znt_lnd(i) == 0.0) then
-              !  write(errmsg,'(*(a))') 'A zero-valued roughness length (surface_roughness_length_over_land_interstitial) was encountered in gfdl_sfc_layer.F90'
-              !  errflg = 1
-              !  return
-              !end if
-              !znt_lnd(i) = max(1.0e-4, min(znt_lnd(i),100.0*zkmax(i)))
-              !znt_lnd(i) = max(1.0e-4, min(znt_lnd(i),min(200.0,100.0*zkmax(i))))
+              !GJF: Roughness Length Limitation section
+              !  The WRF version of module_sf_gfdl.F has no checks on the roughness lengths prior to entering MFLUX2.
+              !  The following limits were placed on roughness lengths from the GFS surface layer scheme at the suggestion
+              !  of Chunxi Zhang. Using the GFDL surface layer without such checks can lead to instability in the UFS.
               
-              !znt_lnd is in cm
+              !znt_lnd is in cm, z0max/ztmax are in m at this point
               z0max(i) = max(1.0e-6, min(0.01 * znt_lnd(i), zkmax(i)))
               
               tem1  = 1.0 - shdmax(i)
@@ -340,13 +363,15 @@
        &                     * czilc*karman*sqrt(ustar_lnd(i)*(0.01/1.5e-05)))
               ztmax(i) = max(ztmax(i), 1.0e-6)
               
+              !GJF: from WRF's module_sf_gfdl.F
               if (wind10(i) <= 1.0e-10 .or. wind10(i) > 150.0) then
+                 !GJF: why not use wspd(i) to save compute?
                  wind10(i)=sqrt(u1(i)*u1(i)+v1(i)*v1(i))*alog(10.0/z0max(i))/alog(z1(i)/z0max(i)) !m s-1
               end if
-              wind10(i)=wind10(i)*100.0   !! m/s to cm/s
+              wind10(i)=wind10(i)*100.0   !convert from m/s to cm/s
               
-              ztmax(i) = ztmax(i)*100.0 !m to cm
-              z0max(i) = z0max(i)*100.0 !m to cm
+              ztmax(i) = ztmax(i)*100.0   !convert from m to cm
+              z0max(i) = z0max(i)*100.0   !convert from m to cm
               
               call mflux2 (fxh(i), fxe(i), fxmx(i), fxmy(i), cdm_lnd(i), rib_lnd(i), &
                 xxfh(i), ztmax(i), z0max(i), tstrc(i),   &
@@ -355,7 +380,8 @@
                 dt, wind10(i), xxfh2(i), ntsflg, sfenth, tzot(i), errmsg, &
                 errflg)
                 if (errflg /= 0) return
-                
+              
+              !GJF: this is broken when tstrc is set to an average of two variables
               if (ntsflg==1) then
                 tskin_lnd(i) = tstrc(i)      ! gopal's doing 
               end if
@@ -365,34 +391,39 @@
                 v10_lnd(i) = v1(i)*(0.01*wind10(i)/wspd(i))
               end if
               
-              !gz1oz0(i) = alog(zkmax(i)/(0.01*znt_lnd(i)))
-                         
+              !GJF: these variables are not needed in a GFS-based suite, but are found in WRF's module_sf_gfdl.F and kept in comments for legacy
+              !gz1oz0(i) = alog(zkmax(i)/(0.01*znt_lnd(i)))         
               !taux(i) = fxmx(i)/10.    ! gopal's doing for Ocean coupling
               !tauy(i) = fxmy(i)/10.    ! gopal's doing for Ocean coupling
               
               fm_lnd(i) = karman/sqrt(cdm_lnd(i))
               fh_lnd(i) = karman*xxfh(i)
               
-              !Other CCPP schemes (PBL) ask for fm/fh instead of psim/psih
+              !GJF: Other CCPP schemes (PBL) ask for fm/fh instead of psim/psih
               !psim_lnd(i)=gz1oz0(i)-fm_lnd(i)
               !psih_lnd(i)=gz1oz0(i)-fh_lnd(i)
               
               fh2_lnd(i) = karman*xxfh2(i)
               ch_lnd(i)  = karman*karman/(fm_lnd(i) * fh_lnd(i))
               
+              !GJF: these bounds on drag coefficients are from Chunxi Zhang's module_sf_sfclayrev.f90
               cdm_lnd(i) = max(cdm_lnd(i), cdlimit)
               cdm_lnd(i) = min(cdm_lnd(i), 0.1)
               ch_lnd(i)  = max(ch_lnd(i), cdlimit)
               ch_lnd(i)  = min(ch_lnd(i), 0.1)
+              !GJF: this bound is from WRF's module_sf_gfdl.F (I'm not sure if both are needed or which is more restrictive.)
               ch_lnd(i)  = min(ch_lnd(i), 0.05/wspd(i))
               
+              !GJF: from WRF's module_sf_gfdl.F
               ustar_lnd(i) = 0.01*sqrt(cdm_lnd(i)*   &
                          (upc(i)*upc(i) + vpc(i)*vpc(i)))
+              !GJF: from Chunxi Zhang's module_sf_sfclayrev.f90 (I'm not sure it's necessary.)
               ustar_lnd(i) = amax1(ustar_lnd(i),0.001)
                          
               stress_lnd(i) = cdm_lnd(i)*wspd(i)*wspd(i)
               
-              !!! convert cd, ch to values at 10m, for output
+              !GJF: from WRF's module_sf_gfdl.F
+              ! convert cd, ch to values at 10m, for output
               cd10 = cdm_lnd(i)
               if ( wind10(i) .ge. 0.1 ) then
                 cd10=cdm_lnd(i)* (wspd(i)/(0.01*wind10(i)) )**2
@@ -402,6 +433,8 @@
               end if
               fm10_lnd(i) = karman/sqrt(cd10)
               
+              !GJF: conductances aren't used in other CCPP schemes, but this limit 
+              !  might be able to replace the limits on drag coefficients above
               
               !chs_lnd(i)=ch_lnd(i)*wspd (i) !conductance
               !chs2_lnd(i)=ustar_lnd(i)*karman/fh2_lnd(i) !2m conductance
@@ -411,41 +444,37 @@
               ! chs2_lnd(i)=amin1(chs2_lnd(i), 0.05)
               ! if (chs2_lnd(i) < 0) chs2_lnd(i)=1.0e-6
               
-              ! if (fh_lnd(i) + fm_lnd(i) < 20.0*karman*karman*wspd(i)) then
-              !   fh_lnd_old = fh_lnd(i)
-              !   fm_lnd_old = fm_lnd(i)
-              !   fh_lnd(i) = fh_lnd_old + 0.5*(20.0*karman*karman*wspd(i) - (fm_lnd_old + fh_lnd_old))
-              !   fm_lnd(i) = fm_lnd_old + 0.5*(20.0*karman*karman*wspd(i) - (fm_lnd_old + fh_lnd_old))
-              ! end if  
-              ! fh2_lnd(i) = min(fh_lnd(i), max(fh2_lnd(i),20.0*ustar_lnd(i)/karman))
-              
               if (diag_qss) then
                 esat = fpvs(tskin_lnd(i))
                 qss_lnd(i) = ep2*esat/(psfc(i)-esat)
               end if
               
+              !GJF: not used in CCPP
               !flhc_lnd(i)=cpm(i)*rho1(i)*chs_lnd(i)
               !flqc_lnd(i)=rho1(i)*chs_lnd(i)
               !cqs2_lnd(i)=chs2_lnd(i)
             end if !dry
             
             if (icy(i)) then
+              !GJF: from WRF's module_sf_gfdl.F
               smcdry=drysmc(isltyp(i))
               smcmax=maxsmc(isltyp(i))
               wetc(i)=(smois(i,1)-smcdry)/(smcmax-smcdry)
               wetc(i)=amin1(1.,amax1(wetc(i),0.))
               
-              !averaging tskin_lnd and tsurf_lnd as in GFS surface layer breaks ntsflg functionality
-              tstrc(i) = 0.5*(tskin_ice(i) + tsurf_ice(i))
               
-              !GJF: GFS surface layer (sfc_diff) makes sure that the roughness length is nonzero with: z0max = max(1.0e-6, min(znt_ice(i),zkmax))
-              ! if (znt_ice(i) == 0.0) then
-              !   write(errmsg,'(*(a))') 'A zero-valued roughness length (surface_roughness_length_over_ice_interstitial) was encountered in gfdl_sfc_layer.F90'
-              !   errflg = 1
-              !   return
-              ! end if
-              !znt_ice(i) = max(1.0e-4, min(znt_ice(i),100.0*zkmax(i)))
+              !GJF: the lower boundary temperature passed in to MFLUX2 either follows GFS:
+              tstrc(i) = 0.5*(tskin_ice(i) + tsurf_ice(i)) !averaging tskin_ice and tsurf_ice as in GFS surface layer breaks ntsflg functionality
+              !GJF: or WRF module_sf_gfdl.F:
+              !tstrc(i) = tskin_ice(i)
+              !averaging tskin_ice and tsurf_ice as in GFS surface layer breaks ntsflg functionality
               
+              !GJF: Roughness Length Limitation section
+              !  The WRF version of module_sf_gfdl.F has no checks on the roughness lengths prior to entering MFLUX2.
+              !  The following limits were placed on roughness lengths from the GFS surface layer scheme at the suggestion
+              !  of Chunxi Zhang. Using the GFDL surface layer without such checks can lead to instability in the UFS.
+              
+              !znt_ice is in cm, z0max/ztmax are in m at this point
               z0max(i) = max(1.0e-6, min(0.01 * znt_ice(i), zkmax(i)))
   !** xubin's new z0  over land and sea ice
               tem1  = 1.0 - shdmax(i)
@@ -469,7 +498,10 @@
        &                     * czilc*karman*sqrt(ustar_ice(i)*(0.01/1.5e-05)))
               ztmax(i) = max(ztmax(i), 1.0e-6)
               
+              
+              !GJF: from WRF's module_sf_gfdl.F
               if (wind10(i) <= 1.0e-10 .or. wind10(i) > 150.0) then
+                 !GJF: why not use wspd(i) to save compute?
                  wind10(i)=sqrt(u1(i)*u1(i)+v1(i)*v1(i))*alog(10.0/z0max(i))/alog(z1(i)/z0max(i))
               end if
               wind10(i)=wind10(i)*100.0   !! m/s to cm/s
@@ -484,7 +516,8 @@
                 dt, wind10(i), xxfh2(i), ntsflg, sfenth, tzot(i), errmsg, &
                 errflg)
                 if (errflg /= 0) return
-                
+              
+              !GJF: this is broken when tstrc is set to an average of two variables
               if (ntsflg==1) then
                 tskin_ice(i) = tstrc(i)      ! gopal's doing 
               end if
@@ -494,8 +527,8 @@
                 v10_ice(i) = v1(i)*(0.01*wind10(i)/wspd(i))
               end if
               
+              !GJF: these variables are not needed in a GFS-based suite, but are found in WRF's module_sf_gfdl.F and kept in comments for legacy
               !gz1oz0(i) = alog(zkmax(i)/znt_ice(i))
-              
               !taux(i) = fxmx(i)/10.    ! gopal's doing for Ocean coupling
               !tauy(i) = fxmy(i)/10.    ! gopal's doing for Ocean coupling
               
@@ -509,18 +542,22 @@
               fh2_ice(i) = karman*xxfh2(i)
               ch_ice(i)  = karman*karman/(fm_ice(i) * fh_ice(i))
               
+              !GJF: these bounds on drag coefficients are from Chunxi Zhang's module_sf_sfclayrev.f90
               cdm_ice(i) = max(cdm_ice(i), cdlimit)
               cdm_ice(i) = min(cdm_ice(i), 0.1)
               ch_ice(i)  = max(ch_ice(i), cdlimit)
               ch_ice(i)  = min(ch_ice(i), 0.1)
+              !GJF: this bound is from WRF's module_sf_gfdl.F (I'm not sure if both are needed or which is more restrictive.)
               ch_ice(i)  = min(ch_ice(i), 0.05/wspd(i))
               
               ustar_ice(i) = 0.01*sqrt(cdm_ice(i)*   &
                          (upc(i)*upc(i) + vpc(i)*vpc(i)))
+              !GJF: from Chunxi Zhang's module_sf_sfclayrev.f90 (I'm not sure it's necessary.)
               ustar_ice(i) = amax1(ustar_ice(i),0.001)
               
               stress_ice(i) = cdm_ice(i)*wspd(i)*wspd(i)
               
+              !GJF: from WRF's module_sf_gfdl.F
               !!! convert cd, ch to values at 10m, for output
               cd10 = cdm_ice(i)
               if ( wind10(i) .ge. 0.1 ) then
@@ -531,6 +568,7 @@
               end if
               fm10_ice(i) = karman/sqrt(cd10)
               
+              !GJF: conductances aren't used in other CCPP schemes
               !chs_ice(i)=ch_ice(i)*wspd (i) !conductance
               !chs2_ice(i)=ustar_ice(i)*karman/fh2_ice(i) !2m conductance
               
@@ -547,22 +585,18 @@
             if (wet(i)) then
               wetc(i) = 1.0
               
-              tstrc(i) = tskin_ocn(i)
+              !GJF: the lower boundary temperature passed in to MFLUX2 either follows GFS:
+              tstrc(i) = 0.5*(tskin_ocn(i) + tsurf_ocn(i)) !averaging tskin_ocn and tsurf_ocn as in GFS surface layer breaks ntsflg functionality
+              !GJF: or WRF module_sf_gfdl.F:
+              !tstrc(i) = tskin_ocn(i)
               
-              !GJF: GFS surface layer (sfc_diff) makes sure that the roughness length is nonzero with: z0max = max(1.0e-6, min(znt_ocn(i),zkmax))
-              ! if (znt_ocn(i) == 0.0) then
-              !   write(errmsg,'(*(a))') 'A zero-valued roughness length (surface_roughness_length_over_ocean_interstitial) was encountered in gfdl_sfc_layer.F90'
-              !   errflg = 1
-              !   return
-              ! end if
-              !znt_ocn(i) = max(1.0e-4, min(znt_ocn(i),100.0*zkmax(i)))
-              
+              !GJF: from WRF's module_sf_gfdl.F
               if (wind10(i) <= 1.0e-10 .or. wind10(i) > 150.0) then
                  wind10(i)=sqrt(u1(i)*u1(i)+v1(i)*v1(i))*alog(10.0/(0.01*znt_ocn(i)))/alog(z1(i)/(0.01*znt_ocn(i)))
               end if
               wind10(i)=wind10(i)*100.0   !! m/s to cm/s
               
-              !mflux2 expects negative roughness length for ocean points
+              !GJF: mflux2 expects negative roughness length for ocean points
               znt_ocn(i) = -znt_ocn(i)
               
               call mflux2 (fxh(i), fxe(i), fxmx(i), fxmy(i), cdm_ocn(i), rib_ocn(i), &
@@ -573,6 +607,7 @@
                 errflg)
                 if (errflg /= 0) return
               
+              !GJF: this is broken when tstrc is set to an average of two variables
               if (ntsflg==1) then
                 tskin_ocn(i) = tstrc(i)      ! gopal's doing 
               end if
@@ -580,13 +615,16 @@
               znt_ocn(i)= abs(znt_ocn(i))
               mznt(i)= abs(mznt(i))
               
+              !GJF: these bounds on ocean roughness lengths are from Chunxi Zhang's module_sf_sfclayrev.f90 (in cm)
+              znt_ocn(i)=min(2.85e-1,max(znt_ocn(i),1.27e-5))
+              
               if (diag_wind10m) then
                 u10_ocn(i) = u1(i)*(0.01*wind10(i)/wspd(i))
                 v10_ocn(i) = v1(i)*(0.01*wind10(i)/wspd(i))
               end if
               
+              !GJF: these variables are not needed in a GFS-based suite, but are found in WRF's module_sf_gfdl.F and kept in comments for legacy
               !gz1oz0(i) = alog(zkmax(i)/znt_ocn(i))
-              
               !taux(i) = fxmx(i)/10.    ! gopal's doing for Ocean coupling
               !tauy(i) = fxmy(i)/10.    ! gopal's doing for Ocean coupling
             
@@ -600,17 +638,22 @@
               fh2_ocn(i) = karman*xxfh2(i)
               ch_ocn(i)  = karman*karman/(fm_ocn(i) * fh_ocn(i))
               
+              !GJF: these bounds on drag coefficients are from Chunxi Zhang's module_sf_sfclayrev.f90
               cdm_ocn(i) = max(cdm_ocn(i), cdlimit)
               cdm_ocn(i) = min(cdm_ocn(i), 0.1)
               ch_ocn(i)  = max(ch_ocn(i), cdlimit)
               ch_ocn(i)  = min(ch_ocn(i), 0.1)
+              !GJF: this bound is from WRF's module_sf_gfdl.F (I'm not sure if both are needed or which is more restrictive.)
               ch_ocn(i)  = min(ch_ocn(i), 0.05/wspd(i))
               
               ustar_ocn(i) = 0.01*sqrt(cdm_ocn(i)*   &
                          (upc(i)*upc(i) + vpc(i)*vpc(i)))
+              !GJF: from Chunxi Zhang's module_sf_sfclayrev.f90 (I'm not sure it's necessary.)
+              ustar_ocn(i) = amax1(ustar_ocn(i),0.001)
               
               stress_ocn(i) = cdm_ocn(i)*wspd(i)*wspd(i)
               
+              !GJF: from WRF's module_sf_gfdl.F
               !!! convert cd, ch to values at 10m, for output
               cd10 = cdm_ocn(i)
               if ( wind10(i) .ge. 0.1 ) then
@@ -621,6 +664,7 @@
               end if
               fm10_ocn(i) = karman/sqrt(cd10)
               
+              !GJF: conductances aren't used in other CCPP schemes
               !chs_ocn(i)=ch_ocn(i)*wspd (i) !conductance
               !chs2_ocn(i)=ustar_ocn(i)*karman/fh2_ocn(i) !2m conductance
               
@@ -633,10 +677,6 @@
             !flhc_ocn(i)=cpm(i)*rho1(i)*chs_ocn(i)
             !flqc_ocn(i)=rho1(i)*chs_ocn(i)
             !cqs2_ocn(i)=chs2_ocn(i)
-            ! if (dry(i) .and. fh2_lnd(i) < 0.0) then
-            !   write(*,*) 'gfdl_sfc_layer:',ustar_lnd(i), znt_lnd(i), rib_lnd(i), cdm_lnd(i), ch_lnd(i), stress_lnd(i), &
-            !     fm_lnd(i), fm10_lnd(i), fh_lnd(i), fh2_lnd(i), dry(i), icy(i), wet(i), xlat(i), xlon(i)
-            ! end if
           end if !flag_iter
         end do
         
