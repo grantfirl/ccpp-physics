@@ -21,6 +21,7 @@
       subroutine GFS_rrtmg_pre_run (Model, Grid, Sfcprop, Statein,   & ! input
           Tbd, Cldprop, Coupling,                                    &
           Radtend,                                                   & ! input/output
+          imp_physics_nssl2m, imp_physics_nssl2mccn,                 &
           imfdeepcnv, imfdeepcnv_gf,                                 &
           f_ice, f_rain, f_rimef, flgmin, cwm,                       & ! F-A mp scheme only
           lm, im, lmk, lmp,                                          & ! input
@@ -91,7 +92,8 @@
       type(GFS_coupling_type),             intent(in)    :: Coupling
 
       integer,              intent(in)  :: im, lm, lmk, lmp
-      integer,              intent(in)  :: imfdeepcnv, imfdeepcnv_gf
+      integer,              intent(in)  :: imp_physics_nssl2m, imp_physics_nssl2mccn, &
+                                           imfdeepcnv, imfdeepcnv_gf
       integer,              intent(out) :: kd, kt, kb
 
 ! F-A mp scheme only
@@ -874,7 +876,8 @@
                          clouds,cldsa,mtopa,mbota, de_lgth)            !  --- outputs
 
 
-        elseif(Model%imp_physics == Model%imp_physics_thompson) then                              ! Thompson MP
+        elseif(Model%imp_physics == Model%imp_physics_thompson .or. Model%imp_physics == imp_physics_nssl2m .or. 
+          Model%imp_physics == imp_physics_nssl2mccn) then                              ! Thompson MP
 
           if(Model%do_mynnedmf .or.                                 & 
                            Model%imfdeepcnv == Model%imfdeepcnv_gf ) then ! MYNN PBL or GF conv

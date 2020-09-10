@@ -58,7 +58,7 @@ module surface_perturbation
         endif
 
       return
-      end
+    end subroutine cdfnor
 
 !>\ingroup gfs_sfcpert
       subroutine cdfgam(x,alpha,eps,iflag,cdfx)

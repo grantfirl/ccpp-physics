@@ -82,8 +82,10 @@
       subroutine GFS_PBL_generic_pre_run (im, levs, nvdiff, ntrac,                       &
         ntqv, ntcw, ntiw, ntrw, ntsw, ntlnc, ntinc, ntrnc, ntsnc, ntgnc,                 &
         ntwa, ntia, ntgl, ntoz, ntke, ntkev, nqrimef, trans_aero, ntchs, ntchm,          &
+        ntccn, nthl, nthnc, ntgv, nthv,                                                  &
         imp_physics, imp_physics_gfdl, imp_physics_thompson, imp_physics_wsm6,           &
-        imp_physics_zhao_carr, imp_physics_mg, imp_physics_fer_hires, cplchm, ltaerosol, &
+        imp_physics_zhao_carr, imp_physics_mg, imp_physics_fer_hires, imp_physics_nssl2m,&
+        imp_physics_nssl2mccn, cplchm, ltaerosol,                                        &
         hybedmf, do_shoc, satmedmf, qgrs, vdftra, save_u, save_v, save_t, save_q,        &
         ldiag3d, qdiag3d, lssav, ugrs, vgrs, tgrs, errmsg, errflg)
 
@@ -96,9 +98,11 @@
       integer, intent(in) :: im, levs, nvdiff, ntrac
       integer, intent(in) :: ntqv, ntcw, ntiw, ntrw, ntsw, ntlnc, ntinc, ntrnc, ntsnc, ntgnc
       integer, intent(in) :: ntwa, ntia, ntgl, ntoz, ntke, ntkev, nqrimef,ntchs, ntchm
+      integer, intent(in) :: ntccn, nthl, nthnc, ntgv, nthv
       logical, intent(in) :: trans_aero, ldiag3d, qdiag3d, lssav
       integer, intent(in) :: imp_physics, imp_physics_gfdl, imp_physics_thompson, imp_physics_wsm6
       integer, intent(in) :: imp_physics_zhao_carr, imp_physics_mg, imp_physics_fer_hires
+      integer, intent(in) :: imp_physics_nssl2m, imp_physics_nssl2mccn
       logical, intent(in) :: cplchm, ltaerosol, hybedmf, do_shoc, satmedmf
 
       real(kind=kind_phys), dimension(im, levs, ntrac), intent(in) :: qgrs
@@ -239,6 +243,29 @@
               vdftra(i,k,3) = qgrs(i,k,ntoz)
             enddo
           enddo
+        elseif (imp_physics == imp_physics_nssl2m .or. imp_physics == imp_physics_nssl2mccn ) then
+  ! nssl
+            do k=1,levs
+              do i=1,im
+                vdftra(i,k,1)  = qgrs(i,k,ntqv)
+                vdftra(i,k,2)  = qgrs(i,k,ntcw)
+                vdftra(i,k,3)  = qgrs(i,k,ntiw)
+                vdftra(i,k,4)  = qgrs(i,k,ntrw)
+                vdftra(i,k,5)  = qgrs(i,k,ntsw)
+                vdftra(i,k,6)  = qgrs(i,k,ntgl)
+                vdftra(i,k,7)  = qgrs(i,k,nthl)
+                vdftra(i,k,8)  = qgrs(i,k,ntlnc)
+                vdftra(i,k,9)  = qgrs(i,k,ntinc)
+                vdftra(i,k,10)  = qgrs(i,k,ntrnc)
+                vdftra(i,k,11)  = qgrs(i,k,ntsnc)
+                vdftra(i,k,12)  = qgrs(i,k,ntgnc)
+                vdftra(i,k,13)  = qgrs(i,k,nthnc)
+                vdftra(i,k,14)  = qgrs(i,k,ntgv)
+                vdftra(i,k,15)  = qgrs(i,k,nthv)
+                vdftra(i,k,16)  = qgrs(i,k,ntoz)
+                vdftra(i,k,17)  = qgrs(i,k,ntccn)
+              enddo
+            enddo
         endif
 !
         if (trans_aero) then
@@ -308,9 +335,9 @@
 !!
       subroutine GFS_PBL_generic_post_run (im, levs, nvdiff, ntrac,                                                            &
         ntqv, ntcw, ntiw, ntrw, ntsw, ntlnc, ntinc, ntrnc, ntsnc, ntgnc, ntwa, ntia, ntgl, ntoz, ntke, ntkev,nqrimef,          &
-        trans_aero, ntchs, ntchm,                                                                                              &
+        trans_aero, ntchs, ntchm, ntccn, nthl, nthnc, ntgv, nthv,                                                              &
         imp_physics, imp_physics_gfdl, imp_physics_thompson, imp_physics_wsm6, imp_physics_zhao_carr, imp_physics_mg,          &
-        imp_physics_fer_hires,                                                                                                 &
+        imp_physics_fer_hires, imp_physics_nssl2m, imp_physics_nssl2mccn,                                                      &
         ltaerosol, cplflx, cplchm, lssav, flag_for_pbl_generic_tend, ldiag3d, qdiag3d, lsidea, hybedmf, do_shoc, satmedmf,     &
         shinhong, do_ysu, dvdftra, dusfc1, dvsfc1, dtsfc1, dqsfc1, dtf, dudt, dvdt, dtdt, htrsw, htrlw, xmu,                   &
         dqdt, dusfc_cpl, dvsfc_cpl, dtsfc_cpl,                                                                                 &
@@ -326,11 +353,11 @@
       implicit none
 
       integer, parameter  :: kp = kind_phys
-      integer, intent(in) :: im, levs, nvdiff, ntrac, ntchs, ntchm
+      integer, intent(in) :: im, levs, nvdiff, ntrac, ntchs, ntchm, ntccn, nthl, nthnc, ntgv, nthv
       integer, intent(in) :: ntqv, ntcw, ntiw, ntrw, ntsw, ntlnc, ntinc, ntrnc, ntsnc, ntgnc, ntwa, ntia, ntgl, ntoz, ntke, ntkev, nqrimef
       logical, intent(in) :: trans_aero
       integer, intent(in) :: imp_physics, imp_physics_gfdl, imp_physics_thompson, imp_physics_wsm6
-      integer, intent(in) :: imp_physics_zhao_carr, imp_physics_mg, imp_physics_fer_hires
+      integer, intent(in) :: imp_physics_zhao_carr, imp_physics_mg, imp_physics_fer_hires, imp_physics_nssl2m, imp_physics_nssl2mccn
       logical, intent(in) :: ltaerosol, cplflx, cplchm, lssav, ldiag3d, qdiag3d, lsidea
       logical, intent(in) :: hybedmf, do_shoc, satmedmf, shinhong, do_ysu
       logical, dimension(:), intent(in) :: flag_cice
@@ -529,6 +556,29 @@
               dqdt(i,k,ntoz) = dvdftra(i,k,3)
             enddo
           enddo
+        elseif (imp_physics == imp_physics_nssl2m .or. imp_physics == imp_physics_nssl2mccn ) then
+  ! nssl
+            do k=1,levs
+              do i=1,im
+               dqdt(i,k,ntqv) = dvdftra(i,k,1)  
+               dqdt(i,k,ntcw) = dvdftra(i,k,2)  
+               dqdt(i,k,ntiw) = dvdftra(i,k,3)  
+               dqdt(i,k,ntrw) = dvdftra(i,k,4)  
+               dqdt(i,k,ntsw) = dvdftra(i,k,5)  
+               dqdt(i,k,ntgl) = dvdftra(i,k,6)  
+               dqdt(i,k,nthl) = dvdftra(i,k,7)  
+               dqdt(i,k,ntlnc) = dvdftra(i,k,8) 
+               dqdt(i,k,ntinc) = dvdftra(i,k,9) 
+               dqdt(i,k,ntrnc) = dvdftra(i,k,10)
+               dqdt(i,k,ntsnc) = dvdftra(i,k,11)
+               dqdt(i,k,ntgnc) = dvdftra(i,k,12)
+               dqdt(i,k,nthnc) = dvdftra(i,k,13)
+               dqdt(i,k,ntgv) = dvdftra(i,k,14) 
+               dqdt(i,k,nthv) = dvdftra(i,k,15) 
+               dqdt(i,k,ntoz) = dvdftra(i,k,16) 
+               dqdt(i,k,ntccn) = dvdftra(i,k,17)
+              enddo
+            enddo
         endif
 
       endif ! nvdiff == ntrac

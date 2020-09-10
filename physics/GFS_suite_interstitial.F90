@@ -496,7 +496,8 @@
                xlon, xlat, gt0, gq0, imp_physics, imp_physics_mg,       &
                imp_physics_zhao_carr, imp_physics_zhao_carr_pdf,        &
                imp_physics_gfdl, imp_physics_thompson,                  &
-               imp_physics_wsm6, imp_physics_fer_hires, prsi,           &
+               imp_physics_wsm6, imp_physics_fer_hires,                 &
+               imp_physics_nssl2m, imp_physics_nssl2mccn, prsi,         &
                prsl, prslk, rhcbot,rhcpbl, rhctop, rhcmax, islmsk,      &
                work1, work2, kpbl, kinver, ras, me,                     &
                clw, rhc, save_qc, save_qi, save_tcp, errmsg, errflg)
@@ -508,7 +509,8 @@
       ! interface variables
       integer,                                          intent(in) :: im, levs, nn, ntrac, ntcw, ntiw, ntclamt, ntrw,   &
         ntsw, ntrnc, ntsnc, ntgl, ntgnc, imp_physics, imp_physics_mg, imp_physics_zhao_carr, imp_physics_zhao_carr_pdf, &
-        imp_physics_gfdl, imp_physics_thompson, imp_physics_wsm6,imp_physics_fer_hires, me
+        imp_physics_gfdl, imp_physics_thompson, imp_physics_wsm6,imp_physics_fer_hires, imp_physics_nssl2m,             &
+        imp_physics_nssl2mccn, me
       integer, dimension(im),                           intent(in) :: islmsk, kpbl, kinver
       logical,                                          intent(in) :: cscnv, satmedmf, trans_trac, do_shoc, ltaerosol, ras
 
@@ -634,6 +636,13 @@
         else
           save_qi(:,:) = clw(:,:,1)
         endif
+      else if (imp_physics == imp_physics_nssl2m .or. imp_physics == imp_physics_nssl2mccn ) then
+        do k=1,levs
+          do i=1,im
+            clw(i,k,1) = gq0(i,k,ntiw)                    ! ice
+            clw(i,k,2) = gq0(i,k,ntcw)                    ! water
+          enddo
+        enddo
       elseif (imp_physics == imp_physics_wsm6 .or. imp_physics == imp_physics_mg .or. imp_physics == imp_physics_fer_hires) then
         do k=1,levs
           do i=1,im
@@ -662,8 +671,8 @@
 !!
     subroutine GFS_suite_interstitial_4_run (im, levs, ltaerosol, cplchm, tracers_total, ntrac, ntcw, ntiw, ntclamt, &
       ntrw, ntsw, ntrnc, ntsnc, ntgl, ntgnc, ntlnc, ntinc, nn, imp_physics, imp_physics_gfdl, imp_physics_thompson,  &
-      imp_physics_zhao_carr, imp_physics_zhao_carr_pdf, dtf, save_qc, save_qi, con_pi,                               &
-      gq0, clw, prsl, save_tcp, con_rd, nwfa, spechum, dqdti, errmsg, errflg)
+      imp_physics_zhao_carr, imp_physics_zhao_carr_pdf, imp_physics_nssl2m, imp_physics_nssl2mccn, dtf, save_qc,     &
+      save_qi, con_pi, gq0, clw, prsl, save_tcp, con_rd, nwfa, spechum, dqdti, errmsg, errflg)
 
       use machine,               only: kind_phys
       use module_mp_thompson_make_number_concentrations, only: make_IceNumber, make_DropletNumber
@@ -674,7 +683,7 @@
 
       integer,                                  intent(in) :: im, levs, tracers_total, ntrac, ntcw, ntiw, ntclamt, ntrw,  &
         ntsw, ntrnc, ntsnc, ntgl, ntgnc, ntlnc, ntinc, nn, imp_physics, imp_physics_gfdl, imp_physics_thompson,           &
-        imp_physics_zhao_carr, imp_physics_zhao_carr_pdf
+        imp_physics_zhao_carr, imp_physics_zhao_carr_pdf, imp_physics_nssl2m, imp_physics_nssl2mccn
 
       logical,                                  intent(in) :: ltaerosol, cplchm
 
@@ -747,6 +756,17 @@
               gq0(i,k,ntcw) = clw(i,k,2)                     ! water
             enddo
           enddo
+
+          if (imp_physics == imp_physics_nssl2m .or. imp_physics == imp_physics_nssl2mccn ) then
+              do k=1,levs
+                do i=1,im
+                  gq0(i,k,ntlnc) = gq0(i,k,ntlnc)  &
+                           +  max(0.0, (clw(i,k,2)-save_qc(i,k))) / liqm
+                  gq0(i,k,ntinc) = gq0(i,k,ntinc)  &
+                           +  max(0.0, (clw(i,k,1)-save_qi(i,k))) / icem
+                enddo
+              enddo
+          endif
 
           if (imp_physics == imp_physics_thompson .and. (ntlnc>0 .or. ntinc>0)) then
             do k=1,levs

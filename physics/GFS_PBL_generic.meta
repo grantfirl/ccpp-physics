@@ -199,6 +199,46 @@
   type = integer
   intent = in
   optional = F
+[ntccn]
+  standard_name = index_for_cccn
+  long_name = tracer index for ccn number concentration
+  units = index
+  dimensions = ()
+  type = integer
+  intent = in
+  optional = F
+[nthl]
+  standard_name = index_for_hail
+  long_name = tracer index for hail
+  units = index
+  dimensions = ()
+  type = integer
+  intent = in
+  optional = F
+[nthnc]
+  standard_name = index_for_hail_number_concentration
+  long_name = tracer index for hail number concentration
+  units = index
+  dimensions = ()
+  type = integer
+  intent = in
+  optional = F
+[ntgv]
+  standard_name = index_for_graupel_volume
+  long_name = tracer index for graupel particle volume
+  units = index
+  dimensions = ()
+  type = integer
+  intent = in
+  optional = F
+[nthv]
+  standard_name = index_for_hail_volume
+  long_name = tracer index for hail particle volume
+  units = index
+  dimensions = ()
+  type = integer
+  intent = in
+  optional = F
 [imp_physics]
   standard_name = flag_for_microphysics_scheme
   long_name = choice of microphysics scheme
@@ -250,6 +290,22 @@
 [imp_physics_fer_hires]
   standard_name = flag_for_fer_hires_microphysics_scheme
   long_name = choice of Ferrier-Aligo microphysics scheme
+  units = flag
+  dimensions = ()
+  type = integer
+  intent = in
+  optional = F
+[imp_physics_nssl2m]
+  standard_name = flag_for_nssl2m_microphysics_scheme
+  long_name = choice of NSSL 2-moment microphysics scheme
+  units = flag
+  dimensions = ()
+  type = integer
+  intent = in
+  optional = F
+[imp_physics_nssl2mccn]
+  standard_name = flag_for_nssl2mccn_microphysics_scheme
+  long_name = choice of NSSL 2-moment microphysics scheme with CCN
   units = flag
   dimensions = ()
   type = integer
@@ -620,6 +676,46 @@
   type = integer
   intent = in
   optional = F
+[ntccn]
+  standard_name = index_for_cccn
+  long_name = tracer index for ccn number concentration
+  units = index
+  dimensions = ()
+  type = integer
+  intent = in
+  optional = F
+[nthl]
+  standard_name = index_for_hail
+  long_name = tracer index for hail
+  units = index
+  dimensions = ()
+  type = integer
+  intent = in
+  optional = F
+[nthnc]
+  standard_name = index_for_hail_number_concentration
+  long_name = tracer index for hail number concentration
+  units = index
+  dimensions = ()
+  type = integer
+  intent = in
+  optional = F
+[ntgv]
+  standard_name = index_for_graupel_volume
+  long_name = tracer index for graupel particle volume
+  units = index
+  dimensions = ()
+  type = integer
+  intent = in
+  optional = F
+[nthv]
+  standard_name = index_for_hail_volume
+  long_name = tracer index for hail particle volume
+  units = index
+  dimensions = ()
+  type = integer
+  intent = in
+  optional = F
 [imp_physics]
   standard_name = flag_for_microphysics_scheme
   long_name = choice of microphysics scheme
@@ -671,6 +767,22 @@
 [imp_physics_fer_hires]
   standard_name = flag_for_fer_hires_microphysics_scheme
   long_name = choice of Ferrier-Aligo microphysics scheme
+  units = flag
+  dimensions = ()
+  type = integer
+  intent = in
+  optional = F
+[imp_physics_nssl2m]
+  standard_name = flag_for_nssl2m_microphysics_scheme
+  long_name = choice of NSSL 2-moment microphysics scheme
+  units = flag
+  dimensions = ()
+  type = integer
+  intent = in
+  optional = F
+[imp_physics_nssl2mccn]
+  standard_name = flag_for_nssl2mccn_microphysics_scheme
+  long_name = choice of NSSL 2-moment microphysics scheme with CCN
   units = flag
   dimensions = ()
   type = integer
