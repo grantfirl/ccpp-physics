@@ -1,3 +1,8 @@
+[ccpp-table-properties]
+  name = mp_nsslg
+  type = scheme
+  dependencies = machine.F,module_mp_nssl_2mom.F90
+
 [ccpp-arg-table]
   name = mp_nsslg_init
   type = scheme
