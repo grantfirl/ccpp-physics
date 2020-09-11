@@ -784,18 +784,18 @@
   intent = in
   optional = F
 [naai_i]
-  standard_name = in_number_concentration
-  long_name = IN number concentration
-  units = kg-1?
+  standard_name = activated_in_number_concentration_forcing
+  long_name = activated IN number concentration forcing
+  units = kg-1
   dimensions = (horizontal_dimension,vertical_dimension)
   type = real
   kind = kind_phys
   intent = in
   optional = F
 [npccn_i]
-  standard_name = ccn_number_concentration
-  long_name = CCN number concentration
-  units = kg-1?
+  standard_name = activated_ccn_number_concentration_forcing
+  long_name = activated CCN number concentration forcing
+  units = kg-1
   dimensions = (horizontal_dimension,vertical_dimension)
   type = real
   kind = kind_phys

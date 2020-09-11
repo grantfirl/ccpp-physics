@@ -22,8 +22,6 @@ module mp_nsslg
 !! \section arg_table_mp_nsslg_init Argument Table
 !! \htmlinclude mp_nsslg_init.html
 !!
-
-
     subroutine mp_nsslg_init(ncol, nlev, errflg, errmsg,threads, &
                                        mpicomm, mpirank, mpiroot,    &
                                        imp_physics,                  &
@@ -128,13 +126,12 @@ module mp_nsslg
 
     end subroutine mp_nsslg_init
 
-
-!> \section arg_table_mp_nsslg_run Argument Table
-!! \htmlinclude mp_nsslg_run.html
-!!
 !>\ingroup aansslg
 !>\section gen_nsslg NSSL MP General Algorithm
 !>@{
+!> \section arg_table_mp_nsslg_run Argument Table
+!! \htmlinclude mp_nsslg_run.html
+!!
     subroutine mp_nsslg_run(ncol, nlev, con_g, con_rd, &
                              spechum, cccn, qc, qr, qi, qs, qh, qhl,   &
                              ccw, crw, cci, csw, chw, chl, vh, vhl,      &
@@ -458,7 +455,7 @@ module mp_nsslg
 !>@}
 
 #if 0
-!! \section arg_table_mp_thompson_finalize Argument Table
+!! \section arg_table_mp_nsslg_finalize Argument Table
 !! \htmlinclude mp_nsslg_finalize.html
 !!
 #endif

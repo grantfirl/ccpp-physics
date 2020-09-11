@@ -709,6 +709,8 @@
 
       ! local variables
       integer :: i,k,n,tracers
+      
+      real(kind=kind_phys) :: liqm, icem
 
       real(kind=kind_phys), dimension(im,levs) :: rho_dryair
       real(kind=kind_phys), dimension(im,levs) :: qv_mp !< kg kg-1 (dry mixing ratio)
@@ -758,6 +760,8 @@
           enddo
 
           if (imp_physics == imp_physics_nssl2m .or. imp_physics == imp_physics_nssl2mccn ) then
+              liqm = 4./3.*con_pi*1.e-12
+              icem = 4./3.*con_pi*3.2768*1.e-14*890.
               do k=1,levs
                 do i=1,im
                   gq0(i,k,ntlnc) = gq0(i,k,ntlnc)  &

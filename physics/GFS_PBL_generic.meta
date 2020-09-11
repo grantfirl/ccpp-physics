@@ -200,8 +200,8 @@
   intent = in
   optional = F
 [ntccn]
-  standard_name = index_for_cccn
-  long_name = tracer index for ccn number concentration
+  standard_name = index_for_cloud_condensation_nuclei_number_concentration
+  long_name = tracer index for cloud condensation nuclei number concentration
   units = index
   dimensions = ()
   type = integer
@@ -677,8 +677,8 @@
   intent = in
   optional = F
 [ntccn]
-  standard_name = index_for_cccn
-  long_name = tracer index for ccn number concentration
+  standard_name = index_for_cloud_condensation_nuclei_number_concentration
+  long_name = tracer index for cloud condensation nuclei number concentration
   units = index
   dimensions = ()
   type = integer

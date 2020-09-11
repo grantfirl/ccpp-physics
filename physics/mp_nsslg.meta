@@ -218,8 +218,8 @@
   type = real
   optional = F
 [cccn]
-  standard_name = cccn_number_concentration_updated_by_physics
-  long_name = number concentration of ccn updated by physics
+  standard_name = cloud_condensation_nuclei_number_concentration_updated_by_physics
+  long_name = number concentration of cloud condensation nuclei updated by physics
   units = kg-1
   dimensions = (horizontal_dimension,vertical_dimension)
   type = real
@@ -420,8 +420,8 @@
   optional = F
 [re_cloud]
   standard_name = effective_radius_of_stratiform_cloud_liquid_water_particle_in_um
-  long_name = eff. radius of cloud liquid water particle in micrometer (meter here)
-  units = m
+  long_name = eff. radius of cloud liquid water particle in micrometer
+  units = um
   dimensions = (horizontal_dimension,vertical_dimension)
   type = real
   kind = kind_phys
@@ -429,8 +429,8 @@
   optional = T
 [re_ice]
   standard_name = effective_radius_of_stratiform_cloud_ice_particle_in_um
-  long_name = eff. radius of cloud ice water particle in micrometer (meter here)
-  units = m
+  long_name = eff. radius of cloud ice water particle in micrometer
+  units = um
   dimensions = (horizontal_dimension,vertical_dimension)
   type = real
   kind = kind_phys
@@ -438,8 +438,8 @@
   optional = T
 [re_snow]
   standard_name = effective_radius_of_stratiform_cloud_snow_particle_in_um
-  long_name = effective radius of cloud snow particle in micrometer  (meter here)
-  units = m
+  long_name = effective radius of cloud snow particle in micrometer
+  units = um
   dimensions = (horizontal_dimension,vertical_dimension)
   type = real
   kind = kind_phys

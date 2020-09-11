@@ -206,7 +206,7 @@ SUBROUTINE mynnedmf_wrapper_run(        &
      &       bl_mynn_output,                                &
      &       grav_settling,                                 &
      &       imp_physics, imp_physics_wsm6,                 &
-     &       imp_physics_thompson, imp_physics_gfdl         &
+     &       imp_physics_thompson, imp_physics_gfdl,        &
      &       imp_physics_nssl2m, imp_physics_nssl2mccn
 
 !MISC CONFIGURATION OPTIONS
@@ -386,9 +386,9 @@ SUBROUTINE mynnedmf_wrapper_run(        &
          p_qni= 0 
          do k=1,levs
             do i=1,im
-              qvsh(i,k)  = qgrs_water_vapor(i,k)
-              qc(i,k)    = qgrs_liquid_cloud(i,k)
-              qi(i,k)    = qgrs_ice_cloud(i,k)
+              sqv(i,k)  = qgrs_water_vapor(i,k)
+              sqc(i,k)    = qgrs_liquid_cloud(i,k)
+              sqi(i,k)    = qgrs_ice_cloud(i,k)
               ozone(i,k) = qgrs_ozone(i,k)
               qnc(i,k)   = qgrs_cloud_droplet_num_conc(i,k)
               qni(i,k)   = qgrs_cloud_ice_num_conc(i,k)

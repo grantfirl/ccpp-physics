@@ -876,7 +876,8 @@
                          clouds,cldsa,mtopa,mbota, de_lgth)            !  --- outputs
 
 
-        elseif(Model%imp_physics == Model%imp_physics_thompson .or. Model%imp_physics == imp_physics_nssl2m .or. 
+        elseif(Model%imp_physics == Model%imp_physics_thompson .or. &
+          Model%imp_physics == imp_physics_nssl2m              .or. &
           Model%imp_physics == imp_physics_nssl2mccn) then                              ! Thompson MP
 
           if(Model%do_mynnedmf .or.                                 & 
