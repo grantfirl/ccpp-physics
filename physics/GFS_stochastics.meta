@@ -32,7 +32,7 @@
   intent = in
   optional = F
 [delt]
-  standard_name = time_step_for_physics
+  standard_name = timestep_for_physics
   long_name = physics timestep
   units = s
   dimensions = ()
@@ -57,7 +57,7 @@
   intent = in
   optional = F
 [use_zmtnblck]
-  standard_name = flag_for_mountain_blocking
+  standard_name = flag_for_mountain_blocking_for_sppt
   long_name = flag for mountain blocking
   units = flag
   dimensions = ()
@@ -97,7 +97,7 @@
   intent = in
   optional = F
 [ca1]
-  standard_name = cellular_automata_global_pattern
+  standard_name = cellular_automata_global_pattern_from_coupled_process
   long_name = cellular automata global pattern
   units = flag
   dimensions = (horizontal_loop_extent)
@@ -106,16 +106,16 @@
   intent = in
   optional = F
 [si]
-  standard_name = vertical_sigma_coordinate_for_radiation_initialization
+  standard_name = sigma_pressure_hybrid_vertical_coordinate
   long_name = vertical sigma coordinate for radiation initialization
   units = none
-  dimensions = (number_of_vertical_layers_for_radiation_calculations_plus_one)
+  dimensions = (vertical_interface_dimension_for_radiation)
   type = real
   kind = kind_phys
   intent = in
   optional = F
 [vfact_ca]
-  standard_name = vertical_weight_for_ca
+  standard_name = cellular_automata_vertical_weight
   long_name = vertical weight for ca
   units = frac
   dimensions = (vertical_dimension)
@@ -133,7 +133,7 @@
   intent = in
   optional = F
 [sppt_wts]
-  standard_name = weights_for_stochastic_sppt_perturbation
+  standard_name = sppt_weights_from_coupled_process
   long_name = weights for stochastic sppt perturbation
   units = none
   dimensions = (horizontal_loop_extent,vertical_dimension)
@@ -142,7 +142,7 @@
   intent = inout
   optional = F
 [skebu_wts]
-  standard_name = weights_for_stochastic_skeb_perturbation_of_x_wind
+  standard_name = skeb_x_wind_weights_from_coupled_process
   long_name = weights for stochastic skeb perturbation of x wind
   units = none
   dimensions = (horizontal_loop_extent,vertical_dimension)
@@ -151,7 +151,7 @@
   intent = in
   optional = F
 [skebv_wts]
-  standard_name = weights_for_stochastic_skeb_perturbation_of_y_wind
+  standard_name = skeb_y_wind_weights_from_coupled_process
   long_name = weights for stochastic skeb perturbation of y wind
   units = none
   dimensions = (horizontal_loop_extent,vertical_dimension)
@@ -160,7 +160,7 @@
   intent = in
   optional = F
 [shum_wts]
-  standard_name = weights_for_stochastic_shum_perturbation
+  standard_name = shum_weights_from_coupled_process
   long_name = weights for stochastic shum perturbation
   units = none
   dimensions = (horizontal_loop_extent,vertical_dimension)
@@ -241,7 +241,7 @@
   intent = in
   optional = F
 [qgrs_wv]
-  standard_name = water_vapor_specific_humidity
+  standard_name = specific_humidity
   long_name = water vapor specific humidity
   units = kg kg-1
   dimensions = (horizontal_loop_extent,vertical_dimension)
@@ -250,7 +250,7 @@
   intent = in
   optional = F
 [qgrs_cw]
-  standard_name = cloud_condensed_water_mixing_ratio
+  standard_name = cloud_liquid_water_mixing_ratio
   long_name = ratio of mass of cloud water to mass of dry air plus vapor (without condensates)
   units = kg kg-1
   dimensions = (horizontal_loop_extent,vertical_dimension)
@@ -259,7 +259,7 @@
   intent = in
   optional = F
 [qgrs_rw]
-  standard_name = rain_water_mixing_ratio
+  standard_name = rain_mixing_ratio
   long_name = moist mixing ratio of rain
   units = kg kg-1
   dimensions = (horizontal_loop_extent,vertical_dimension)
@@ -268,7 +268,7 @@
   intent = in
   optional = F
 [qgrs_sw]
-  standard_name = snow_water_mixing_ratio
+  standard_name = snow_mixing_ratio
   long_name = moist mixing ratio of snow
   units = kg kg-1
   dimensions = (horizontal_loop_extent,vertical_dimension)
@@ -277,7 +277,7 @@
   intent = in
   optional = F
 [qgrs_iw]
-  standard_name = ice_water_mixing_ratio
+  standard_name = cloud_ice_mixing_ratio
   long_name = moist mixing ratio of cloud ice
   units = kg kg-1
   dimensions = (horizontal_loop_extent,vertical_dimension)
@@ -295,7 +295,7 @@
   intent = in
   optional = F
 [gu0]
-  standard_name = x_wind_updated_by_physics
+  standard_name = x_wind_of_new_state
   long_name = zonal wind updated by physics
   units = m s-1
   dimensions = (horizontal_loop_extent,vertical_dimension)
@@ -304,7 +304,7 @@
   intent = inout
   optional = F
 [gv0]
-  standard_name = y_wind_updated_by_physics
+  standard_name = y_wind_of_new_state
   long_name = meridional wind updated by physics
   units = m s-1
   dimensions = (horizontal_loop_extent,vertical_dimension)
@@ -313,7 +313,7 @@
   intent = inout
   optional = F
 [gt0]
-  standard_name = air_temperature_updated_by_physics
+  standard_name = air_temperature_of_new_state
   long_name = temperature updated by physics
   units = K
   dimensions = (horizontal_loop_extent,vertical_dimension)
@@ -322,7 +322,7 @@
   intent = inout
   optional = F
 [gq0_wv]
-  standard_name = water_vapor_specific_humidity_updated_by_physics
+  standard_name = specific_humidity_of_new_state
   long_name = water vapor specific humidity updated by physics
   units = kg kg-1
   dimensions = (horizontal_loop_extent,vertical_dimension)
@@ -340,7 +340,7 @@
   intent = inout
   optional = F
 [gq0_cw]
-  standard_name = cloud_condensed_water_mixing_ratio_updated_by_physics
+  standard_name = cloud_liquid_water_mixing_ratio_of_new_state
   long_name = cloud condensed water mixing ratio updated by physics
   units = kg kg-1
   dimensions = (horizontal_loop_extent,vertical_dimension)
@@ -349,7 +349,7 @@
   intent = inout
   optional = F
 [gq0_rw]
-  standard_name = rain_water_mixing_ratio_updated_by_physics
+  standard_name = rain_mixing_ratio_of_new_state
   long_name = moist mixing ratio of rain updated by physics
   units = kg kg-1
   dimensions = (horizontal_loop_extent,vertical_dimension)
@@ -358,7 +358,7 @@
   intent = inout
   optional = F
 [gq0_sw]
-  standard_name = snow_water_mixing_ratio_updated_by_physics
+  standard_name = snow_mixing_ratio_of_new_state
   long_name = moist mixing ratio of snow updated by physics
   units = kg kg-1
   dimensions = (horizontal_loop_extent,vertical_dimension)
@@ -367,7 +367,7 @@
   intent = inout
   optional = F
 [gq0_iw]
-  standard_name = ice_water_mixing_ratio_updated_by_physics
+  standard_name = cloud_ice_mixing_ratio_of_new_state
   long_name = moist mixing ratio of cloud ice updated by physics
   units = kg kg-1
   dimensions = (horizontal_loop_extent,vertical_dimension)
@@ -376,7 +376,7 @@
   intent = inout
   optional = F
 [gq0_gl]
-  standard_name = graupel_mixing_ratio_updated_by_physics
+  standard_name = graupel_mixing_ratio_of_new_state
   long_name = moist ratio of mass of graupel to mass of dry air plus vapor (without condensates) updated by physics
   units = kg kg-1
   dimensions = (horizontal_loop_extent,vertical_dimension)
@@ -448,7 +448,7 @@
   intent = inout
   optional = F
 [cplflx]
-  standard_name = flag_for_flux_coupling
+  standard_name = flag_for_surface_flux_coupling
   long_name = flag controlling cplflx collection (default off)
   units = flag
   dimensions = ()
@@ -456,7 +456,7 @@
   intent = in
   optional = F
 [rain_cpl]
-  standard_name = lwe_thickness_of_precipitation_amount_for_coupling
+  standard_name = cumulative_lwe_thickness_of_precipitation_amount_for_coupling
   long_name = total rain precipitation
   units = m
   dimensions = (horizontal_loop_extent)
@@ -465,7 +465,7 @@
   intent = inout
   optional = F
 [snow_cpl]
-  standard_name = lwe_thickness_of_snow_amount_for_coupling
+  standard_name = cumulative_lwe_thickness_of_snow_amount_for_coupling
   long_name = total snow precipitation
   units = m
   dimensions = (horizontal_loop_extent)
@@ -474,7 +474,7 @@
   intent = inout
   optional = F
 [drain_cpl]
-  standard_name = tendency_of_lwe_thickness_of_precipitation_amount_for_coupling
+  standard_name = lwe_thickness_of_rain_amount_on_dynamics_timestep_for_coupling
   long_name = change in rain_cpl (coupling_type)
   units = m
   dimensions = (horizontal_loop_extent)
@@ -483,7 +483,7 @@
   intent = in
   optional = F
 [dsnow_cpl]
-  standard_name = tendency_of_lwe_thickness_of_snow_amount_for_coupling
+  standard_name = lwe_thickness_of_snowfall_amount_on_dynamics_timestep_for_coupling
   long_name = change in show_cpl (coupling_type)
   units = m
   dimensions = (horizontal_loop_extent)
@@ -492,7 +492,7 @@
   intent = in
   optional = F
 [ntcw]
-  standard_name = index_for_liquid_cloud_condensate
+  standard_name = index_of_cloud_liquid_water_mixing_ratio_in_tracer_concentration_array
   long_name = tracer index for cloud condensate (or liquid water)
   units = index
   dimensions = ()
@@ -500,7 +500,7 @@
   intent = in
   optional = F
 [ntrw]
-  standard_name = index_for_rain_water
+  standard_name = index_of_rain_mixing_ratio_in_tracer_concentration_array
   long_name = tracer index for rain water
   units = index
   dimensions = ()
@@ -508,7 +508,7 @@
   intent = in
   optional = F
 [ntsw]
-  standard_name = index_for_snow_water
+  standard_name = index_of_snow_mixing_ratio_in_tracer_concentration_array
   long_name = tracer index for snow water
   units = index
   dimensions = ()
@@ -516,7 +516,7 @@
   intent = in
   optional = F
 [ntiw]
-  standard_name = index_for_ice_cloud_condensate
+  standard_name = index_of_cloud_ice_mixing_ratio_in_tracer_concentration_array
   long_name = tracer index for  ice water
   units = index
   dimensions = ()
@@ -524,7 +524,7 @@
   optional = F
   type = integer
 [ntgl]
-  standard_name = index_for_graupel
+  standard_name = index_of_graupel_mixing_ratio_in_tracer_concentration_array
   long_name = tracer index for graupel
   units = index
   dimensions = ()
