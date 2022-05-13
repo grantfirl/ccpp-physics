@@ -35,7 +35,13 @@
 !> \section arg_table_tiedtke_prog_clouds_run Argument Table
 !! \htmlinclude tiedtke_prog_clouds_run.html
 !!
-      subroutine tiedtke_prog_clouds_run (idim,kdim,do_pdf_clouds,single_gaussian_pdf,do_aero_eros,u00_profile,add_ahuco,eros_choice,include_neg_mc,super_ice_opt,ae_ub,ae_lb,ae_N_ub,ae_N_lb,U00,eros_scale,eros_scale_c,eros_scale_t,mc_thresh,diff_thresh,dt,SA,SQ,gamma,qs,pfull,phalf,mc_full,drop1,qin,ql_in,qi_in,qa_in,ql_upd,qi_upd,qa_upd,qvg,da_ls,delta_cf,dcond_ls,errmsg,errflg)
+      subroutine tiedtke_prog_clouds_run (idim, kdim, do_pdf_clouds, single_gaussian_pdf, &
+          do_aero_eros, u00_profile, add_ahuco, eros_choice, include_neg_mc, super_ice_opt, &
+          ae_ub, ae_lb, ae_N_ub, ae_N_lb, U00, eros_scale, eros_scale_c, eros_scale_t, &
+          mc_thresh, diff_thresh, dt, SA, SQ, gamma, qs, dsqdT, U_ca, qsl, qsi, pfull, &
+          phalf, mc_full, drop1, rh_crit, rh_crit_min, tin, qin, ql_in, qi_in, qa_in, &
+          ql_upd, qi_upd, qa_upd, omega, radturbten, airdens, hom, qvg, da_ls, delta_cf, &
+          dcond_ls, D_eros, errmsg, errflg)
 
       use machine  , only : kind_phys
       
@@ -44,17 +50,24 @@
       integer, intent(in) :: idim, kdim, super_ice_opt
       logical, intent(in) :: do_pdf_clouds, single_gaussian_pdf, do_aero_eros, u00_profile, add_ahuco, eros_choice, include_neg_mc
       real(kind=kind_phys), intent(in) :: dt, ae_ub, ae_lb, ae_N_ub, ae_N_lb, U00, eros_scale, eros_scale_c, eros_scale_t, mc_thresh, diff_thresh
-      real(kind=kind_phys), intent(in) :: gamma(:,:), qs(:,:) !i,k dims
+      real(kind=kind_phys), intent(in) :: gamma(:,:), qs(:,:), dqsdT(:,:), U_ca(:,:), qsl(:,:), qsi(:,:) !i,k dims
       real(kind=kind_phys), intent(in) :: pfull(:,:), phalf(:,:) !i,k, corresponds to prsl and prsi respectively
       real(kind=kind_phys), intent(in) :: mc_full(:,:) !total net convective mass flux on full levels kg m-2 s-1
       real(kind=kind_phys), intent(in) :: convective_humidity_area(:,:) !grid box area affected by the convective clouds
       real(kind=kind_phys), intent(in) :: diff_t(:,:) !eddy diffusivity for heat
       real(kind=kind_phys), intent(in) :: drop1(:,:) !cloud droplet number concentration (cm-3) (determined in aerosol_cloud.F90/determine_activated_aerosol)
-      real(kind=kind_phys), intent(in) :: qin(:,:) !i,k dims; this refers to the scheme's input state water vapor
+      real(kind=kind_phys), intent(in) :: rh_crit(:,:) !critical relative humidity used in ice nuclei activation (determined in aerosol_cloud.F90/determine_activated_aerosol)
+      real(kind=kind_phys), intent(in) :: rh_crit_min(:,:) !minimum critical relative humidity used in ice nuclei activation (determined in aerosol_cloud.F90/determine_activated_aerosol)
+      real(kind=kind_phys), intent(in) :: tin(:,:) !i,k dims; this refers to the scheme's input state temperature (can either be process-split or time-split)
+      real(kind=kind_phys), intent(in) :: qin(:,:) !i,k dims; this refers to the scheme's input state water vapor (can either be process-split or time-split)
       real(kind=kind_phys), intent(in) :: ql_in(:,:), qi_in(:,:), qa_in(:,:) !these vars are initialized every physics timestep to the advected tracers values of ql, qi in lscloud_driver.F90/lscloud_alloc
       real(kind=kind_phys), intent(in) :: ql_upd(:,:), qi_upd(:,:) !these vars are initialized every physics timestep to 0 in lscloud_driver.F90/lscloud_alloc
+      real(kind=kind_phys), intent(in) :: omega(:,:) !lagrangian_tendency_of_air_pressure
+      real(kind=kind_phys), intent(in) :: radturbten(:,:) !sum of temperature tendency due to radiation and turbulence (K s-1) (interstitial -- reset every timestep)
+      real(kind=kind_phys), intent(in) :: airdens(:,:) !air density (kg m-3) calculated in lscloud_driver
+      real(kind=kind_phys), intent(in) :: hom(:,:) !serves as a flag representing homogeneous ice nucleation (calculated in ice_nucl.F90/ice_nucl_k)
       real(kind=kind_phys), intent(inout) :: qa_upd(:,:) !these vars are initialized every physics timestep to 0 in lscloud_driver.F90/lscloud_alloc
-      real(kind=kind_phys), intent(inout) :: qvg(:,:), da_ls(:,:), delta_cf(:,:), dcond_ls(:,:) !these vars are initialized every physics timestep to 0 in lscloud_driver.F90/lscloud_alloc
+      real(kind=kind_phys), intent(inout) :: qvg(:,:), da_ls(:,:), delta_cf(:,:), dcond_ls(:,:), D_eros(:,:) !these vars are initialized every physics timestep to 0 in lscloud_driver.F90/lscloud_alloc
       real(kind=kind_phys), intent(inout) :: dqa_dt_prod(:,:), dqa_dt_loss(:,:) !these vars are initialized every physics timestep to 0 in lscloud_driver.F90/lscloud_driver
       
       real(kind=kind_phys), intent(in)    :: SQ(:,:) !this is set to zero in lscloud_driver.F90/lscloud_driver
@@ -84,7 +97,7 @@
       errmsg = ''
       errflg = 0
       
-      !GJF need to call compute_qs_a to calculate qs,gamma
+      !GJF need to call compute_qs_a to calculate qs,gamma,dqsdT,U_ca,qsl,qsi
       
       dt_inv = 1.0/dt
       
@@ -243,11 +256,9 @@
 !    calculate the condensation.
 !------------------------------------------------------------------------
           call tiedtke_macro_nopdf_nosuper (    &
-               idim, jdim, kdim, C2ls_mp, Input_mp, Atmos_state,   &
-               Cloud_state, ST, SQ, Cloud_processes, Particles,   &
-               Lsdiag_mp_control%n_diag_4d, Lsdiag_mp%diag_4d,   &
-               Lsdiag_mp_control%diag_id, Lsdiag_mp_control%diag_pt,  &
-                                       edum, SA, U00p, erosion_scale)
+               idim, kdim, mc_full, convective_humidity_area, omega, radturbten, pfull, airdens, dqsdT, U_ca, gamma, qs, &
+               qa_upd, ql_upd, qi_upd, ST, SQ, da_ls, D_eros, dcond_ls, delta_cf, &
+               edum, SA, U00p, erosion_scale)
         else
 
 !------------------------------------------------------------------------
@@ -256,11 +267,9 @@
 !    condensation.
 !------------------------------------------------------------------------
           call tiedtke_macro_nopdf_super  (     &
-               idim, jdim, kdim, C2ls_mp, Input_mp, Atmos_state,   &
-               Cloud_state, ST, SQ, Cloud_processes, Particles,   &
-               Lsdiag_mp_control%n_diag_4d, Lsdiag_mp%diag_4d,   &
-               Lsdiag_mp_control%diag_id, Lsdiag_mp_control%diag_pt,  &
-                                            edum, SA, U00p, erosion_scale)
+               idim, kdim, mc_full, convective_humidity_area, omega, radturbten, pfull, tin, qin, airdens, dqsdT, gamma, qs, qsl, qsi, rh_crit, rh_crit_min, &
+               qa_upd, ql_upd, qi_upd, ST, SQ, da_ls, D_eros, dcond_ls, delta_cf, hom,   &
+               edum, SA, U00p, erosion_scale)
         endif
       endif
 
@@ -269,7 +278,7 @@
       SUBROUTINE tiedtke_macro_Single_Gaussian_pdf (idim, kdim, gamma, qs,   &
                               qin, &
                               ql_in, qi_in, qa_in, ql_upd, qi_upd, qa_upd, SQ, qvg, da_ls, delta_cf, dcond_ls, &
-                              diag_4d, diag_id, diag_pt,       SA)  
+                              SA)  
 
       !----------------------------------------------------------------------!
       !                                                                      !
@@ -736,8 +745,8 @@
       !     Diagnostics
       !-----------------------------------------------------------------------
 
-            diag_dt_prod = max(qa1 - qa0, 0.)*inv_dtcloud
-            diag_dt_loss = max(qa0 - qa1, 0.)*inv_dtcloud
+            !diag_dt_prod = max(qa1 - qa0, 0.)*inv_dtcloud
+            !diag_dt_loss = max(qa0 - qa1, 0.)*inv_dtcloud
             
       !------------------------------------------------------------------------
        
@@ -746,9 +755,9 @@
       end SUBROUTINE tiedtke_macro_pdf
       
       SUBROUTINE tiedtke_macro_nopdf_nosuper (    &
-                  idim, jdim, kdim, C2ls_mp, Input_mp, Atmos_state,   &
-                  Cloud_state, ST, SQ, Cloud_processes, Particles, n_diag_4d, &
-                  diag_4d, diag_id, diag_pt, edum, SA, U00p, erosion_scale)
+                  idim, kdim, mc_full, convective_humidity_area, omega, radturbten, pfull, airdens, dqsdT, U_ca, gamma, qs, &
+                  qa_upd, ql_upd, qi_upd, ST, SQ, da_ls, D_eros, dcond_ls, delta_cf, &
+                  edum, SA, U00p, erosion_scale)
 
       !------------------------------------------------------------------------
       !   subroutine tiedtke_macro_nopdf_nosuper calculates non-convective
@@ -756,23 +765,26 @@
       !   portion of grid boxes (as in original Tiedtke scheme).
       !------------------------------------------------------------------------
 
-      INTEGER,                         INTENT(IN )   :: idim, jdim, kdim      
-      type(mp_input_type),             intent(inout) :: Input_mp   
-      type(mp_conv2ls_type),           intent(inout) :: C2ls_mp   
-      type(atmos_state_type),          intent(inout) :: Atmos_state
-      type(cloud_state_type),          intent(inout) :: Cloud_state
-      type(cloud_processes_type),      intent(inout) :: Cloud_processes
-      type(particles_type),            intent(inout) :: Particles
-      REAL, dimension(idim,jdim,kdim), INTENT(IN)    :: ST, SQ, edum, U00p,  &
+      INTEGER,                         INTENT(IN )   :: idim, kdim      
+      real(kind=kind_phys), intent(in) :: mc_full(:,:) !total net convective mass flux on full levels kg m-2 s-1
+      real(kind=kind_phys), intent(in) :: convective_humidity_area(:,:) !grid box area affected by the convective clouds
+      real(kind=kind_phys), intent(in) :: omega(:,:) !lagrangian_tendency_of_air_pressure
+      real(kind=kind_phys), intent(in) :: radturbten(:,:) !sum of temperature tendency due to radiation and turbulence (K s-1) (interstitial -- reset every timestep)
+      real(kind=kind_phys), intent(in) :: pfull(:,:)
+      real(kind=kind_phys), intent(in) :: airdens(:,:) !air density (kg m-3) calculated in lscloud_driver
+      real(kind=kind_phys), intent(in) :: dqsdT(:,:)
+      real(kind=kind_phys), intent(in) :: gamma(:,:), qs(:,:)
+      real(kind=kind_phys), intent(in) :: U_ca(:,:) !grid box relative humidity (fraction)
+      real(kind=kind_phys), intent(inout) :: qa_upd(:,:)
+      real(kind=kind_phys), intent(in),    dimension(:,:) :: ql_upd, qi_upd
+      real(kind=kind_phys), intent(inout) :: da_ls(:,:)
+      real(kind=kind_phys), intent(inout) :: D_eros(:,:)
+      real(kind=kind_phys), intent(inout) :: dcond_ls(:,:)
+      real(kind=kind_phys), intent(inout) :: delta_cf(:,:)
+      REAL, dimension(idim,kdim), INTENT(IN)    :: ST, SQ, edum, U00p,  &
                                                         erosion_scale
-      REAL, dimension(idim,jdim,kdim), INTENT(INOUT) :: SA
-      INTEGER,                         INTENT(IN )   :: n_diag_4d
-      REAL,  &
-       dimension(idim, jdim, kdim, 0:n_diag_4d),   &
-                                       INTENT(INOUT) :: diag_4d
-      TYPE(diag_id_type),              intent(in)    :: diag_id
-      TYPE(diag_pt_type),              intent(in)    :: diag_pt
-
+      REAL, dimension(idim,kdim), INTENT(INOUT) :: SA
+      
       !-------------------------------------------------------------------------
       !----local variables----
 
@@ -811,17 +823,17 @@
       !
       !------------------------------------------------------------------------
            
-            real, dimension(idim, jdim,kdim)   :: dqs_ls
-            real, dimension(idim, jdim,kdim)   :: A_dt, B_dt
-            real, dimension(idim, jdim,kdim)   :: qa1, qa0, qabar
-            real, dimension(idim, jdim,kdim)   :: qaeq
-            real, dimension(idim, jdim,kdim)   :: tmp1
+            real, dimension(idim, kdim)   :: dqs_ls
+            real, dimension(idim, kdim)   :: A_dt, B_dt
+            real, dimension(idim, kdim)   :: qa1, qa0, qabar
+            real, dimension(idim, kdim)   :: qaeq
+            real, dimension(idim, kdim)   :: tmp1
             REAL                               :: eslt, qvs, qs_d, qvi, esit, ul
             REAL                               :: ttmp, qtmp, qs_t, dqsdT1,  &
                                                   qvmax, esat0, gamma1,  &
                                                   tmp1s, qs_l, qs_i
             INTEGER                            :: ns, id
-            INTEGER                            :: i,j,k
+            INTEGER                            :: i,k
 
       !-----------------------------------------------------------------------
       !
@@ -841,39 +853,37 @@
       !
       !------------------------------------------------------------------------
             do k=1,kdim
-              do j=1,jdim
-                do i=1,idim
-                  dqs_ls(i,j,k) = ((                    &
-                    (Input_mp%omega(i,j,k) + grav*C2ls_mp%mc_full(i,j,k))/  &
-                                      Atmos_state%airdens(i,j,k)/cp_air)  +   &
-                               Input_mp%radturbten(i,j,k))* &
-                                               dtcloud*Atmos_state%dqsdT(i,j,k)
-                  if (dqs_ls(i,j,k) .le. 0. .and.    &
-                             Atmos_state%U_ca(i,j,k) .ge. U00p(i,j,k) .and.   &
-                                      Cloud_state%qa_upd(i,j,k) .lt. 1.)  then
-                    tmp1(i,j,k) = sqrt( (1. + Cloud_state%qa_upd(i,j,k)*  &
-                                             Atmos_state%gamma(i,j,k))**2. -  &
-                                        (1. - Cloud_state%qa_upd(i,j,k))*  &
-                                           (1. - Cloud_state%qa_upd(i,j,k))*&
-                                       Atmos_state%gamma(i,j,k)*dqs_ls(i,j,k)/&
-                                                Atmos_state%qs(i,j,k)/      &
-                          max(1.-Atmos_state%U_ca(i,j,k), qmin) ) -   &
-                              (1. + Cloud_state%qa_upd(i,j,k)*  &
-                                                     Atmos_state%gamma(i,j,k))
-                    tmp1(i,j,k) = -1.*tmp1(i,j,k)/((1. -   &
-                                             Cloud_state%qa_upd(i,j,k))*   &
-                                     (1. - Cloud_state%qa_upd(i,j,k))*  &
-                                                  Atmos_state%gamma(i,j,k)/&
-                                      Atmos_state%qs(i,j,k)/   &
-                                  max(1. - Atmos_state%U_ca(i,j,k), qmin)/2.)
-                    dqs_ls(i,j,k) = min(tmp1(i,j,k),dqs_ls(i,j,k)/(1. +   &
-                                    0.5*(1. + Cloud_State%qa_upd(i,j,k))*  &
-                                                   Atmos_state%gamma(i,j,k)))
-                  else
-                    dqs_ls(i,j,k) = dqs_ls(i,j,k)/(1. +   &
-                         Cloud_state%qa_upd(i,j,k)*Atmos_state%gamma(i,j,k))
-                  endif
-                end do
+              do i=1,idim
+                dqs_ls(i,k) = ((                    &
+                  (omega(i,k) + grav*mc_full(i,k))/  &
+                                    airdens(i,k)/cp_air)  +   &
+                             radturbten(i,k))* &
+                                             dtcloud*dqsdT(i,k)
+                if (dqs_ls(i,k) .le. 0. .and.    &
+                           U_ca(i,k) .ge. U00p(i,k) .and.   &
+                                    qa_upd(i,k) .lt. 1.)  then
+                  tmp1(i,k) = sqrt( (1. + qa_upd(i,k)*  &
+                                           gamma(i,k))**2. -  &
+                                      (1. - qa_upd(i,k))*  &
+                                         (1. - qa_upd(i,k))*&
+                                     gamma(i,k)*dqs_ls(i,k)/&
+                                              qs(i,k)/      &
+                        max(1.-U_ca(i,k), qmin) ) -   &
+                            (1. + qa_upd(i,k)*  &
+                                                   gamma(i,k))
+                  tmp1(i,k) = -1.*tmp1(i,k)/((1. -   &
+                                           qa_upd(i,k))*   &
+                                   (1. - qa_upd(i,k))*  &
+                                                gamma(i,k)/&
+                                    qs(i,k)/   &
+                                max(1. - U_ca(i,k), qmin)/2.)
+                  dqs_ls(i,k) = min(tmp1(i,k),dqs_ls(i,k)/(1. +   &
+                                  0.5*(1. + qa_upd(i,k))*  &
+                                                 gamma(i,k)))
+                else
+                  dqs_ls(i,k) = dqs_ls(i,k)/(1. +   &
+                       qa_upd(i,k)*gamma(i,k))
+                endif
               end do
             end do
 
@@ -912,23 +922,21 @@
       !            
       !------------------------------------------------------------------------
             do k=1,kdim
-              do j=1,jdim
-                do i=1,idim
-                  if ((dqs_ls(i,j,k) .le. 0. .and.    &
-                     Atmos_state%U_ca(i,j,k) .ge. U00p(i,j,k)) .and. &
-                      (Cloud_state%qa_upd(i,j,k) +  &
-                        C2ls_mp%convective_humidity_area(i,j,k) .le. 1.))   then
-                    Cloud_processes%da_ls(i,j,k) =    &
-                            -0.5*(1. - Cloud_state%qa_upd(i,j,k) -  &
-                                     C2ls_mp%convective_humidity_area(i,j,k))*  &
-                                  (1. - Cloud_state%qa_upd(i,j,k) -    &
-                                    C2ls_mp%convective_humidity_area(i,j,k) )* &
-                                         dqs_ls(i,j,k)/Atmos_state%qs(i,j,k) /  &
-                                        max(1.-Atmos_state%U_ca(i,j,k), qmin)
-                  else
-                    Cloud_processes%da_ls(i,j,k) = 0.
-                  endif
-                end do
+              do i=1,idim
+                if ((dqs_ls(i,k) .le. 0. .and.    &
+                   U_ca(i,k) .ge. U00p(i,k)) .and. &
+                    (qa_upd(i,k) +  &
+                      convective_humidity_area(i,k) .le. 1.))   then
+                  da_ls(i,k) =    &
+                          -0.5*(1. - qa_upd(i,k) -  &
+                                   convective_humidity_area(i,k))*  &
+                                (1. - qa_upd(i,k) -    &
+                                  convective_humidity_area(i,k) )* &
+                                       dqs_ls(i,k)/qs(i,k) /  &
+                                      max(1.-U_ca(i,k), qmin)
+                else
+                  da_ls(i,k) = 0.
+                endif
               end do
             end do
 
@@ -950,34 +958,32 @@
       !
       !------------------------------------------------------------------------
             do k=1,kdim
-              do j=1,jdim
-                do i=1,idim
-                  if (Cloud_state%ql_upd(i,j,k) .gt. qmin .or.   &
-                              Cloud_state%qi_upd (i,j,k).gt. qmin) then
-                    Cloud_processes%D_eros(i,j,k) =   &
-                          Cloud_state%qa_upd(i,j,k) * erosion_scale(i,j,k) *   &
-                                     dtcloud * Atmos_state%qs(i,j,k) *      &
-                            (1.-Atmos_state%U_ca(i,j,k)) /   &
-                         (Cloud_state%qi_upd(i,j,k) + CLoud_state%ql_upd(i,j,k))
+              do i=1,idim
+                if (ql_upd(i,k) .gt. qmin .or.   &
+                            qi_upd (i,k).gt. qmin) then
+                  D_eros(i,k) =   &
+                        qa_upd(i,k) * erosion_scale(i,k) *   &
+                                   dtcloud * qs(i,k) *      &
+                          (1.-U_ca(i,k)) /   &
+                       (qi_upd(i,k) + ql_upd(i,k))
 
-                    if (Input_mp%pfull(i,j,k) .gt. 400.e02) then
-                      Cloud_processes%D_eros(i,j,k) =  &
-                           Cloud_processes%D_eros(i,j,k) + efact*  &
-                                            Cloud_processes%D_eros(i,j,k)* &
-                                ((Input_mp%pfull(i,j,kdim) -   &
-                                                     Input_mp%pfull(i,j,k))/  &
-                                      (Input_mp%pfull(i,j,kdim) - 400.e02))
-                    else
-                      Cloud_processes%D_eros(i,j,k)=  &
-                            Cloud_processes%D_eros(i,j,k) +  &
-                                           efact*CLoud_processes%D_eros(i,j,k)
-
-                    endif
+                  if (pfull(i,k) .gt. 400.e02) then
+                    D_eros(i,k) =  &
+                         D_eros(i,k) + efact*  &
+                                          D_eros(i,k)* &
+                              ((pfull(i,kdim) -   &
+                                                   pfull(i,k))/  &
+                                    (pfull(i,kdim) - 400.e02))
                   else
-                    Cloud_processes%D_eros(i,j,k) = 0.
+                    D_eros(i,k)=  &
+                          D_eros(i,k) +  &
+                                         efact*D_eros(i,k)
+
                   endif
-                END DO    
-              END DO    
+                else
+                  D_eros(i,k) = 0.
+                endif
+              END DO        
             END DO    
 
       !------------------------------------------------------------------------
@@ -1034,94 +1040,90 @@
       !    following (18). Reset B_dt.
       !------------------------------------------------------------------------
             do k=1,kdim
-              do j=1,jdim
-                do i=1,idim
-                  A_dt(i,j,k) = Cloud_processes%da_ls(i,j,k)/   &
-                                    max((1.-Cloud_state%qa_upd(i,j,k)), qmin)
-                  B_dt(i,j,k) = Cloud_processes%D_eros(i,j,k)
+              do i=1,idim
+                A_dt(i,k) = da_ls(i,k)/   &
+                                  max((1.-qa_upd(i,k)), qmin)
+                B_dt(i,k) = D_eros(i,k)
         
       !------------------------------------------------------------------------
       !    do analytic integration.      
       !------------------------------------------------------------------------
-                  if ( (A_dt(i,j,k) .gt. Dmin) .or.   &
-                       (B_dt(i,j,k) .gt. Dmin) )  then
-                    qa0(i,j,k) = Cloud_state%qa_upd(i,j,k)
-                    qaeq(i,j,k) = A_dt(i,j,k)/(A_dt(i,j,k)  + B_dt(i,j,k))
-                    qa1(i,j,k) = qaeq(i,j,k) - (qaeq(i,j,k) - qa0(i,j,k)) * &
-                                            exp ( -1.*(A_dt(i,j,k)+B_dt(i,j,k)) )
-                    qabar(i,j,k) = qaeq(i,j,k) - ((qa1(i,j,k) - qa0(i,j,k))/  &
-                                                     (A_dt(i,j,k) + B_dt(i,j,k)))
-                  else
-                    qa0(i,j,k)   = Cloud_state%qa_upd(i,j,k)
-                    qaeq(i,j,k)  = qa0(i,j,k)
-                    qa1(i,j,k)   = qa0(i,j,k)   
-                    qabar(i,j,k) = qa0(i,j,k)  
-                  endif 
-                END DO    
-              END DO    
+                if ( (A_dt(i,k) .gt. Dmin) .or.   &
+                     (B_dt(i,k) .gt. Dmin) )  then
+                  qa0(i,k) = qa_upd(i,k)
+                  qaeq(i,k) = A_dt(i,k)/(A_dt(i,k)  + B_dt(i,k))
+                  qa1(i,k) = qaeq(i,k) - (qaeq(i,k) - qa0(i,k)) * &
+                                          exp ( -1.*(A_dt(i,k)+B_dt(i,k)) )
+                  qabar(i,k) = qaeq(i,k) - ((qa1(i,k) - qa0(i,k))/  &
+                                                   (A_dt(i,k) + B_dt(i,k)))
+                else
+                  qa0(i,k)   = qa_upd(i,k)
+                  qaeq(i,k)  = qa0(i,k)
+                  qa1(i,k)   = qa0(i,k)   
+                  qabar(i,k) = qa0(i,k)  
+                endif 
+              END DO        
             END DO    
 
-            do k=1,kdim
-              do j=1,jdim
-                do i=1,idim
-      !------------------------------------------------------------------------
-      !    save some diagnostics.
-      !------------------------------------------------------------------------
-                  if ( (A_dt(i,j,k) .gt.     Dmin) .and.   &
-                       (B_dt(i,j,k) .gt.     Dmin) )  then
-                    if (diag_id%qadt_lsform + diag_id%qa_lsform_col > 0) then
-                      diag_4d(i,j,k,diag_pt%qadt_lsform) =  A_dt(i,j,k)*  &
-                                                  (1.-qabar(i,j,k))*inv_dtcloud
-                    end if
-                    if ( diag_id%qadt_eros + diag_id%qa_eros_col > 0 ) then
-                      diag_4d(i,j,k,diag_pt%qadt_eros)  =    &
-                           ((qa1(i,j,k) - qa0(i,j,k))*inv_dtcloud )- &
-                                           diag_4d(i,j,k,diag_pt%qadt_lsform)   
-                    end if
-                  else if (A_dt(i,j,k) .gt. Dmin) then
-                    if (diag_id%qadt_lsform + diag_id%qa_lsform_col > 0) then
-                      diag_4d(i,j,k,diag_pt%qadt_lsform) =   &
-                                (qa1(i,j,k) - qa0(i,j,k))*inv_dtcloud
-                    end if 
-                  else if (B_dt(i,j,k) .gt. Dmin)  then
-                    if ( diag_id%qadt_eros + diag_id%qa_eros_col > 0 ) then
-                      diag_4d(i,j,k,diag_pt%qadt_eros)  =   &
-                                (qa1(i,j,k) - qa0(i,j,k))*inv_dtcloud
-                    end if 
-                  endif
-                END DO    
-              END DO    
-            END DO    
+      !       do k=1,kdim
+      !         do i=1,idim
+      ! !------------------------------------------------------------------------
+      ! !    save some diagnostics.
+      ! !------------------------------------------------------------------------
+      !           if ( (A_dt(i,k) .gt.     Dmin) .and.   &
+      !                (B_dt(i,k) .gt.     Dmin) )  then
+      !             if (diag_id%qadt_lsform + diag_id%qa_lsform_col > 0) then
+      !               diag_4d(i,k,diag_pt%qadt_lsform) =  A_dt(i,k)*  &
+      !                                           (1.-qabar(i,k))*inv_dtcloud
+      !             end if
+      !             if ( diag_id%qadt_eros + diag_id%qa_eros_col > 0 ) then
+      !               diag_4d(i,k,diag_pt%qadt_eros)  =    &
+      !                    ((qa1(i,k) - qa0(i,k))*inv_dtcloud )- &
+      !                                    diag_4d(i,k,diag_pt%qadt_lsform)   
+      !             end if
+      !           else if (A_dt(i,k) .gt. Dmin) then
+      !             if (diag_id%qadt_lsform + diag_id%qa_lsform_col > 0) then
+      !               diag_4d(i,k,diag_pt%qadt_lsform) =   &
+      !                         (qa1(i,k) - qa0(i,k))*inv_dtcloud
+      !             end if 
+      !           else if (B_dt(i,k) .gt. Dmin)  then
+      !             if ( diag_id%qadt_eros + diag_id%qa_eros_col > 0 ) then
+      !               diag_4d(i,k,diag_pt%qadt_eros)  =   &
+      !                         (qa1(i,k) - qa0(i,k))*inv_dtcloud
+      !             end if 
+      !           endif
+      !         END DO    
+      !       END DO    
 
       !-----------------------------------------------------------------------
       !   define value needed for diagnostic calculation.
-      !-----------------------------------------------------------------------
-            if (diag_id%qadt_ahuco + diag_id%qa_ahuco_col > 0) then
-              diag_4d(:,:,:,diag_pt%qadt_ahuco) = qa1(:,:,:)
-            end if
+      ! !-----------------------------------------------------------------------
+      !       if (diag_id%qadt_ahuco + diag_id%qa_ahuco_col > 0) then
+      !         diag_4d(:,:,diag_pt%qadt_ahuco) = qa1(:,:)
+      !       end if
 
       !------------------------------------------------------------------------
       !    limit cloud area to be no more than that which is not being
       !    taken by convective clouds.
       !------------------------------------------------------------------------
             if (limit_conv_cloud_frac) then
-              qa1 = MIN(qa1, 1.0 -C2ls_mp%convective_humidity_area)
+              qa1 = MIN(qa1, 1.0 -convective_humidity_area)
             endif
                        
       !------------------------------------------------------------------------
       !    complete calculation of diagnostic.
       !------------------------------------------------------------------------
-            if (diag_id%qadt_ahuco + diag_id%qa_ahuco_col > 0) then
-              diag_4d(:,:,:,diag_pt%qadt_ahuco) =    &
-                        (qa1(:,:,:) - diag_4d(:,:,:,diag_pt%qadt_ahuco))* & 
-                                                                    inv_dtcloud 
-            end if
+            ! if (diag_id%qadt_ahuco + diag_id%qa_ahuco_col > 0) then
+            !   diag_4d(:,:,diag_pt%qadt_ahuco) =    &
+            !             (qa1(:,:) - diag_4d(:,:,diag_pt%qadt_ahuco))* & 
+            !                                                         inv_dtcloud 
+            ! end if
 
       !------------------------------------------------------------------------
       !    set total tendency term and update cloud fraction    
       !------------------------------------------------------------------------
             SA = (SA + qa1) - qa0
-            Cloud_state%qa_upd = qa1
+            qa_upd = qa1
               
       !------------------------------------------------------------------------
       !       The next step is to calculate the change in condensate
@@ -1138,11 +1140,11 @@
       !       Also, save term needed when predicted droplets is active (tmp5).
       !------------------------------------------------------------------------
             IF (use_qabar) THEN
-              Cloud_processes%dcond_ls = -1.*qabar*dqs_ls
-              Cloud_processes%delta_cf = A_dt*(1.-qabar)
+              dcond_ls = -1.*qabar*dqs_ls
+              delta_cf = A_dt*(1.-qabar)
             ELSE
-              Cloud_processes%dcond_ls = -1.*Cloud_state%qa_upd*dqs_ls   
-              Cloud_processes%delta_cf = A_dt*(1.-Cloud_state%qa_upd)
+              dcond_ls = -1.*qa_upd*dqs_ls   
+              delta_cf = A_dt*(1.-qa_upd)
             END IF      
 
       !-----------------------------------------------------------------------
@@ -1151,10 +1153,9 @@
       end subroutine tiedtke_macro_nopdf_nosuper
       
       SUBROUTINE tiedtke_macro_nopdf_super (   &
-                         idim, jdim, kdim, C2ls_mp,Input_mp, Atmos_state,    &
-                         Cloud_state, ST, SQ, Cloud_processes, Particles,  &
-                         n_diag_4d, diag_4d, diag_id, diag_pt, edum, SA,   &
-                                                            U00p, erosion_scale) 
+                         idim, kdim, mc_full, convective_humidity_area, omega, radturbten, pfull, tin, qin, airdens, dqsdT, gamma, qs, qsl, qsi, rh_crit, rh_crit_min, &
+                         qa_upd, ql_upd, qi_upd, ST, SQ, da_ls, D_eros, dcond_ls, delta_cf, hom,  &
+                         edum, SA, U00p, erosion_scale) 
 
       !------------------------------------------------------------------------
       !   subroutine tiedtke_macro_nopdf_super calculates non-convective
@@ -1163,21 +1164,28 @@
       !   (see Tompkins et al 2007, Salzmann et al , 2010).
       !------------------------------------------------------------------------
 
-      INTEGER,                            INTENT(IN )    :: idim, jdim, kdim  
-      type(atmos_state_type),             intent(inout)  :: Atmos_state
-      type(mp_input_type),                intent(in)     :: Input_mp   
-      type(mp_conv2ls_type),              intent(in)     :: C2ls_mp   
-      type(cloud_state_type),             intent(inout)  :: Cloud_state
-      type(cloud_processes_type),         intent(inout)  :: Cloud_processes
-      type(particles_type),               intent(inout)  :: Particles
-      REAL, dimension(idim,jdim,kdim),    INTENT(IN )    :: ST, SQ, edum, U00p,&
+      INTEGER,                            INTENT(IN )    :: idim, kdim
+      real(kind=kind_phys), intent(in) :: mc_full(:,:) !total net convective mass flux on full levels kg m-2 s-1
+      real(kind=kind_phys), intent(in) :: convective_humidity_area(:,:) !grid box area affected by the convective clouds
+      real(kind=kind_phys), intent(in) :: omega(:,:) !lagrangian_tendency_of_air_pressure
+      real(kind=kind_phys), intent(in) :: radturbten(:,:) !sum of temperature tendency due to radiation and turbulence (K s-1) (interstitial -- reset every timestep)
+      real(kind=kind_phys), intent(in) :: pfull(:,:)
+      real(kind=kind_phys), intent(in) :: tin(:,:) !i,k dims; this refers to the scheme's input state temperature (can either be process-split or time-split)
+      real(kind=kind_phys), intent(in) :: qin(:,:) !i,k dims; this refers to the scheme's input state water vapor (can either be process-split or time-split)
+      real(kind=kind_phys), intent(in) :: airdens(:,:) !air density (kg m-3) calculated in lscloud_driver
+      real(kind=kind_phys), intent(in) :: dqsdT(:,:)
+      real(kind=kind_phys), intent(in) :: gamma(:,:), qs(:,:), qsl(:,:), qsi(:,:)
+      real(kind=kind_phys), intent(in) :: rh_crit(:,:), rh_crit_min(:,:)
+      real(kind=kind_phys), intent(inout) :: qa_upd(:,:)
+      real(kind=kind_phys), intent(in),    dimension(:,:) :: ql_upd, qi_upd
+      real(kind=kind_phys), intent(inout) :: da_ls(:,:)
+      real(kind=kind_phys), intent(inout) :: D_eros(:,:)
+      real(kind=kind_phys), intent(inout) :: dcond_ls(:,:)
+      real(kind=kind_phys), intent(inout) :: delta_cf(:,:)
+      real(kind=kind_phys), intent(in) :: hom(:,:)
+      REAL, dimension(idim,kdim),    INTENT(IN )    :: ST, SQ, edum, U00p,&
                                                             erosion_scale
-      REAL, dimension(idim,jdim,kdim),    INTENT(INout ) :: SA
-      INTEGER,                            INTENT(IN )    :: n_diag_4d
-      REAL, dimension(idim, jdim, kdim, 0:n_diag_4d),        &
-                                          INTENT(INOUT ) :: diag_4d
-      TYPE(diag_id_type),                 intent(in)     :: diag_id
-      TYPE(diag_pt_type),                 intent(in)     :: diag_pt
+      REAL, dimension(idim,kdim),    INTENT(INout ) :: SA
 
       !-------------------------------------------------------------------------
       !-----local variables-----
@@ -1215,17 +1223,17 @@
       !                      humidity
       !
       !------------------------------------------------------------------------
-            real, dimension(idim, jdim,kdim) :: deltpg, dqs_ls, drhcqs_ls, dum,&
+            real, dimension(idim, kdim) :: deltpg, dqs_ls, drhcqs_ls, dum,&
                                                 qve 
-            real, dimension(idim, jdim,kdim) :: A_dt, B_dt, qa1, qa0,  &
+            real, dimension(idim, kdim) :: A_dt, B_dt, qa1, qa0,  &
                                                 qabar, qaeq, qa_t, tmp0, tmp1, &
                                                 drhcqsdT, beta, ttmp, qtmp,  &
                                                 qs_t, qs_l, qs_i, dqsdT1, gamma1
-            real, dimension(idim,jdim)       :: qagtmp,qcgtmp,qvgtmp
+            real, dimension(idim)       :: qagtmp,qcgtmp,qvgtmp
             REAL                             :: eslt, qvs, qs_d, qvi, esit, ul
             REAL                             :: qvmax, esat0, tmp1s            
             INTEGER                          :: ns, id
-            INTEGER                          :: i,j,k
+            INTEGER                          :: i,k
 
       !------------------------------------------------------------------------
       !    calculate the derivative of the threshold relative humidity over water!    (for temps > 233) and over ice (temps < 233) with respect to 
@@ -1235,38 +1243,35 @@
       !    case, superstaurations up to rh_crit are permitted.
       !------------------------------------------------------------------------
             do k=1,kdim
-              do j=1,jdim
-                do i=1,idim
-                  if (Input_mp%tin(i,j,k) .GE. TFREEZE - 40. ) then 
-                    drhcqsdT(i,j,k) =  HLV*Atmos_state%qsl(i,j,k)/  &
-                                              (RVGAS*Input_mp%tin(i,j,k)**2)
-                    beta(i,j,k) = drhcqsdT(i,j,k)*HLV/CP_AIR
-                  else
-                    drhcqsdT(i,j,k) = Atmos_state%rh_crit(i,j,k)*   &
-                                HLS*Atmos_state%qsi(i,j,k)/  &
-                                             (RVGAS*Input_mp%tin(i,j,k)**2) +  &
-                                 Particles%hom(i,j,k)*Atmos_state%qsi(i,j,k)*  &
-                             (2.*0.0073*(Input_mp%tin(i,j,k) - TFREEZE) + 1.466)
-                    beta(i,j,k) = drhcqsdT(i,j,k)*HLS/CP_AIR
-                  endif 
-                end do
+              do i=1,idim
+                if (tin(i,k) .GE. TFREEZE - 40. ) then 
+                  drhcqsdT(i,k) =  HLV*qsl(i,k)/  &
+                                            (RVGAS*tin(i,k)**2)
+                  beta(i,k) = drhcqsdT(i,k)*HLV/CP_AIR
+                else
+                  drhcqsdT(i,k) = rh_crit(i,k)*   &
+                              HLS*qsi(i,k)/  &
+                                           (RVGAS*tin(i,k)**2) +  &
+                               hom(i,k)*qsi(i,k)*  &
+                           (2.*0.0073*(tin(i,k) - TFREEZE) + 1.466)
+                  beta(i,k) = drhcqsdT(i,k)*HLS/CP_AIR
+                endif 
               end do
             end do
 
             do k=1,kdim
-              do j=1,jdim
-                do i=1,idim
+              do i=1,idim
 
       !------------------------------------------------------------------------
       !    calculate environmental specific humidity (qve) based on input cloud 
       !    fraction. take into account convective cloud presence.
       !------------------------------------------------------------------------
-                  qa_t(i,j,k) =    &
-                    MAX(MIN(Cloud_State%qa_upd(i,j,k) +   &
-                                C2ls_mp%convective_humidity_area(i,j,k), 1.),0.)
-                  qve(i,j,k) =  (Input_mp%qin(i,j,k) - qa_t(i,j,k)*  &
-                                  Atmos_state%qs(i,j,k) ) /   &
-                                             MAX((1. - qa_t(i,j,k) ), qmin)
+                qa_t(i,k) =    &
+                  MAX(MIN(qa_upd(i,k) +   &
+                              convective_humidity_area(i,k), 1.),0.)
+                qve(i,k) =  (qin(i,k) - qa_t(i,k)*  &
+                                qs(i,k) ) /   &
+                                           MAX((1. - qa_t(i,k) ), qmin)
 
       !------------------------------------------------------------------------
       !       The first step is to compute the change in qs due to large-
@@ -1283,13 +1288,12 @@
       !       of dqs_ls, a quadratic equation must be solved for dqs_ls in
       !       the case that da_ls is not equal to zero.
       !------------------------------------------------------------------------
-                  dum(i,j,k) = (((Input_mp%omega(i,j,k) + grav*  &
-                                   C2ls_mp%mc_full(i,j,k))/ &
-                                       Atmos_state%airdens(i,j,k)/cp_air) + &
-                                         Input_mp%radturbten(i,j,k))*dtcloud
-                  dqs_ls(i,j,k) = dum(i,j,k) * Atmos_state%dqsdT(i,j,k)
-                  drhcqs_ls(i,j,k) = dum(i,j,k) *drhcqsdT(i,j,k)
-                end do
+                dum(i,k) = (((omega(i,k) + grav*  &
+                                 mc_full(i,k))/ &
+                                     airdens(i,k)/cp_air) + &
+                                       radturbten(i,k))*dtcloud
+                dqs_ls(i,k) = dum(i,k) * dqsdT(i,k)
+                drhcqs_ls(i,k) = dum(i,k) *drhcqsdT(i,k)
               end do
             end do
 
@@ -1327,27 +1331,27 @@
        !            evaporate however this is not accounted for at present.
        !----------------------------------------------------------------------- 
             where (dqs_ls .le. 0. .and.    &
-                        qve .ge. U00p*Atmos_state%rh_crit_min*Atmos_state%qs &
+                        qve .ge. U00p*rh_crit_min*qs &
                                                              .and. qa_t .lt. 1.)
-              tmp0 =  (1 + Atmos_state%gamma*qa_t)*drhcqs_ls - beta*qa_t* &
+              tmp0 =  (1 + gamma*qa_t)*drhcqs_ls - beta*qa_t* &
                                                                           dqs_ls
-              tmp1 = SQRT( (1.+qa_t*Atmos_state%gamma)**2. - (1.-qa_t)* &
-                               beta * tmp0 /MAX( (  Atmos_state%rh_crit *  &
-                                Atmos_state%qs - qve ), qmin ) ) -  &
-                                                  (1.+qa_t*Atmos_State%gamma) 
+              tmp1 = SQRT( (1.+qa_t*gamma)**2. - (1.-qa_t)* &
+                               beta * tmp0 /MAX( (  rh_crit *  &
+                                qs - qve ), qmin ) ) -  &
+                                                  (1.+qa_t*gamma) 
               tmp1 = -1.*tmp1/((1. - qa_t)*beta/(2.*MAX(   &
-                         (Atmos_state%rh_crit*Atmos_State%qs - qve), qmin )) )
-              drhcqs_ls = min(tmp1, tmp0 / MAX(1.+ Atmos_state%gamma*qa_t +&
+                         (rh_crit*qs - qve), qmin )) )
+              drhcqs_ls = min(tmp1, tmp0 / MAX(1.+ gamma*qa_t +&
                                                beta*0.5*(1. - qa_t), qmin))
-              Cloud_processes%da_ls = -0.5*(1. - qa_t)*drhcqs_ls/   &
-                   MAX( Atmos_state%rh_crit*Atmos_state%qs - qve, qmin)
-              dqs_ls = (dqs_ls - Atmos_state%gamma*0.5*  &
-                        Cloud_processes%da_ls*drhcqs_ls)/   &
-                                                (1. + qa_t*Atmos_state%gamma)
+              da_ls = -0.5*(1. - qa_t)*drhcqs_ls/   &
+                   MAX( rh_crit*qs - qve, qmin)
+              dqs_ls = (dqs_ls - gamma*0.5*  &
+                        da_ls*drhcqs_ls)/   &
+                                                (1. + qa_t*gamma)
             elsewhere
               drhcqs_ls = 0.
-              Cloud_processes%da_ls = 0.
-              dqs_ls = dqs_ls/(1. + qa_t*Atmos_state%gamma)
+              da_ls = 0.
+              dqs_ls = dqs_ls/(1. + qa_t*gamma)
             endwhere
 
       !------------------------------------------------------------------------
@@ -1368,34 +1372,32 @@
       !
       !------------------------------------------------------------------------
             DO k=1,kdim
-              DO j=1,jdim
-                DO i=1,idim
-                  if (Cloud_state%ql_upd(i,j,k) .gt. qmin .or. &
-                                 Cloud_state%qi_upd (i,j,k).gt. qmin) then
-                    Cloud_processes%D_eros(i,j,k) =    &
-                              Cloud_state%qa_upd(i,j,k)*erosion_scale(i,j,k)*   &
-                                                                 dtcloud*    &
-                         (MAX(Atmos_state%qs(i,j,k) - Input_mp%qin(i,j,k),&
-                               0.)/(1. + Atmos_state%gamma(i,j,k)) ) /      &
-                          (Cloud_state%qi_upd(i,j,k) + Cloud_state%ql_upd(i,j,k))
+              DO i=1,idim
+                if (ql_upd(i,k) .gt. qmin .or. &
+                               qi_upd (i,k).gt. qmin) then
+                  D_eros(i,k) =    &
+                            qa_upd(i,k)*erosion_scale(i,k)*   &
+                                                               dtcloud*    &
+                       (MAX(qs(i,k) - qin(i,k),&
+                             0.)/(1. + gamma(i,k)) ) /      &
+                        (qi_upd(i,k) + ql_upd(i,k))
 
-                    if (Input_mp%pfull(i,j,k) .gt. 400.e02) then
-                      Cloud_processes%D_eros(i,j,k) =   &
-                           Cloud_processes%D_eros(i,j,k) + efact*  &
-                                      Cloud_processes%D_eros(i,j,k)*  &
-                          ((Input_mp%pfull(i,j,kdim) - Input_mp%pfull(i,j,k))/  &
-                                      (Input_mp%pfull(i,j,kdim) - 400.e02))
+                  if (pfull(i,k) .gt. 400.e02) then
+                    D_eros(i,k) =   &
+                         D_eros(i,k) + efact*  &
+                                    D_eros(i,k)*  &
+                        ((pfull(i,kdim) - pfull(i,k))/  &
+                                    (pfull(i,kdim) - 400.e02))
 
-                    else
-                      Cloud_processes%D_eros(i,j,k) =  &
-                           Cloud_processes%D_eros(i,j,k) + efact*  &
-                                                Cloud_processes%D_eros(i,j,k)
-                    endif
                   else
-                    Cloud_processes%D_eros(i,j,k) = 0.
+                    D_eros(i,k) =  &
+                         D_eros(i,k) + efact*  &
+                                              D_eros(i,k)
                   endif
-                END DO    
-              END DO    
+                else
+                  D_eros(i,k) = 0.
+                endif
+              END DO        
             END DO    
 
       !------------------------------------------------------------------------ 
@@ -1453,61 +1455,57 @@
       !-------------------------------------------------------------------------
          
             do k=1,kdim
-              do j=1,jdim
-                do i=1,idim
-                  A_dt(i,j,k) = Cloud_processes%da_ls(i,j,k)/   &
-                                                  max((1.-qa_t(i,j,k)), qmin)
-                  B_dt(i,j,k) = Cloud_processes%D_eros(i,j,k)
-                  if ( (A_dt(i,j,k) .gt. Dmin) .or.   &
-                                            (B_dt(i,j,k) .gt. Dmin) ) then 
-                    qa0(i,j,k)   = Cloud_state%qa_upd(i,j,k)
-                    qaeq(i,j,k)  =                                     &
-                                       A_dt(i,j,k)/(A_dt(i,j,k) + B_dt(i,j,k))
-                    qa1(i,j,k)  = qaeq(i,j,k) - (qaeq(i,j,k) - qa0(i,j,k))* &
-                                           exp(-1.*(A_dt(i,j,k) + B_dt(i,j,k)) )
-                    qabar(i,j,k) = qaeq(i,j,k) - ((qa1(i,j,k) - qa0(i,j,k))/  &
-                                               (A_dt(i,j,k) + B_dt(i,j,k)))
-                  else
-                    qa0(i,j,k)   = Cloud_state%qa_upd(i,j,k)
-                    qaeq(i,j,k)  = qa0(i,j,k)   
-                    qa1(i,j,k)   = qa0(i,j,k)   
-                    qabar(i,j,k) = qa0(i,j,k)  
-                  endif
-                end do
+              do i=1,idim
+                A_dt(i,k) = da_ls(i,k)/   &
+                                                max((1.-qa_t(i,k)), qmin)
+                B_dt(i,k) = D_eros(i,k)
+                if ( (A_dt(i,k) .gt. Dmin) .or.   &
+                                          (B_dt(i,k) .gt. Dmin) ) then 
+                  qa0(i,k)   = qa_upd(i,k)
+                  qaeq(i,k)  =                                     &
+                                     A_dt(i,k)/(A_dt(i,k) + B_dt(i,k))
+                  qa1(i,k)  = qaeq(i,k) - (qaeq(i,k) - qa0(i,k))* &
+                                         exp(-1.*(A_dt(i,k) + B_dt(i,k)) )
+                  qabar(i,k) = qaeq(i,k) - ((qa1(i,k) - qa0(i,k))/  &
+                                             (A_dt(i,k) + B_dt(i,k)))
+                else
+                  qa0(i,k)   = qa_upd(i,k)
+                  qaeq(i,k)  = qa0(i,k)   
+                  qa1(i,k)   = qa0(i,k)   
+                  qabar(i,k) = qa0(i,k)  
+                endif
               end do
             end do
 
       !-------------------------------------------------------------------------
       !    output some diagnostics.
       !-------------------------------------------------------------------------
-            do k=1,kdim
-              do j=1,jdim
-                do i=1,idim
-                  if ( (A_dt(i,j,k) .gt. Dmin) .and.   &
-                       (B_dt(i,j,k) .gt. Dmin) )  then
-                    if (diag_id%qadt_lsform + diag_id%qa_lsform_col > 0) then
-                      diag_4d(i,j,k,diag_pt%qadt_lsform) =  A_dt(i,j,k)*  &
-                                    (1. - qabar(i,j,k))*inv_dtcloud
-                    end if
-                    if ( diag_id%qadt_eros + diag_id%qa_eros_col > 0 ) then
-                      diag_4d(i,j,k,diag_pt%qadt_eros)  =   &
-                           ((qa1(i,j,k) - qa0(i,j,k))*inv_dtcloud ) - &
-                                             diag_4d(i,j,k,diag_pt%qadt_lsform)  
-                    end if
-                  else if (A_dt(i,j,k) .gt. Dmin) then
-                    if (diag_id%qadt_lsform + diag_id%qa_lsform_col > 0) then
-                      diag_4d(i,j,k,diag_pt%qadt_lsform) =    &
-                                (qa1(i,j,k) - qa0(i,j,k))*inv_dtcloud
-                    end if 
-                  else if (B_dt(i,j,k) .gt. Dmin)  then
-                    if ( diag_id%qadt_eros + diag_id%qa_eros_col > 0 ) then
-                      diag_4d(i,j,k,diag_pt%qadt_eros)  =    &
-                                 (qa1(i,j,k) - qa0(i,j,k))*inv_dtcloud
-                    end if 
-                  endif
-                end do
-              end do
-            end do
+            ! do k=1,kdim
+            !   do i=1,idim
+            !     if ( (A_dt(i,k) .gt. Dmin) .and.   &
+            !          (B_dt(i,k) .gt. Dmin) )  then
+            !       if (diag_id%qadt_lsform + diag_id%qa_lsform_col > 0) then
+            !         diag_4d(i,k,diag_pt%qadt_lsform) =  A_dt(i,k)*  &
+            !                       (1. - qabar(i,k))*inv_dtcloud
+            !       end if
+            !       if ( diag_id%qadt_eros + diag_id%qa_eros_col > 0 ) then
+            !         diag_4d(i,k,diag_pt%qadt_eros)  =   &
+            !              ((qa1(i,k) - qa0(i,k))*inv_dtcloud ) - &
+            !                                diag_4d(i,k,diag_pt%qadt_lsform)  
+            !       end if
+            !     else if (A_dt(i,k) .gt. Dmin) then
+            !       if (diag_id%qadt_lsform + diag_id%qa_lsform_col > 0) then
+            !         diag_4d(i,k,diag_pt%qadt_lsform) =    &
+            !                   (qa1(i,k) - qa0(i,k))*inv_dtcloud
+            !       end if 
+                ! else if (B_dt(i,k) .gt. Dmin)  then
+            !       if ( diag_id%qadt_eros + diag_id%qa_eros_col > 0 ) then
+            !         diag_4d(i,k,diag_pt%qadt_eros)  =    &
+            !                    (qa1(i,k) - qa0(i,k))*inv_dtcloud
+            !       end if 
+            !     endif
+            !   end do
+            ! end do
 
       !-----------------------------------------------------------------------
       !   define value needed for diagnostic calculation.
@@ -1521,23 +1519,23 @@
       !    taken by convective clouds.
       !-------------------------------------------------------------------------
             if (limit_conv_cloud_frac) then
-              qa1 = MIN(qa1, 1.0 - C2ls_mp%convective_humidity_area)
+              qa1 = MIN(qa1, 1.0 - convective_humidity_area)
             endif
 
       !------------------------------------------------------------------------
       !    complete calculation of diagnostic.
       !------------------------------------------------------------------------
-            if ( diag_id%qadt_ahuco + diag_id%qa_ahuco_col > 0 ) then
-              diag_4d(:,:,:,diag_pt%qadt_ahuco)  =   &
-                   (qa1(:,:,:) - diag_4d(:,:,:,diag_pt%qadt_ahuco))*inv_dtcloud 
-            end if
+            ! if ( diag_id%qadt_ahuco + diag_id%qa_ahuco_col > 0 ) then
+            !   diag_4d(:,:,diag_pt%qadt_ahuco)  =   &
+            !        (qa1(:,:) - diag_4d(:,:,diag_pt%qadt_ahuco))*inv_dtcloud 
+            ! end if
                        
       !-------------------------------------------------------------------------
       !    set total tendency term and update cloud fraction.    
       !-------------------------------------------------------------------------
             SA = (SA + qa1) - qa0
-            Cloud_state%qa_upd = qa1
-            Cloud_processes%delta_cf = MAX(qa1 - qa0 , 0.)
+            qa_upd = qa1
+            delta_cf = MAX(qa1 - qa0 , 0.)
 
       !-------------------------------------------------------------------------
       !       The next step is to calculate the change in condensate
@@ -1554,39 +1552,37 @@
       !cms but qabar is not limited to area outside  conv. clouds ...
       !!      dcond_ls = -1. * MIN(qabar, 1.- ahuco)  * dqs_ls
       !-----------------------------------------------------------------------
-            Cloud_processes%dcond_ls = -1.*qa_t*dqs_ls -    &
-                 0.5*MAX(MIN(Cloud_processes%da_ls, 1. - qa_t),0.)*drhcqs_ls 
+            dcond_ls = -1.*qa_t*dqs_ls -    &
+                 0.5*MAX(MIN(da_ls, 1. - qa_t),0.)*drhcqs_ls 
 
       !-----------------------------------------------------------------------
       !     compute qs and condensation using updated temps and vapor. 
       !     see Tompkins et al., 2007
       !-----------------------------------------------------------------------
-            ttmp=Input_mp%tin + ST        
-            qtmp= Input_mp%qin + SQ         
-            CALL compute_qs_x1 (idim, jdim, kdim, ttmp, Input_mp%pfull, &
+            ttmp=tin + ST        
+            qtmp= qin + SQ         
+            CALL compute_qs_x1 (idim, kdim, ttmp, pfull, &
                                              qs_t, qs_l, qs_i, dqsdT1, gamma1 )
             DO k=1,kdim
-              do j=1,jdim
-                DO i=1, idim
-                  qvmax = qs_t(i,j,k)*(qa_t(i,j,k) + (1. -  qa_t(i,j,k))*  &
-                                                   Atmos_state%rh_crit(i,j,k) )
-                  tmp1s =  max(0., (qtmp(i,j,k) - qvmax) )/(1. + gamma1(i,j,k))
-                  ! limit 
-                  IF (Cloud_processes%dcond_ls(i,j,k) .GT. 0. .OR.    &
-                                                          tmp1s .GT. 0. )  THEN
-                    Cloud_processes%dcond_ls(i,j,k) =   &
-                                MAX(Cloud_processes%dcond_ls(i,j,k), tmp1s) 
-                  ELSE
-                  !don't evaporate into saturated grid cells
-                  !CHECK
-                    if ( qve(i,j,k) .lt. qs_t(i,j,k)) then
-                      tmp1s =  max(0.,( qs_t(i,j,k) - qtmp(i,j,k) ))/   &
-                                     (1. + gamma1(i,j,k)) ! evap .le. qs - qtmp
-                      Cloud_processes%dcond_ls(i,j,k) = MAX( -1.*tmp1s,  &
-                                               Cloud_processes%dcond_ls(i,j,k))
-                    end if
-                  END IF
-                END DO
+              DO i=1, idim
+                qvmax = qs_t(i,k)*(qa_t(i,k) + (1. -  qa_t(i,k))*  &
+                                                 rh_crit(i,k) )
+                tmp1s =  max(0., (qtmp(i,k) - qvmax) )/(1. + gamma1(i,k))
+                ! limit 
+                IF (dcond_ls(i,k) .GT. 0. .OR.    &
+                                                        tmp1s .GT. 0. )  THEN
+                  dcond_ls(i,k) =   &
+                              MAX(dcond_ls(i,k), tmp1s) 
+                ELSE
+                !don't evaporate into saturated grid cells
+                !CHECK
+                  if ( qve(i,k) .lt. qs_t(i,k)) then
+                    tmp1s =  max(0.,( qs_t(i,k) - qtmp(i,k) ))/   &
+                                   (1. + gamma1(i,k)) ! evap .le. qs - qtmp
+                    dcond_ls(i,k) = MAX( -1.*tmp1s,  &
+                                             dcond_ls(i,k))
+                  end if
+                END IF
               END DO
             END DO
 
