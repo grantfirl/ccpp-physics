@@ -38,10 +38,10 @@
       subroutine tiedtke_prog_clouds_run (idim, kdim, do_pdf_clouds, single_gaussian_pdf, &
           do_aero_eros, u00_profile, add_ahuco, eros_choice, include_neg_mc, super_ice_opt, &
           ae_ub, ae_lb, ae_N_ub, ae_N_lb, U00, eros_scale, eros_scale_c, eros_scale_t, &
-          mc_thresh, diff_thresh, dt, SA, SQ, gamma, qs, dsqdT, U_ca, qsl, qsi, pfull, &
-          phalf, mc_full, drop1, rh_crit, rh_crit_min, tin, qin, ql_in, qi_in, qa_in, &
-          ql_upd, qi_upd, qa_upd, omega, radturbten, airdens, hom, qvg, da_ls, delta_cf, &
-          dcond_ls, D_eros, errmsg, errflg)
+          mc_thresh, diff_thresh, dt, SA, SQ, gamma, qs, dqsdT, U_ca, qsl, qsi, pfull, &
+          phalf, mc_full, convective_humidity_area, diff_t, drop1, rh_crit, rh_crit_min, &
+          tin, qin, ql_in, qi_in, qa_in, ql_upd, qi_upd, qa_upd, omega, radturbten, airdens, &
+          hom, qvg, da_ls, delta_cf, dcond_ls, D_eros, errmsg, errflg)
 
       use machine  , only : kind_phys
       
@@ -68,9 +68,9 @@
       real(kind=kind_phys), intent(in) :: hom(:,:) !serves as a flag representing homogeneous ice nucleation (calculated in ice_nucl.F90/ice_nucl_k)
       real(kind=kind_phys), intent(inout) :: qa_upd(:,:) !these vars are initialized every physics timestep to 0 in lscloud_driver.F90/lscloud_alloc
       real(kind=kind_phys), intent(inout) :: qvg(:,:), da_ls(:,:), delta_cf(:,:), dcond_ls(:,:), D_eros(:,:) !these vars are initialized every physics timestep to 0 in lscloud_driver.F90/lscloud_alloc
-      real(kind=kind_phys), intent(inout) :: dqa_dt_prod(:,:), dqa_dt_loss(:,:) !these vars are initialized every physics timestep to 0 in lscloud_driver.F90/lscloud_driver
+      !real(kind=kind_phys), intent(inout) :: dqa_dt_prod(:,:), dqa_dt_loss(:,:) !these vars are initialized every physics timestep to 0 in lscloud_driver.F90/lscloud_driver
       
-      real(kind=kind_phys), intent(in)    :: SQ(:,:) !this is set to zero in lscloud_driver.F90/lscloud_driver
+      real(kind=kind_phys), intent(in)    :: SQ(:,:) !this is set to zero in lscloud_driver.F90/lscloud_driver; change in specific humidity due to impose_realiziabilty/adjust_condensate; should be interstitial var
       real(kind=kind_phys), intent(inout) :: SA(:,:)
       
       character(len=*), intent(out) :: errmsg
@@ -110,7 +110,7 @@
 !                                                                      
 !------------------------------------------------------------------------
       if (do_pdf_clouds) then
-        if (single_gaussion_pdf) then      
+        if (single_gaussian_pdf) then      
           call tiedtke_macro_Single_Gaussian_pdf(idim, kdim,    & 
             gamma, qs, qin, &
             ql_in, qi_in, qa_in, ql_upd, qi_upd, qa_upd, SQ, qvg, da_ls, delta_cf, dcond_ls, &
@@ -118,7 +118,7 @@
         else
           call tiedtke_macro_pdf (     &
             idim, kdim, gamma, qs, qin, ql_in, qi_in, qa_in, ql_upd, qi_upd, qa_upd, &
-            SQ, qvg, D_eros, da_ls, delta_cf, dcond_ls, dqa_dt_prod, dqa_dt_loss, SA)
+            SQ, qvg, D_eros, da_ls, delta_cf, dcond_ls, SA)
         endif
       else  !(do_pdf_clouds)
 !------------------------------------------------------------------------
@@ -438,7 +438,7 @@
       
       SUBROUTINE tiedtke_macro_pdf (  &
                    idim, kdim, gamma, qs, qin, ql_in, qi_in, qa_in, ql_upd, qi_upd, qa_upd, &
-                   SQ, qvg, D_eros, da_ls, delta_cf, dcond_ls, dqa_dt_prod, dqa_dt_loss, SA)
+                   SQ, qvg, D_eros, da_ls, delta_cf, dcond_ls, SA)
 
       !----------------------------------------------------------------------!
       !                                                                      !
@@ -453,7 +453,7 @@
       real(kind=kind_phys), intent(in),    dimension(:,:) :: ql_upd, qi_upd
       real(kind=kind_phys), intent(inout), dimension(:,:) :: qa_upd
       real(kind=kind_phys), intent(inout), dimension(:,:) :: qvg, D_eros, da_ls, delta_cf, dcond_ls
-      real(kind=kind_phys), intent(inout), dimension(:,:) :: dqa_dt_prod, dqa_dt_loss
+      !real(kind=kind_phys), intent(inout), dimension(:,:) :: dqa_dt_prod, dqa_dt_loss
       real, dimension(idim,kdim),   intent(in )   :: SQ
       real, dimension(idim,kdim),   intent(inout) :: SA
       

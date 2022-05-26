@@ -27,6 +27,428 @@
 [ccpp-arg-table]
   name = tiedtke_prog_clouds_run
   type = scheme
+[idim]
+  standard_name = horizontal_loop_extent
+  long_name = horizontal loop extent
+  units = count
+  dimensions = ()
+  type = integer
+  intent = in
+[kdim]
+  standard_name = vertical_layer_dimension
+  long_name = number of vertical levels
+  units = count
+  dimensions = ()
+  type = integer
+  intent = in
+[do_pdf_clouds]
+  standard_name = do_pdf_clouds
+  long_name = flag to activate PDF clouds
+  units = flag
+  dimensions = ()
+  type = logical
+  intent = in
+[single_gaussian_pdf]
+  standard_name = do_assume_single_gaussian_pdf_for_prognostic_cloud
+  long_name = flag to activate the assumption of a single Gaussian PDF for prognostic clouds
+  units = flag
+  dimensions = ()
+  type = logical
+  intent = in
+[do_aero_eros]
+  standard_name = do_enhanced_droplet_based_prognostic_cloud_erosion
+  long_name = do enhanced droplet based prognostic cloud erosion
+  units = flag
+  dimensions = ()
+  type = logical
+  intent = in
+[u00_profile]
+  standard_name = do_ecmwf_profile_of_relative_humidity_threshold_for_condensation
+  long_name = flag to activate the ECMWF profile of relative humidity threshold for large scale condensation
+  units = flag
+  dimensions = ()
+  type = logical
+  intent = in
+[add_ahuco]
+  standard_name = do_convective_cloud_area_modification_to_relative_humidity_threshold_for_condensation
+  long_name = activate convective cloud area modification to relative humidity threshold for condensation
+  units = flag
+  dimensions = ()
+  type = logical
+  intent = in
+[eros_choice]
+  standard_name = do_enhanced_prognostic_cloud_erosion
+  long_name = flag to activate enhanced prognostic cloud erosion for convection or turbulence
+  units = flag
+  dimensions = ()
+  type = logical
+  intent = in
+[include_neg_mc]
+  standard_name = do_enhanced_prognostic_cloud_erosion_for_negative_convective_mass_flux
+  long_name = flag to activate enhanced cloud erosion when convective mass flux is negative
+  units = flag
+  dimensions = ()
+  type = logical
+  intent = in
+[super_ice_opt]
+  standard_name = control_for_prognostic_cloud_supersaturation
+  long_name = control for prognostic cloud supersaturation
+  units = 1
+  dimensions = ()
+  type = integer
+  intent = in
+[ae_ub]
+  standard_name = prognostic_droplet_based_cloud_erosion_upper_bound_numerator_constant
+  long_name = prognostic droplet based cloud erosion upper bound numerator constant
+  units = 1
+  dimensions = ()
+  type = real
+  kind = kind_phys
+  intent = in
+[ae_lb]
+  standard_name = prognostic_droplet_based_cloud_erosion_lower_bound_numerator_constant
+  long_name = prognostic droplet based cloud erosion lower bound numerator constant
+  units = 1
+  dimensions = ()
+  type = real
+  kind = kind_phys
+  intent = in
+[ae_N_ub]
+  standard_name = prognostic_droplet_based_cloud_erosion_upper_bound_denominator_constant
+  long_name = prognostic droplet based cloud erosion upper bound denominator constant
+  units = 1
+  dimensions = ()
+  type = real
+  kind = kind_phys
+  intent = in
+[ae_N_lb]
+  standard_name = prognostic_droplet_based_cloud_erosion_lower_bound_denominator_constant
+  long_name = prognostic droplet based cloud erosion lower bound denominator constant
+  units = 1
+  dimensions = ()
+  type = real
+  kind = kind_phys
+  intent = in
+[U00]
+  standard_name = relative_humidity_threshold_for_condensation
+  long_name = relative humidity threshold parameter for condensation
+  units = frac
+  dimensions = ()
+  type = real
+  kind = kind_phys
+  intent = in
+[eros_scale]
+  standard_name = prognostic_cloud_erosion_rate_constant
+  long_name = prognostic cloud erosion rate constant
+  units = s-1
+  dimensions = ()
+  type = real
+  kind = kind_phys
+  intent = in
+[eros_scale_c]
+  standard_name = prognostic_cloud_erosion_rate_constant_for_convection
+  long_name = prognostic cloud erosion rate constant for convection
+  units = s-1
+  dimensions = ()
+  type = real
+  kind = kind_phys
+  intent = in
+[eros_scale_t]
+  standard_name = prognostic_cloud_erosion_rate_constant_for_turbulence
+  long_name = prognostic cloud erosion rate constant for turbulence
+  units = s-1
+  dimensions = ()
+  type = real
+  kind = kind_phys
+  intent = in
+[mc_thresh]
+  standard_name = convective_mass_flux_threshold_for_enhanced_prognostic_cloud_erosion
+  long_name = convective mass flux threshold for enhanced prognostic cloud erosion
+  units = kg m-2 s-1
+  dimensions = ()
+  type = real
+  kind = kind_phys
+  intent = in
+[diff_thresh]
+  standard_name = diffusion_threshold_for_enhanced_prognostic_cloud_erosion
+  long_name = diffusion threshold for enhanced prognostic cloud erosion
+  units = m2 s-1
+  dimensions = ()
+  type = real
+  kind = kind_phys
+  intent = in
+[dt]
+  standard_name = timestep_for_physics
+  long_name = physics timestep
+  units = s
+  dimensions = ()
+  type = real
+  kind = kind_phys
+  intent = in
+[SA]
+  standard_name = change_of_cloud_area_fraction
+  long_name = change of cloud area fraction
+  units = frac
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = inout
+[SQ]
+  standard_name = change_of_specific_humidity_due_to_tiedtke_condensation_adjustment
+  long_name = change of specific humidity due to tiedtke condensation adjustment
+  units = kg kg-1
+  dimensions = (horizontal_loop_extent, vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[gamma]
+  standard_name = dimensionless_derivative_of_saturation_specific_humidity_with_respect_to_temperature
+  long_name = dimensionless derivative of saturation specific humidity with respect to temperature
+  units = 1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[qs]
+  standard_name = saturation_specific_humidity
+  long_name = saturation specific humidity
+  units = kg kg-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[dqsdT]
+  standard_name = derivative_of_saturation_specific_humidity_with_respect_to_temperature
+  long_name = derivative of saturation specific humidity with respect to temperature
+  units = kg kg-1 K-1
+  dimensions = (horizontal_loop_extent, vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[U_ca]
+  standard_name = relative_humidity
+  long_name = layer relative humidity
+  units = frac
+  dimensions = (horizontal_loop_extent, vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[qsl]
+  standard_name = saturation_specific_humidity_with_respect_to_liquid
+  long_name = saturation specific humidity with respect to liquid
+  units = kg kg-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[qsi]
+  standard_name = saturation_specific_humidity_with_respect_to_ice
+  long_name = saturation specific humidity with respect to ice
+  units = kg kg-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[pfull]
+  standard_name = air_pressure
+  long_name = mean layer pressure
+  units = Pa
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[phalf]
+  standard_name = air_pressure_at_interface
+  long_name = air pressure at model layer interfaces
+  units = Pa
+  dimensions = (horizontal_loop_extent,vertical_interface_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[mc_full]
+  standard_name = net_convective_mass_flux
+  long_name = net convective mass flux
+  units = kg m-2 s-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[convective_humidity_area]
+  standard_name = convective_cloud_area_fraction
+  long_name = convective cloud cover in the phy_f3d array
+  units = frac
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[diff_t]
+  standard_name = atmosphere_heat_diffusivity
+  long_name = atmospheric heat diffusivity
+  units = m2 s-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[drop1]
+  standard_name = volume_number_concentration_of_cloud_liquid_water_particles_in_air_of_new_state
+  long_name = number concentration of cloud droplets updated by physics
+  units = cm-3
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[rh_crit]
+  standard_name = critical_relative_humidity
+  long_name = critical relative humidity
+  units = frac
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[rh_crit_min]
+  standard_name = minimum_critical_relative_humidity
+  long_name = critical relative humidity
+  units = frac
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[tin]
+  standard_name = air_temperature_of_new_state
+  long_name = temperature updated by physics
+  units = K
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[qin]
+  standard_name = specific_humidity_of_new_state
+  long_name = water vapor specific humidity updated by physics
+  units = kg kg-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[ql_in]
+  standard_name = cloud_liquid_water_mixing_ratio_of_new_state
+  long_name = ratio of mass of cloud water to mass of dry air plus vapor (without condensates) updated by physics
+  units = kg kg-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[qi_in]
+  standard_name = cloud_ice_mixing_ratio_of_new_state
+  long_name = ratio of mass of ice water to mass of dry air plus vapor (without condensates) updated by physics
+  units = kg kg-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[qa_in]
+  standard_name = cloud_area_fraction_in_atmosphere_layer
+  long_name = cloud area fraction in atmosphere layer
+  units = frac
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[ql_upd]
+  standard_name = cloud_liquid_water_mixing_ratio_of_new_state
+  long_name = ratio of mass of cloud water to mass of dry air plus vapor (without condensates) updated by physics
+  units = kg kg-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[qi_upd]
+  standard_name = cloud_ice_mixing_ratio_of_new_state
+  long_name = ratio of mass of ice water to mass of dry air plus vapor (without condensates) updated by physics
+  units = kg kg-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[qa_upd]
+  standard_name = cloud_area_fraction_in_atmosphere_layer_of_new_state
+  long_name = cloud fraction updated by physics
+  units = frac
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = inout
+[omega]
+  standard_name = lagrangian_tendency_of_air_pressure
+  long_name = layer mean vertical velocity
+  units = Pa s-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[radturbten]
+  standard_name = tendency_of_air_temperature_due_to_radiation_and_planetary_boundary_layer
+  long_name = tendency of air temperature due to radiation and planetary boundary layer
+  units = K s-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[airdens]
+  standard_name = air_density
+  long_name = air density
+  units = kg m-3
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[hom]
+  standard_name = homogeneous_ice_nucleation_present
+  long_name = homogeneous ice nucleation is present if > 0
+  units = 1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[qvg]
+  standard_name = equilibrium_specific_humdidity_in_clear_area_fraction
+  long_name = equilibrium specific humdidity in clear area fraction
+  units =
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = inout
+[da_ls]
+  standard_name = change_in_saturated_area_fraction_due_to_large_scale_processes
+  long_name = change in saturated volume fraction due to large-scale processes
+  units = frac
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = inout
+[delta_cf]
+  standard_name = change_in_saturated_area_fraction_due
+  long_name = change in saturated volume fraction
+  units = frac
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = inout
+[dcond_ls]
+  standard_name = change_in_cloud_condensate_due_to_nonconvective_condensation
+  long_name = change in cloud condensate due to nonconvective condensation
+  units = kg kg-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = inout
+[D_eros]
+  standard_name = tiedtke_cloud_erosion
+  long_name = erosion term from Tiedtke prognostic clouds
+  units = 1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = inout
 [errmsg]
   standard_name = ccpp_error_message
   long_name = error message for error handling in CCPP
