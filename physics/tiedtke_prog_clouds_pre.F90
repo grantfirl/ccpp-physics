@@ -9,7 +9,7 @@
 !> \section arg_table_tiedtke_prog_clouds_pre_run Argument Table
 !! \htmlinclude tiedtke_prog_clouds_pre_run.html
 !!
-    subroutine tiedtke_prog_clouds_pre_run (idim, kdim, pdf_org, pdfcld, super_ice_opt, hlv, hlf, rvgas, cp, tin, qin, pfull, cnvc, qs, qsl, qsi, dqsdT, U_ca, U01, errmsg, errflg)
+    subroutine tiedtke_prog_clouds_pre_run (idim, kdim, pdf_org, pdfcld, super_ice_opt, hlv, hlf, rvgas, cp, tin, qin, pfull, cnvc, ql_in, qi_in, qa_in, qs, qsl, qsi, dqsdT, ql_upd, qi_upd, qa_upd, U_ca, U01, errmsg, errflg)
 
       use machine  , only : kind_phys
       use ccpp_saturation, only: get_qs
@@ -22,8 +22,9 @@
       integer,              intent(in)  :: super_ice_opt
       
       real(kind=kind_phys), intent(in)  :: hlv, hlf, rvgas, cp
-      real(kind=kind_phys), intent(in)  :: tin(:,:), qin(:,:), pfull(:,:), cnvc(:,:)
+      real(kind=kind_phys), intent(in)  :: tin(:,:), qin(:,:), pfull(:,:), cnvc(:,:), ql_in(:,:), qi_in(:,:), qa_in(:,:)
       real(kind=kind_phys), intent(out) :: qs(:,:), qsl(:,:), qsi(:,:), dqsdT(:,:)
+      real(kind=kind_phys), intent(out) :: ql_upd(:,:), qi_upd(:,:), qa_upd(:,:)
       real(kind=kind_phys), intent(out) :: U_ca(:,:), U01
       
       character(len=*), intent(out) :: errmsg
@@ -101,7 +102,10 @@
         end do
       end if
       
-      !GJF: still need impose_realizability?
+      !GJF: still need impose_realizability? very likely, yes
+      ql_upd = ql_in
+      qi_upd = qi_in
+      qa_upd = qa_in
       
     end subroutine tiedtke_prog_clouds_pre_run
       

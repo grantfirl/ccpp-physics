@@ -126,6 +126,30 @@
   type = real
   kind = kind_phys
   intent = in
+[ql_in]
+  standard_name = cloud_liquid_water_mixing_ratio_of_new_state
+  long_name = ratio of mass of cloud water to mass of dry air plus vapor (without condensates) updated by physics
+  units = kg kg-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[qi_in]
+  standard_name = cloud_ice_mixing_ratio_of_new_state
+  long_name = ratio of mass of ice water to mass of dry air plus vapor (without condensates) updated by physics
+  units = kg kg-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[qa_in]
+  standard_name = cloud_area_fraction_in_atmosphere_layer_of_new_state
+  long_name = cloud area fraction in atmosphere layer updated by physics
+  units = frac
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
 [qs]
   standard_name = saturation_specific_humidity
   long_name = saturation specific humidity
@@ -155,6 +179,30 @@
   long_name = derivative of saturation specific humidity with respect to temperature
   units = kg kg-1 K-1
   dimensions = (horizontal_loop_extent, vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = out
+[ql_upd]
+  standard_name = cloud_liquid_water_mixing_ratio_of_new_state_after_realizability
+  long_name = ratio of mass of cloud water to mass of dry air plus vapor (without condensates) updated by physics  after realizability check
+  units = kg kg-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = out
+[qi_upd]
+  standard_name = cloud_ice_mixing_ratio_of_new_state_after_realizability
+  long_name = ratio of mass of ice water to mass of dry air plus vapor (without condensates) updated by physics  after realizability check
+  units = kg kg-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = out
+[qa_upd]
+  standard_name = cloud_area_fraction_in_atmosphere_layer_of_new_state_after_realizability
+  long_name = cloud fraction updated by physics after realizability check
+  units = frac
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
   type = real
   kind = kind_phys
   intent = out
