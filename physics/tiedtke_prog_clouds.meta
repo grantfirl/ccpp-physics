@@ -97,6 +97,114 @@
   dimensions = ()
   type = integer
   intent = in
+[betaP]
+  standard_name = pdf_cloud_beta_distribution_p_parameter
+  long_name = beta distribution p parameter when using PDF clouds
+  units = 1
+  dimensions = ()
+  type = integer
+  intent = in
+[limit_conv_cloud_frac]
+  standard_name = do_limit_prognostic_clouds_by_convective_cloud_area_fraction
+  long_name = flag to activate limiting the prognostic cloud fraction to that NOT already occupied by convective clouds
+  units = flag
+  dimensions = ()
+  type = logical
+  intent = in
+[use_qabar]
+  standard_name = do_time_mean_cloud_area
+  long_name = activate use of time-mean cloud area for prognositic cloud processes
+  units = flag
+  dimensions = ()
+  type = logical
+  intent = in
+[pdf_org]
+  standard_name = do_cloud_pdf_definition_from_input_water_fields
+  long_name = flag to activate definition of cloud pdf from input water fields
+  units = flag
+  dimensions = ()
+  type = logical
+  intent = in
+[dmin]
+  standard_name = minimum_prognostic_cloud_dissipation
+  long_name = mimumum permissible dissipation for analytic integration of cloud fraction
+  units = 1
+  dimensions = ()
+  type = real
+  kind = kind_phys
+  intent = in
+[qmin]
+  standard_name = minimum_value_of_cloud_water_species
+  long_name = mimimum value of cloud water species (used in prognostic clouds)
+  units = kg kg-1
+  dimensions = ()
+  type = real
+  kind = kind_phys
+  intent = in
+[qthalfwidth]
+  standard_name = total_water_pdf_half_width
+  long_name = half-width of the qt PDF when using PDF clouds
+  units =  1
+  dimensions = ()
+  type = real
+  kind = kind_phys
+  intent = in
+[con_cp]
+  standard_name = specific_heat_of_dry_air_at_constant_pressure
+  long_name = specific heat of dry air at constant pressure
+  units = J kg-1 K-1
+  dimensions = ()
+  type = real
+  kind = kind_phys
+  intent = in
+[con_g]
+  standard_name = gravitational_acceleration
+  long_name = gravitational acceleration
+  units = m s-2
+  dimensions = ()
+  type = real
+  kind = kind_phys
+  intent = in
+[con_hvap]
+  standard_name = latent_heat_of_vaporization_of_water_at_0C
+  long_name = latent heat of evaporation/sublimation
+  units = J kg-1
+  dimensions = ()
+  type = real
+  kind = kind_phys
+  intent = in
+[con_hfus]
+  standard_name = latent_heat_of_fusion_of_water_at_0C
+  long_name = latent heat of fusion
+  units = J kg-1
+  dimensions = ()
+  type = real
+  kind = kind_phys
+  intent = in
+[con_rv]
+  standard_name = gas_constant_water_vapor
+  long_name = ideal gas constant for water vapor
+  units = J kg-1 K-1
+  dimensions = ()
+  type = real
+  kind = kind_phys
+  intent = in
+[con_t0c]
+  standard_name = temperature_at_zero_celsius
+  long_name = temperature at 0 degrees Celsius
+  units = K
+  dimensions = ()
+  type = real
+  kind = kind_phys
+  intent = in
+[con_pi]
+  standard_name = pi
+  long_name = ratio of a circle's circumference to its diameter
+  units = none
+  dimensions = ()
+  type = real
+  kind = kind_phys
+  intent = in
 [ae_ub]
   standard_name = prognostic_droplet_based_cloud_erosion_upper_bound_numerator_constant
   long_name = prognostic droplet based cloud erosion upper bound numerator constant
@@ -177,6 +285,14 @@
   type = real
   kind = kind_phys
   intent = in
+[efact]
+  standard_name = cloud_erosion_enhancement_factor
+  long_name = factor used in formula to enhance cloud erosion as a function of height
+  units = 1
+  dimensions = ()
+  type = real
+  kind = kind_phys
+  intent = in
 [dt]
   standard_name = timestep_for_physics
   long_name = physics timestep
@@ -197,6 +313,14 @@
   standard_name = change_of_specific_humidity_due_to_tiedtke_condensation_adjustment
   long_name = change of specific humidity due to tiedtke condensation adjustment
   units = kg kg-1
+  dimensions = (horizontal_loop_extent, vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[ST]
+  standard_name = change_of_temperature_due_to_tiedtke_condensation_adjustment
+  long_name = change of temperature due to tiedtke condensation adjustment
+  units = K
   dimensions = (horizontal_loop_extent, vertical_layer_dimension)
   type = real
   kind = kind_phys
@@ -386,7 +510,7 @@
   kind = kind_phys
   intent = in
 [radturbten]
-  standard_name = tendency_of_air_temperature_due_to_radiation_and_planetary_boundary_layer
+  standard_name = instantaneous_tendency_of_air_temperature_due_to_radiation_and_planetary_boundary_layer
   long_name = tendency of air temperature due to radiation and planetary boundary layer
   units = K s-1
   dimensions = (horizontal_loop_extent,vertical_layer_dimension)

@@ -182,6 +182,14 @@
   type = real
   kind = kind_phys
   intent = out
+[gamma]
+  standard_name = dimensionless_derivative_of_saturation_specific_humidity_with_respect_to_temperature
+  long_name = dimensionless derivative of saturation specific humidity with respect to temperature
+  units = 1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = out
 [ql_upd]
   standard_name = cloud_liquid_water_mixing_ratio_of_new_state_after_realizability
   long_name = ratio of mass of cloud water to mass of dry air plus vapor (without condensates) updated by physics  after realizability check

@@ -13,7 +13,7 @@ module ccpp_saturation
   
   contains
     
-  elemental subroutine get_qs(temp, pres, alg_choice, alg_flatau_92, hlv, hlf, rvgas, cp_air, qs, qsl, qsi, es, esl, esi)
+  elemental subroutine get_qs(temp, pres, alg_choice, alg_flatau_92, hlv, hlf, rvgas, cp_air, qs, qsl, qsi, es, esl, esi, dqsdT, gamma)
      real(kind=kind_phys), intent(in)  :: temp, pres
      integer             , intent(in)  :: alg_choice, alg_flatau_92
      real(kind=kind_phys), intent(in)  :: hlv, hlf, rvgas, cp_air
@@ -21,15 +21,16 @@ module ccpp_saturation
      
      real(kind=kind_phys) :: hls
      real(kind=kind_phys) :: lifrac, dqsdT_l, dqsdT_i, gamma_l, gamma_i
-     
+      
      hls = hlv + hlf
      
-     select case(alg_choice)
-      case(alg_flatau_92)
+     if (alg_choice == alg_flatau_92) then
         call get_qs_flatau_92_over_liquid(temp, pres, esl, qsl)
         call get_qs_flatau_92_over_ice(temp, pres, esi, qsi)
-      case default
-     end select
+     else
+       qs = -999.9
+       RETURN
+     end if
      
      dqsdT_l = hlv*qsl/(rvgas*temp**2)
      dqsdT_i = hls*qsi/(rvgas*temp**2)
@@ -37,23 +38,23 @@ module ccpp_saturation
      gamma_i = dqsdT_i*hls/cp_air
      
      !blend qsl, qsi => qs; esl, esi => es, etc.
-     where ( temp <= min_blend_temp )
+     if ( temp <= min_blend_temp ) then
        qs = qsi
        es = esi
        dqsdT = dqsdT_i
        gamma = gamma_i
-     elsewhere ( temp >= max_blend_temp )
+     else if ( temp >= max_blend_temp ) then
        qs = qsl
        es = esl
        dqsdT = dqsdT_l
        gamma = gamma_l
-     elsewhere
+     else
        lifrac = (temp - min_blend_temp) / (max_blend_temp - min_blend_temp)
        qs = qsi + lifrac*(qsl - qsi)
        es = esi + lifrac*(esl - esi)
        dqsdT = dqsdT_i + lifrac*(dqsdT_l - dqsdT_i)
        gamma = gamma_i + lifrac*(gamma_l - gamma_i)
-     end where
+     end if
     
   end subroutine get_qs
   

@@ -9,7 +9,7 @@
 !> \section arg_table_tiedtke_prog_clouds_pre_run Argument Table
 !! \htmlinclude tiedtke_prog_clouds_pre_run.html
 !!
-    subroutine tiedtke_prog_clouds_pre_run (idim, kdim, pdf_org, pdfcld, super_ice_opt, hlv, hlf, rvgas, cp, tin, qin, pfull, cnvc, ql_in, qi_in, qa_in, qs, qsl, qsi, dqsdT, ql_upd, qi_upd, qa_upd, U_ca, U01, errmsg, errflg)
+    subroutine tiedtke_prog_clouds_pre_run (idim, kdim, pdf_org, pdfcld, super_ice_opt, hlv, hlf, rvgas, cp, tin, qin, pfull, cnvc, ql_in, qi_in, qa_in, qs, qsl, qsi, dqsdT, gamma, ql_upd, qi_upd, qa_upd, U_ca, U01, errmsg, errflg)
 
       use machine  , only : kind_phys
       use ccpp_saturation, only: get_qs
@@ -23,15 +23,16 @@
       
       real(kind=kind_phys), intent(in)  :: hlv, hlf, rvgas, cp
       real(kind=kind_phys), intent(in)  :: tin(:,:), qin(:,:), pfull(:,:), cnvc(:,:), ql_in(:,:), qi_in(:,:), qa_in(:,:)
-      real(kind=kind_phys), intent(out) :: qs(:,:), qsl(:,:), qsi(:,:), dqsdT(:,:)
+      real(kind=kind_phys), intent(out) :: qs(:,:), qsl(:,:), qsi(:,:), dqsdT(:,:), gamma(:,:)
       real(kind=kind_phys), intent(out) :: ql_upd(:,:), qi_upd(:,:), qa_upd(:,:)
-      real(kind=kind_phys), intent(out) :: U_ca(:,:), U01
+      real(kind=kind_phys), intent(out) :: U_ca(:,:), U01(:,:)
       
       character(len=*), intent(out) :: errmsg
       integer,          intent(out) :: errflg
       
       !temporary until set up in GFS_typedefs
       
+      integer :: i,k
       integer :: alg_choice, alg_flatau_92
       
       real(kind=kind_phys) :: conv_frac_max, tfreeze
@@ -39,12 +40,16 @@
       real(kind=kind_phys) :: rh_wtd_conv_area(idim,kdim), convective_area(idim,kdim)
       real(kind=kind_phys) :: qrf(idim,kdim), env_qv(idim,kdim), env_fraction(idim,kdim), humidity_ratio(idim,kdim)
       
+      ! Initialize CCPP error handling variables
+      errmsg = ''
+      errflg = 0
+      
       alg_choice = 1
       alg_flatau_92 = 1
       conv_frac_max = 1.0
       tfreeze = 273.16 !should be a physical constant coming in from host
             
-      call get_qs(tin, pfull, alg_choice, alg_flatau_92, hlv, hlf, rvgas, cp, qs, qsl, qsi, es, esl, esi)
+      call get_qs(tin, pfull, alg_choice, alg_flatau_92, hlv, hlf, rvgas, cp, qs, qsl, qsi, es, esl, esi, dqsdT, gamma)
       
       !GFJ: calc rh_wtd_conv_area (relative humidity-weighted conv area; 
       !this is useful if a deep convective scheme assumes a RH other than 100% for convective cloud area fraction)
@@ -87,7 +92,7 @@
       else
         do k=1, kdim
           do i=1, idim
-            if (humidity_ratio > 0) then
+            if (humidity_ratio(i,k) > 0) then
               U_ca(i,k) = max(0.0, qin(i,k)/(humidity_ratio(i,k)*qs(i,k)))
               if (tin(i,k) < tfreeze) then
                 U01(i,k) = max(0.0, qin(i,k)/(humidity_ratio(i,k)*qsi(i,k)))
@@ -106,6 +111,9 @@
       ql_upd = ql_in
       qi_upd = qi_in
       qa_upd = qa_in
+      
+      !GJF: need to calculate radturbten
+      !GJF: need to convert mass_number_concentration_of_cloud_liquid_water_particles_in_air_of_new_state (kg-1) to volume_number_concentration_of_cloud_liquid_water_particles_in_air_of_new_state (cm-3)
       
     end subroutine tiedtke_prog_clouds_pre_run
       

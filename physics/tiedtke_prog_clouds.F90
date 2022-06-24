@@ -9,7 +9,7 @@
 !> \section arg_table_tiedtke_prog_clouds_init Argument Table
 !! \htmlinclude tiedtke_prog_clouds_init.html
 !!
-      subroutine tiedtke_prog_clouds_init ()
+      subroutine tiedtke_prog_clouds_init (errmsg, errflg)
          use machine, only : kind_phys
          
          implicit none
@@ -37,19 +37,22 @@
 !!
       subroutine tiedtke_prog_clouds_run (idim, kdim, do_pdf_clouds, single_gaussian_pdf, &
           do_aero_eros, u00_profile, add_ahuco, eros_choice, include_neg_mc, super_ice_opt, &
+          betaP, limit_conv_cloud_frac, use_qabar, pdf_org, &
+          dmin, qmin, qthalfwidth, con_cp, con_g, con_hvap, con_hfus, con_rv, con_t0c, con_pi, &
           ae_ub, ae_lb, ae_N_ub, ae_N_lb, U00, eros_scale, eros_scale_c, eros_scale_t, &
-          mc_thresh, diff_thresh, dt, SA, SQ, gamma, qs, dqsdT, U_ca, qsl, qsi, pfull, &
+          mc_thresh, diff_thresh, efact, dt, SA, SQ, ST, gamma, qs, dqsdT, U_ca, qsl, qsi, pfull, &
           phalf, mc_full, convective_humidity_area, diff_t, drop1, rh_crit, rh_crit_min, &
           tin, qin, ql_in, qi_in, qa_in, ql_upd, qi_upd, qa_upd, omega, radturbten, airdens, &
           hom, qvg, da_ls, delta_cf, dcond_ls, D_eros, errmsg, errflg)
 
-      use machine  , only : kind_phys
+      use machine, only : kind_phys
       
       implicit none
       
-      integer, intent(in) :: idim, kdim, super_ice_opt
-      logical, intent(in) :: do_pdf_clouds, single_gaussian_pdf, do_aero_eros, u00_profile, add_ahuco, eros_choice, include_neg_mc
-      real(kind=kind_phys), intent(in) :: dt, ae_ub, ae_lb, ae_N_ub, ae_N_lb, U00, eros_scale, eros_scale_c, eros_scale_t, mc_thresh, diff_thresh
+      integer, intent(in) :: idim, kdim, super_ice_opt, betaP
+      logical, intent(in) :: do_pdf_clouds, single_gaussian_pdf, do_aero_eros, u00_profile, add_ahuco, eros_choice, include_neg_mc, limit_conv_cloud_frac, use_qabar, pdf_org
+      real(kind=kind_phys), intent(in) :: dt, ae_ub, ae_lb, ae_N_ub, ae_N_lb, U00, eros_scale, eros_scale_c, eros_scale_t, mc_thresh, diff_thresh, efact, dmin, qmin, qthalfwidth
+      real(kind=kind_phys), intent(in) :: con_cp, con_g, con_hvap, con_hfus, con_rv, con_t0c, con_pi
       real(kind=kind_phys), intent(in) :: gamma(:,:), qs(:,:), dqsdT(:,:), U_ca(:,:), qsl(:,:), qsi(:,:) !i,k dims
       real(kind=kind_phys), intent(in) :: pfull(:,:), phalf(:,:) !i,k, corresponds to prsl and prsi respectively
       real(kind=kind_phys), intent(in) :: mc_full(:,:) !total net convective mass flux on full levels kg m-2 s-1
@@ -71,6 +74,7 @@
       !real(kind=kind_phys), intent(inout) :: dqa_dt_prod(:,:), dqa_dt_loss(:,:) !these vars are initialized every physics timestep to 0 in lscloud_driver.F90/lscloud_driver
       
       real(kind=kind_phys), intent(in)    :: SQ(:,:) !this is set to zero in lscloud_driver.F90/lscloud_driver; change in specific humidity due to impose_realiziabilty/adjust_condensate; should be interstitial var
+      real(kind=kind_phys), intent(in)    :: ST(:,:) !this is set to zero in lscloud_driver.F90/lscloud_driver; change in temperature due to impose_realiziabilty/adjust_condensate; should be interstitial var
       real(kind=kind_phys), intent(inout) :: SA(:,:)
       
       character(len=*), intent(out) :: errmsg
@@ -90,7 +94,8 @@
 !       erosion_scale  cloud erosion scale
 !       i,j,k          do-loop indices
 !-------------------------------------------------------------------------
-      real(kind=kind_phys) :: dt_inv
+      integer :: i,k
+      real(kind=kind_phys) :: dt_inv, hls
       real(kind=kind_phys), dimension(idim,kdim) :: mdum,bdum,edum,U00p,U00pr,erosion_scale
 
 ! Initialize CCPP error handling variables
@@ -100,6 +105,8 @@
       !GJF need to call compute_qs_a to calculate qs,gamma,dqsdT,U_ca,qsl,qsi
       
       dt_inv = 1.0/dt
+      
+      hls = con_hvap + con_hfus
       
 !------------------------------------------------------------------------
 !    process the non-convective condensation for pdf clouds. 
@@ -111,13 +118,13 @@
 !------------------------------------------------------------------------
       if (do_pdf_clouds) then
         if (single_gaussian_pdf) then      
-          call tiedtke_macro_Single_Gaussian_pdf(idim, kdim,    & 
+          call tiedtke_macro_Single_Gaussian_pdf(idim, kdim, pdf_org, qmin, qthalfwidth, con_pi, & 
             gamma, qs, qin, &
             ql_in, qi_in, qa_in, ql_upd, qi_upd, qa_upd, SQ, qvg, da_ls, delta_cf, dcond_ls, &
             SA)
         else
           call tiedtke_macro_pdf (     &
-            idim, kdim, gamma, qs, qin, ql_in, qi_in, qa_in, ql_upd, qi_upd, qa_upd, &
+            idim, kdim, betaP, pdf_org, qmin, qthalfwidth, gamma, qs, qin, ql_in, qi_in, qa_in, ql_upd, qi_upd, qa_upd, &
             SQ, qvg, D_eros, da_ls, delta_cf, dcond_ls, SA)
         endif
       else  !(do_pdf_clouds)
@@ -256,9 +263,9 @@
 !    calculate the condensation.
 !------------------------------------------------------------------------
           call tiedtke_macro_nopdf_nosuper (    &
-               idim, kdim, mc_full, convective_humidity_area, omega, radturbten, pfull, airdens, dqsdT, U_ca, gamma, qs, &
-               qa_upd, ql_upd, qi_upd, ST, SQ, da_ls, D_eros, dcond_ls, delta_cf, &
-               edum, SA, U00p, erosion_scale)
+               idim, kdim, limit_conv_cloud_frac, use_qabar, mc_full, convective_humidity_area, omega, radturbten, pfull, airdens, dqsdT, U_ca, gamma, qs, &
+               qa_upd, ql_upd, qi_upd, SQ, da_ls, D_eros, dcond_ls, delta_cf, &
+               edum, SA, U00p, erosion_scale, dt, dmin, qmin, efact, con_cp, con_g)
         else
 
 !------------------------------------------------------------------------
@@ -267,26 +274,29 @@
 !    condensation.
 !------------------------------------------------------------------------
           call tiedtke_macro_nopdf_super  (     &
-               idim, kdim, mc_full, convective_humidity_area, omega, radturbten, pfull, tin, qin, airdens, dqsdT, gamma, qs, qsl, qsi, rh_crit, rh_crit_min, &
+               idim, kdim, limit_conv_cloud_frac, mc_full, convective_humidity_area, omega, radturbten, pfull, tin, qin, airdens, dqsdT, gamma, qs, qsl, qsi, rh_crit, rh_crit_min, &
                qa_upd, ql_upd, qi_upd, ST, SQ, da_ls, D_eros, dcond_ls, delta_cf, hom,   &
-               edum, SA, U00p, erosion_scale)
+               edum, SA, U00p, erosion_scale, dt, dmin, qmin, efact, con_cp, con_g, con_hvap, hls, con_rv, con_t0c)
         endif
       endif
 
       end subroutine tiedtke_prog_clouds_run
 
-      SUBROUTINE tiedtke_macro_Single_Gaussian_pdf (idim, kdim, gamma, qs,   &
+      SUBROUTINE tiedtke_macro_Single_Gaussian_pdf (idim, kdim, pdf_org, qmin, qthalfwidth, pi, gamma, qs,   &
                               qin, &
                               ql_in, qi_in, qa_in, ql_upd, qi_upd, qa_upd, SQ, qvg, da_ls, delta_cf, dcond_ls, &
                               SA)  
-
+        use machine, only : kind_phys
+        implicit none
       !----------------------------------------------------------------------!
       !                                                                      !
       !                     STATISTICAL CLOUD SCHEME                         !
       !                                                                      !
       !-----------------------------------------------------------------------
 
-      integer,                             intent(in)    :: idim, kdim     
+      integer,                             intent(in)    :: idim, kdim
+      logical,              intent(in)                    :: pdf_org
+      real(kind=kind_phys), intent(in)                    :: qmin, qthalfwidth, pi
       real(kind=kind_phys), intent(in),    dimension(:,:) :: gamma, qs !i,k dims
       real(kind=kind_phys), intent(in),    dimension(:,:) :: qin !i,k dims
       real(kind=kind_phys), intent(in),    dimension(:,:) :: ql_in, qi_in, qa_in
@@ -340,16 +350,16 @@
             if (pdf_org) then
       !RSH  change to qin ??
       !       qta(:,:,:) = max(qmin, qv_in +  &
-              qta(:,:,:) = max(qmin, qin +  &
+              qta(:,:) = max(qmin, qin +  &
                                            ql_in + qi_in)
             else
       !       qta(:,:,:) = max(qmin, qv_in + SQ +  &
-              qta(:,:,:) = max(qmin, qin + SQ +  &
+              qta(:,:) = max(qmin, qin + SQ +  &
                                            ql_upd + qi_upd)
             endif
-            qtqsa(:,:,:) = qta(:,:,:) - qs      
+            qtqsa(:,:) = qta(:,:) - qs      
 
-            s =  qtqsa(:,:,:) / (1.0 +  gamma )
+            s =  qtqsa(:,:) / (1.0 +  gamma )
 
       !---> h1g, 2015-07-23
       ! 99.7% data are within mean +- 3 stdev 
@@ -437,16 +447,19 @@
       end SUBROUTINE tiedtke_macro_Single_Gaussian_pdf
       
       SUBROUTINE tiedtke_macro_pdf (  &
-                   idim, kdim, gamma, qs, qin, ql_in, qi_in, qa_in, ql_upd, qi_upd, qa_upd, &
+                   idim, kdim, betaP, pdf_org, qmin, qthalfwidth, gamma, qs, qin, ql_in, qi_in, qa_in, ql_upd, qi_upd, qa_upd, &
                    SQ, qvg, D_eros, da_ls, delta_cf, dcond_ls, SA)
-
+        use machine, only : kind_phys
+        implicit none
       !----------------------------------------------------------------------!
       !                                                                      !
       !                     STATISTICAL CLOUD SCHEME                         !
       !                                                                      !
       !-----------------------------------------------------------------------
 
-      integer,                           intent(in )   :: idim, kdim     
+      integer,                           intent(in )   :: idim, kdim, betaP
+      logical,              intent(in)                    :: pdf_org
+      real(kind=kind_phys), intent(in)                    :: qmin, qthalfwidth
       real(kind=kind_phys), intent(in),    dimension(:,:) :: gamma, qs
       real(kind=kind_phys), intent(in),    dimension(:,:) :: qin
       real(kind=kind_phys), intent(in),    dimension(:,:) :: ql_in, qi_in, qa_in
@@ -621,35 +634,36 @@
                    
                    
                    do i = 1,idim
-              
-                   if (qs_norm(i).le.1.) then
-                       
-                       icbp = incomplete_beta(max(0.,qs_norm(i)), &
-                                            p = betaP    , q =     betaP)
-                       icbp1= incomplete_beta(max(0.,qs_norm(i)), &
-                                            p = betaP + 1, q =     betaP)
-                       qagtmp(i) = 1.-icbp
-                       qcgtmp(i) = (qtbar(i)-qtmin(i))*(1.-icbp1)&
-                                     - qs_norm(i)*deltaQ(i)*(1.-icbp)    
-                       qcgtmp(i) = qcgtmp(i)/   &
-                                                (1.+gamma(i,k))
-                       qvgtmp(i) = qtmin(i,j) + &
-                                     0.5*(icbp1/max(icbp, qmin))*deltaQ(i)
-                   
-                       !bound very very small cloud fractions which may
-                       !cause negative cloud condensates due to roundoff 
-                       !errors or similar errors in the beta table lookup.
-                       if((qagtmp(i).lt.0.).or.(qcgtmp(i).le.0.))then
-                            qagtmp(i) = 0.
-                            qcgtmp(i) = 0.
-                            qvgtmp(i) = qtbar(i)
-                       end if
-                       
-                   else             
+                    
+                    !GJF: incomplete_beta requires INPUT/BetaDistributionTable.txt (which I can't get from FTP!)
+                   ! if (qs_norm(i).le.1.) then
+                   ! 
+                   !     icbp = incomplete_beta(max(0.,qs_norm(i)), &
+                   !                          p = betaP    , q =     betaP)
+                   !     icbp1= incomplete_beta(max(0.,qs_norm(i)), &
+                   !                          p = betaP + 1, q =     betaP)
+                   !     qagtmp(i) = 1.-icbp
+                   !     qcgtmp(i) = (qtbar(i)-qtmin(i))*(1.-icbp1)&
+                   !                   - qs_norm(i)*deltaQ(i)*(1.-icbp)    
+                   !     qcgtmp(i) = qcgtmp(i)/   &
+                   !                              (1.+gamma(i,k))
+                   !     qvgtmp(i) = qtmin(i,j) + &
+                   !                   0.5*(icbp1/max(icbp, qmin))*deltaQ(i)
+                   ! 
+                   !     !bound very very small cloud fractions which may
+                   !     !cause negative cloud condensates due to roundoff 
+                   !     !errors or similar errors in the beta table lookup.
+                   !     if((qagtmp(i).lt.0.).or.(qcgtmp(i).le.0.))then
+                   !          qagtmp(i) = 0.
+                   !          qcgtmp(i) = 0.
+                   !          qvgtmp(i) = qtbar(i)
+                   !     end if
+                   ! 
+                   ! else             
                        qagtmp(i) = 0.
                        qcgtmp(i) = 0.
                        qvgtmp(i) = qtbar(i)             
-                   end if
+                   ! end if
                    
                    enddo
                    
@@ -755,17 +769,20 @@
       end SUBROUTINE tiedtke_macro_pdf
       
       SUBROUTINE tiedtke_macro_nopdf_nosuper (    &
-                  idim, kdim, mc_full, convective_humidity_area, omega, radturbten, pfull, airdens, dqsdT, U_ca, gamma, qs, &
-                  qa_upd, ql_upd, qi_upd, ST, SQ, da_ls, D_eros, dcond_ls, delta_cf, &
-                  edum, SA, U00p, erosion_scale)
-
+                  idim, kdim, limit_conv_cloud_frac, use_qabar, mc_full, convective_humidity_area, omega, radturbten, pfull, airdens, dqsdT, U_ca, gamma, qs, &
+                  qa_upd, ql_upd, qi_upd, SQ, da_ls, D_eros, dcond_ls, delta_cf, &
+                  edum, SA, U00p, erosion_scale, dtcloud, dmin, qmin, efact, cp_air, grav)
+        use machine, only : kind_phys
+        implicit none
       !------------------------------------------------------------------------
       !   subroutine tiedtke_macro_nopdf_nosuper calculates non-convective
       !   condensation while not allowing supersaturation in the clear-sky 
       !   portion of grid boxes (as in original Tiedtke scheme).
       !------------------------------------------------------------------------
 
-      INTEGER,                         INTENT(IN )   :: idim, kdim      
+      INTEGER,                         INTENT(IN )   :: idim, kdim
+      logical,              intent(in) :: limit_conv_cloud_frac, use_qabar
+      real(kind=kind_phys), intent(in) :: cp_air, grav, dmin, qmin, efact, dtcloud
       real(kind=kind_phys), intent(in) :: mc_full(:,:) !total net convective mass flux on full levels kg m-2 s-1
       real(kind=kind_phys), intent(in) :: convective_humidity_area(:,:) !grid box area affected by the convective clouds
       real(kind=kind_phys), intent(in) :: omega(:,:) !lagrangian_tendency_of_air_pressure
@@ -781,7 +798,7 @@
       real(kind=kind_phys), intent(inout) :: D_eros(:,:)
       real(kind=kind_phys), intent(inout) :: dcond_ls(:,:)
       real(kind=kind_phys), intent(inout) :: delta_cf(:,:)
-      REAL, dimension(idim,kdim), INTENT(IN)    :: ST, SQ, edum, U00p,  &
+      REAL, dimension(idim,kdim), INTENT(IN)    :: SQ, edum, U00p,  &
                                                         erosion_scale
       REAL, dimension(idim,kdim), INTENT(INOUT) :: SA
       
@@ -1153,10 +1170,12 @@
       end subroutine tiedtke_macro_nopdf_nosuper
       
       SUBROUTINE tiedtke_macro_nopdf_super (   &
-                         idim, kdim, mc_full, convective_humidity_area, omega, radturbten, pfull, tin, qin, airdens, dqsdT, gamma, qs, qsl, qsi, rh_crit, rh_crit_min, &
+                         idim, kdim, limit_conv_cloud_frac, mc_full, convective_humidity_area, omega, radturbten, pfull, tin, qin, airdens, dqsdT, gamma, qs, qsl, qsi, rh_crit, rh_crit_min, &
                          qa_upd, ql_upd, qi_upd, ST, SQ, da_ls, D_eros, dcond_ls, delta_cf, hom,  &
-                         edum, SA, U00p, erosion_scale) 
-
+                         edum, SA, U00p, erosion_scale, dtcloud, dmin, qmin, efact, cp_air, grav, hlv, hls, rvgas, tfreeze) 
+        use machine, only : kind_phys
+        use ccpp_saturation, only: get_qs
+        implicit none
       !------------------------------------------------------------------------
       !   subroutine tiedtke_macro_nopdf_super calculates non-convective
       !   condensation while allowing ice supersaturation in the clear-sky 
@@ -1165,6 +1184,8 @@
       !------------------------------------------------------------------------
 
       INTEGER,                            INTENT(IN )    :: idim, kdim
+      logical,              intent(in) :: limit_conv_cloud_frac
+      real(kind=kind_phys), intent(in) :: dtcloud, dmin, qmin, efact, cp_air, grav, hlv, hls, rvgas, tfreeze
       real(kind=kind_phys), intent(in) :: mc_full(:,:) !total net convective mass flux on full levels kg m-2 s-1
       real(kind=kind_phys), intent(in) :: convective_humidity_area(:,:) !grid box area affected by the convective clouds
       real(kind=kind_phys), intent(in) :: omega(:,:) !lagrangian_tendency_of_air_pressure
@@ -1185,6 +1206,7 @@
       real(kind=kind_phys), intent(in) :: hom(:,:)
       REAL, dimension(idim,kdim),    INTENT(IN )    :: ST, SQ, edum, U00p,&
                                                             erosion_scale
+                                                            
       REAL, dimension(idim,kdim),    INTENT(INout ) :: SA
 
       !-------------------------------------------------------------------------
@@ -1228,12 +1250,17 @@
             real, dimension(idim, kdim) :: A_dt, B_dt, qa1, qa0,  &
                                                 qabar, qaeq, qa_t, tmp0, tmp1, &
                                                 drhcqsdT, beta, ttmp, qtmp,  &
-                                                qs_t, qs_l, qs_i, dqsdT1, gamma1
+                                                qs_t, qs_l, qs_i, dqsdT1, gamma1, &
+                                                es_t, es_l, es_i
             real, dimension(idim)       :: qagtmp,qcgtmp,qvgtmp
             REAL                             :: eslt, qvs, qs_d, qvi, esit, ul
             REAL                             :: qvmax, esat0, tmp1s            
             INTEGER                          :: ns, id
             INTEGER                          :: i,k
+            
+            integer :: alg_choice, alg_flatau_92
+            alg_choice = 1
+            alg_flatau_92 = 1
 
       !------------------------------------------------------------------------
       !    calculate the derivative of the threshold relative humidity over water!    (for temps > 233) and over ice (temps < 233) with respect to 
@@ -1510,9 +1537,9 @@
       !-----------------------------------------------------------------------
       !   define value needed for diagnostic calculation.
       !-----------------------------------------------------------------------
-            if ( diag_id%qadt_ahuco + diag_id%qa_ahuco_col > 0 ) then
-              diag_4d(:,:,:,diag_pt%qadt_ahuco)  = qa1
-            end if
+            !if ( diag_id%qadt_ahuco + diag_id%qa_ahuco_col > 0 ) then
+            !  diag_4d(:,:,:,diag_pt%qadt_ahuco)  = qa1
+            !end if
 
       !-------------------------------------------------------------------------
       !    limit cloud area to be no more than that which is not being
@@ -1561,8 +1588,11 @@
       !-----------------------------------------------------------------------
             ttmp=tin + ST        
             qtmp= qin + SQ         
-            CALL compute_qs_x1 (idim, kdim, ttmp, pfull, &
-                                             qs_t, qs_l, qs_i, dqsdT1, gamma1 )
+            !CALL compute_qs_x1 (idim, kdim, ttmp, pfull, &
+            !                                 qs_t, qs_l, qs_i, dqsdT1, gamma1 )
+            
+            call get_qs(ttmp, pfull, alg_choice, alg_flatau_92, hlv, hls - hlv, rvgas, cp_air, qs_t, qs_l, qs_i, es_t, es_l, es_i, dqsdT1, gamma1)
+            
             DO k=1,kdim
               DO i=1, idim
                 qvmax = qs_t(i,k)*(qa_t(i,k) + (1. -  qa_t(i,k))*  &
