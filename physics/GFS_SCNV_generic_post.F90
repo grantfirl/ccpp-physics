@@ -9,14 +9,14 @@
 !! \htmlinclude GFS_SCNV_generic_post_run.html
 !!
       subroutine GFS_SCNV_generic_post_run (im, levs, nn, lssav, ldiag3d, qdiag3d, &
-        frain, gu0, gv0, gt0, gq0, save_u, save_v, save_t, save_q,                 &
+        tiedtke_prog_clouds, dt, frain, gu0, gv0, gt0, gq0, save_u, save_v, save_t, save_q, &
         clw, shcnvcw, rain1, npdf3d, num_p3d, ncnvcld3d, cnvc, cnvw, nsamftrac,    &
         rainc, cnvprcp, cnvprcpb, cnvw_phy_f3d, cnvc_phy_f3d,                      &
         dtend, dtidx, index_of_temperature, index_of_x_wind, index_of_y_wind,      &
         index_of_process_scnv, ntqv, flag_for_scnv_generic_tend,                   &
         ntcw,ntiw,ntclamt,ntrw,ntsw,ntrnc,ntsnc,ntgl,ntgnc,ntsigma,                &
         imfshalcnv, imfshalcnv_sas, imfshalcnv_samf, ntrac,                        &
-        cscnv, satmedmf, trans_trac, ras, errmsg, errflg)
+        cscnv, satmedmf, trans_trac, ras, ud_mf, mc_full, errmsg, errflg)
 
       use machine,               only: kind_phys
 
@@ -24,8 +24,8 @@
 
       integer, intent(in) :: im, levs, nn, ntqv, nsamftrac
       integer, intent(in) :: ntcw,ntiw,ntclamt,ntrw,ntsw,ntrnc,ntsnc,ntgl,ntgnc,ntsigma,ntrac
-      logical, intent(in) :: lssav, ldiag3d, qdiag3d, flag_for_scnv_generic_tend
-      real(kind=kind_phys),                     intent(in) :: frain
+      logical, intent(in) :: lssav, ldiag3d, qdiag3d, tiedtke_prog_clouds, flag_for_scnv_generic_tend
+      real(kind=kind_phys),                     intent(in) :: dt, frain
       real(kind=kind_phys), dimension(:,:), intent(in) :: gu0, gv0, gt0
       real(kind=kind_phys), dimension(:,:), intent(in) :: save_u, save_v, save_t
       real(kind=kind_phys), dimension(:,:,:),   intent(in) :: save_q, gq0
@@ -35,7 +35,10 @@
       integer, intent(in) :: dtidx(:,:)
       integer, intent(in) :: index_of_temperature, index_of_x_wind, index_of_y_wind, index_of_process_scnv
       real(kind=kind_phys), dimension(:,:,:), intent(in) :: clw
-
+      
+      real(kind=kind_phys), intent(in), dimension(:,:) :: ud_mf
+      real(kind=kind_phys), intent(inout), dimension(:,:) :: mc_full
+      
       ! Post code for SAS/SAMF
       integer, intent(in) :: npdf3d, num_p3d, ncnvcld3d
       logical, intent(in) :: shcnvcw
@@ -125,6 +128,10 @@
           endif
         endif
       endif
+      
+      if (tiedtke_prog_clouds) then
+        mc_full = mc_full + ud_mf/dt !GJF: ud_mf is reset to zero at the beginning of deep and shallow physics; mc_full combines the updraft mass flux from both
+      end if
 
       end subroutine GFS_SCNV_generic_post_run
 

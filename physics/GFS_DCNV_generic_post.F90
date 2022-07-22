@@ -9,14 +9,15 @@
 !! \htmlinclude GFS_DCNV_generic_post_run.html
 !!
     subroutine GFS_DCNV_generic_post_run (im, levs, lssav, ldiag3d, qdiag3d, ras, &
-      cscnv, frain, rain1, dtf, cld1d, save_u, save_v, save_t, gu0, gv0, gt0,     &
+      tiedtke_prog_clouds, cscnv, frain, rain1, dtf, dtp, cld1d, save_u, save_v,  &
+      save_t, gu0, gv0, gt0,                                                      &
       ud_mf, dd_mf, dt_mf, con_g, npdf3d, num_p3d, ncnvcld3d, nsamftrac,          &
       rainc, cldwrk, upd_mf, dwn_mf, det_mf, dtend, dtidx, index_of_process_dcnv, &
       index_of_temperature, index_of_x_wind, index_of_y_wind, ntqv, gq0, save_q,  &
       cnvw, cnvc, cnvw_phy_f3d, cnvc_phy_f3d, flag_for_dcnv_generic_tend,         &
       ntcw,ntiw,ntclamt,ntrw,ntsw,ntrnc,ntsnc,ntgl,                               &
       ntgnc, nthl, nthnc, nthv, ntgv, ntsigma, ntrac,clw,                         &
-      satmedmf, trans_trac, errmsg, errflg)
+      satmedmf, trans_trac, mc_full, errmsg, errflg)
 
 
       use machine,               only: kind_phys
@@ -24,10 +25,10 @@
       implicit none
 
       integer, intent(in) :: im, levs, nsamftrac
-      logical, intent(in) :: lssav, ldiag3d, qdiag3d, ras, cscnv
+      logical, intent(in) :: lssav, ldiag3d, qdiag3d, ras, cscnv, tiedtke_prog_clouds
       logical, intent(in) :: flag_for_dcnv_generic_tend
 
-      real(kind=kind_phys), intent(in) :: frain, dtf
+      real(kind=kind_phys), intent(in) :: frain, dtf, dtp
       real(kind=kind_phys), dimension(:),     intent(in) :: rain1, cld1d
       real(kind=kind_phys), dimension(:,:),   intent(in) :: save_u, save_v, save_t
       real(kind=kind_phys), dimension(:,:),   intent(in) :: gu0, gv0, gt0
@@ -38,7 +39,7 @@
       logical, intent(in) :: satmedmf, trans_trac
 
       real(kind=kind_phys), dimension(:),   intent(inout) :: rainc, cldwrk
-      real(kind=kind_phys), dimension(:,:), intent(inout) :: upd_mf, dwn_mf, det_mf
+      real(kind=kind_phys), dimension(:,:), intent(inout) :: upd_mf, dwn_mf, det_mf, mc_full
       real(kind=kind_phys), dimension(:,:), intent(inout) :: cnvw, cnvc
 
       real(kind=kind_phys), dimension(:,:,:), intent(inout) :: dtend
@@ -146,6 +147,12 @@
         endif ! if (ldiag3d)
 
       endif ! if (lssav)
+      
+      if (tiedtke_prog_clouds) then
+        mc_full = mc_full + ud_mf/dtp   !GJF: mc_full is reset every physics timestep; 
+                                    !incrementing it allows for changing the order of deep/shallow convection 
+                                    !and still working with Tiedtke prognostic clouds
+      end if
 
     end subroutine GFS_DCNV_generic_post_run
 

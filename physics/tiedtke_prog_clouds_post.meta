@@ -21,6 +21,134 @@
   dimensions = ()
   type = integer
   intent = in
+[do_liq_num]
+  standard_name = do_prognostic_cloud_liquid_number_concentration
+  long_name = flag to denote cloud liquid droplet number concentration is prognosed
+  units = flag
+  dimensions = ()
+  type = logical
+  intent = in
+[do_ice_num]
+  standard_name = do_prognostic_cloud_ice_number_concentration
+  long_name = flag to denote cloud ice particle number concentration is prognosed
+  units = flag
+  dimensions = ()
+  type = logical
+  intent = in
+[ntqv]
+  standard_name = index_of_specific_humidity_in_tracer_concentration_array
+  long_name = tracer index for water vapor (specific humidity)
+  units = index
+  dimensions = ()
+  type = integer
+  intent = in
+[ntcw]
+  standard_name = index_of_cloud_liquid_water_mixing_ratio_in_tracer_concentration_array
+  long_name = tracer index for cloud condensate (or liquid water)
+  units = index
+  dimensions = ()
+  type = integer
+  intent = in
+[ntiw]
+  standard_name = index_of_cloud_ice_mixing_ratio_in_tracer_concentration_array
+  long_name = tracer index for  ice water
+  units = index
+  dimensions = ()
+  type = integer
+  intent = in
+[ntclamt]
+  standard_name = index_of_cloud_area_fraction_in_atmosphere_layer_in_tracer_concentration_array
+  long_name = tracer index for cloud amount integer
+  units = index
+  dimensions = ()
+  type = integer
+  intent = in
+[ntlnc]
+  standard_name = index_of_mass_number_concentration_of_cloud_droplets_in_tracer_concentration_array
+  long_name = tracer index for liquid number concentration
+  units = index
+  dimensions = ()
+  type = integer
+  intent = in
+[ntinc]
+  standard_name = index_of_mass_number_concentration_of_cloud_ice_in_tracer_concentration_array
+  long_name = tracer index for ice    number concentration
+  units = index
+  dimensions = ()
+  type = integer
+  intent = in
+[ST]
+  standard_name = change_of_temperature_due_to_tiedtke_condensation_adjustment
+  long_name = change of temperature due to tiedtke condensation adjustment
+  units = K
+  dimensions = (horizontal_loop_extent, vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[SQ]
+  standard_name = change_of_specific_humidity_due_to_tiedtke_condensation_adjustment
+  long_name = change of specific humidity due to tiedtke condensation adjustment
+  units = kg kg-1
+  dimensions = (horizontal_loop_extent, vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[SL]
+  standard_name = change_of_cloud_liquid_water_mixing_ratio_due_to_tiedtke_condensation_adjustment
+  long_name = change of cloud liquid water mixing ratio due to tiedtke condensation adjustment
+  units = kg kg-1
+  dimensions = (horizontal_loop_extent, vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[SI]
+  standard_name = change_of_cloud_ice_mixing_ratio_due_to_tiedtke_condensation_adjustment
+  long_name = change of cloud ice mixing ratio due to tiedtke condensation adjustment
+  units = kg kg-1
+  dimensions = (horizontal_loop_extent, vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[SA]
+  standard_name = change_of_cloud_area_fraction
+  long_name = change of cloud area fraction
+  units = frac
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[SN]
+  standard_name = change_of_mass_number_concentration_of_cloud_liquid_water_particles_in_air_due_to_tiedtke_condensation_adjustment
+  long_name = change of mass number concentration of cloud liquid water particles in air due to tiedtke condensation adjustment
+  units = kg-1
+  dimensions = (horizontal_loop_extent, vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[SNI]
+  standard_name = change_of_mass_number_concentration_of_cloud_ice_water_crystals_in_air_due_to_tiedtke_condensation_adjustment
+  long_name = change of mass number concentration of cloud ice water crystals in air due to tiedtke condensation adjustment
+  units = kg-1
+  dimensions = (horizontal_loop_extent, vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[gt0]
+  standard_name = air_temperature_of_new_state
+  long_name = temperature updated by physics
+  units = K
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = inout
+[gq0]
+  standard_name = tracer_concentration_of_new_state
+  long_name = tracer concentration updated by physics
+  units = kg kg-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension,number_of_tracers)
+  type = real
+  kind = kind_phys
+  intent = inout
 [errmsg]
   standard_name = ccpp_error_message
   long_name = error message for error handling in CCPP

@@ -50,6 +50,21 @@
   dimensions = ()
   type = logical
   intent = in
+[tiedtke_prog_clouds]
+  standard_name = do_tiedtke_prognostic_clouds
+  long_name = flag for tiedtke prognostic cloud scheme
+  units = flag
+  dimensions = ()
+  type = logical
+  intent = in
+[dt]
+  standard_name = timestep_for_physics
+  long_name = physics time step
+  units = s
+  dimensions = ()
+  type = real
+  kind = kind_phys
+  intent = in
 [frain]
   standard_name = dynamics_to_physics_timestep_ratio
   long_name = ratio of dynamics timestep to physics timestep
@@ -412,6 +427,22 @@
   dimensions = ()
   type = integer
   intent = in
+[ud_mf]
+  standard_name = instantaneous_atmosphere_updraft_convective_mass_flux
+  long_name = (updraft mass flux) * delt
+  units = kg m-2
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[mc_full]
+  standard_name = net_convective_mass_flux
+  long_name = net convective mass flux
+  units = kg m-2 s-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = inout
 [errmsg]
   standard_name = ccpp_error_message
   long_name = error message for error handling in CCPP
