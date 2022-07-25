@@ -1591,7 +1591,7 @@
             !CALL compute_qs_x1 (idim, kdim, ttmp, pfull, &
             !                                 qs_t, qs_l, qs_i, dqsdT1, gamma1 )
             
-            call get_qs(ttmp, pfull, alg_choice, alg_flatau_92, hlv, hls - hlv, rvgas, cp_air, qs_t, qs_l, qs_i, es_t, es_l, es_i, dqsdT1, gamma1)
+            call get_qs(ttmp, pfull, alg_choice, alg_flatau_92, qs_t, qs_l, qs_i, es_t, es_l, es_i, dqsdT1, gamma1)
             
             DO k=1,kdim
               DO i=1, idim

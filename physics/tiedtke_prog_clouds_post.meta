@@ -21,6 +21,20 @@
   dimensions = ()
   type = integer
   intent = in
+[i_macro]
+  standard_name = index_of_macrophysics_process_in_cumulative_change_index
+  long_name = index of macrophysics process in second dimension of array cumulative change index
+  units = index
+  dimensions = ()
+  type = integer
+  intent = in
+[i_temp]
+  standard_name = index_of_temperature_in_cumulative_change_index
+  long_name = index of temperature in first dimension of array cumulative change index
+  units = index
+  dimensions = ()
+  type = integer
+  intent = in
 [do_liq_num]
   standard_name = do_prognostic_cloud_liquid_number_concentration
   long_name = flag to denote cloud liquid droplet number concentration is prognosed
@@ -31,6 +45,20 @@
 [do_ice_num]
   standard_name = do_prognostic_cloud_ice_number_concentration
   long_name = flag to denote cloud ice particle number concentration is prognosed
+  units = flag
+  dimensions = ()
+  type = logical
+  intent = in
+[ldiag3d]
+  standard_name = flag_for_diagnostics_3D
+  long_name = flag for 3d diagnostic fields
+  units = flag
+  dimensions = ()
+  type = logical
+  intent = in
+[qdiag3d]
+  standard_name = flag_for_tracer_diagnostics_3D
+  long_name = flag for 3d tracer diagnostic fields
   units = flag
   dimensions = ()
   type = logical
@@ -149,6 +177,21 @@
   type = real
   kind = kind_phys
   intent = inout
+[dtend]
+  standard_name = cumulative_change_of_state_variables
+  long_name = diagnostic tendencies for state variables
+  units = mixed
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension,cumulative_change_of_state_variables_outer_index_max)
+  type = real
+  kind = kind_phys
+  intent = inout
+[dtidx]
+  standard_name = cumulative_change_of_state_variables_outer_index
+  long_name = index of state-variable and process in last dimension of diagnostic tendencies array AKA cumulative_change_index
+  units = index
+  dimensions = (number_of_tracers_plus_one_hundred,number_of_cumulative_change_processes)
+  type = integer
+  intent = in
 [errmsg]
   standard_name = ccpp_error_message
   long_name = error message for error handling in CCPP

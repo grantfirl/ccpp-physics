@@ -3,20 +3,29 @@ module ccpp_saturation
   use machine, only: kind_phys
   
   implicit none
-  
+  save
   private
   
   real(kind=kind_phys), parameter :: min_blend_temp = 253.16
   real(kind=kind_phys), parameter :: max_blend_temp = 273.16
-  
-  public get_qs
+  real(kind=kind_phys) :: hlv, hlf, rvgas, cp_air
+    
+  public get_qs_init, get_qs 
   
   contains
     
-  elemental subroutine get_qs(temp, pres, alg_choice, alg_flatau_92, hlv, hlf, rvgas, cp_air, qs, qsl, qsi, es, esl, esi, dqsdT, gamma)
+  subroutine get_qs_init(hlv_in, hlf_in, rvgas_in, cp_air_in)
+    real(kind=kind_phys), intent(in)  :: hlv_in, hlf_in, rvgas_in, cp_air_in
+    
+    hlv = hlv_in
+    hlf = hlf_in
+    rvgas = rvgas_in
+    cp_air = cp_air_in
+  end subroutine get_qs_init
+    
+  elemental subroutine get_qs(temp, pres, alg_choice, alg_flatau_92, qs, qsl, qsi, es, esl, esi, dqsdT, gamma)
      real(kind=kind_phys), intent(in)  :: temp, pres
      integer             , intent(in)  :: alg_choice, alg_flatau_92
-     real(kind=kind_phys), intent(in)  :: hlv, hlf, rvgas, cp_air
      real(kind=kind_phys), intent(out) :: qs, qsl, qsi, es, esl, esi, dqsdT, gamma
      
      real(kind=kind_phys) :: hls

@@ -350,8 +350,8 @@
   kind = kind_phys
   intent = in
 [U_ca]
-  standard_name = relative_humidity
-  long_name = layer relative humidity
+  standard_name = relative_humidity_outside_convective_clouds
+  long_name = relative humidity outside of convective cloud portion of grid box
   units = frac
   dimensions = (horizontal_loop_extent, vertical_layer_dimension)
   type = real

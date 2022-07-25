@@ -6,6 +6,27 @@
 
     contains
 
+!> \section arg_table_tiedtke_prog_clouds_pre_init Argument Table
+!! \htmlinclude tiedtke_prog_clouds_pre_init.html
+!!    
+    subroutine tiedtke_prog_clouds_pre_init(hlv, hlf, rvgas, cp, errmsg, errflg)
+      use machine  , only : kind_phys
+      use ccpp_saturation, only: get_qs_init
+      
+      implicit none
+      
+      real(kind=kind_phys), intent(in)    :: hlv, hlf, rvgas, cp
+      character(len=*), intent(out) :: errmsg
+      integer,          intent(out) :: errflg
+      
+      ! Initialize CCPP error handling variables
+      errmsg = ''
+      errflg = 0
+      
+      call get_qs_init(hlv, hlf, rvgas, cp) 
+      
+    end subroutine tiedtke_prog_clouds_pre_init
+
 !> \section arg_table_tiedtke_prog_clouds_pre_run Argument Table
 !! \htmlinclude tiedtke_prog_clouds_pre_run.html
 !!
@@ -54,7 +75,7 @@
       tfreeze = 273.16 !should be a physical constant coming in from host
       hls = hlv + hlf
             
-      call get_qs(tin, pfull, alg_choice, alg_flatau_92, hlv, hlf, rvgas, cp, qs, qsl, qsi, es, esl, esi, dqsdT, gamma)
+      call get_qs(tin, pfull, alg_choice, alg_flatau_92, qs, qsl, qsi, es, esl, esi, dqsdT, gamma)
       
       !GFJ: calc rh_wtd_conv_area (relative humidity-weighted conv area; 
       !this is useful if a deep convective scheme assumes a RH other than 100% for convective cloud area fraction)
