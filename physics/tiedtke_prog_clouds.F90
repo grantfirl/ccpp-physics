@@ -43,7 +43,7 @@
           mc_thresh, diff_thresh, efact, dt, SA, SQ, ST, gamma, qs, dqsdT, U_ca, qsl, qsi, pfull, &
           phalf, mc_full, convective_humidity_area, diff_t, drop1, rh_crit, rh_crit_min, &
           tin, qin, ql_in, qi_in, qa_in, ql_upd, qi_upd, qa_upd, omega, radturbten, airdens, &
-          hom, qvg, da_ls, delta_cf, dcond_ls, D_eros, errmsg, errflg)
+          hom, qvg, da_ls, dcond_ls, D_eros, errmsg, errflg)
 
       use machine, only : kind_phys
       
@@ -70,7 +70,7 @@
       real(kind=kind_phys), intent(in) :: airdens(:,:) !air density (kg m-3) calculated in lscloud_driver
       real(kind=kind_phys), intent(in) :: hom(:,:) !serves as a flag representing homogeneous ice nucleation (calculated in ice_nucl.F90/ice_nucl_k)
       real(kind=kind_phys), intent(inout) :: qa_upd(:,:) !these vars are initialized every physics timestep to 0 in lscloud_driver.F90/lscloud_alloc
-      real(kind=kind_phys), intent(inout) :: qvg(:,:), da_ls(:,:), delta_cf(:,:), dcond_ls(:,:), D_eros(:,:) !these vars are initialized every physics timestep to 0 in lscloud_driver.F90/lscloud_alloc
+      real(kind=kind_phys), intent(inout) :: qvg(:,:), da_ls(:,:), dcond_ls(:,:), D_eros(:,:) !these vars are initialized every physics timestep to 0 in lscloud_driver.F90/lscloud_alloc
       !real(kind=kind_phys), intent(inout) :: dqa_dt_prod(:,:), dqa_dt_loss(:,:) !these vars are initialized every physics timestep to 0 in lscloud_driver.F90/lscloud_driver
       
       real(kind=kind_phys), intent(in)    :: SQ(:,:) !this is set to zero in lscloud_driver.F90/lscloud_driver; change in specific humidity due to impose_realiziabilty/adjust_condensate; should be interstitial var
@@ -96,7 +96,7 @@
 !-------------------------------------------------------------------------
       integer :: i,k
       real(kind=kind_phys) :: dt_inv, hls
-      real(kind=kind_phys), dimension(idim,kdim) :: mdum,bdum,edum,U00p,U00pr,erosion_scale
+      real(kind=kind_phys), dimension(idim,kdim) :: mdum,bdum,edum,U00p,U00pr,erosion_scale,delta_cf
 
 ! Initialize CCPP error handling variables
       errmsg = ''

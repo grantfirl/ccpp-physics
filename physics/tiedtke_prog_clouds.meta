@@ -549,14 +549,6 @@
   type = real
   kind = kind_phys
   intent = inout
-[delta_cf]
-  standard_name = change_in_saturated_area_fraction_due
-  long_name = change in saturated volume fraction
-  units = frac
-  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
-  type = real
-  kind = kind_phys
-  intent = inout
 [dcond_ls]
   standard_name = change_in_cloud_condensate_due_to_nonconvective_condensation
   long_name = change in cloud condensate due to nonconvective condensation
