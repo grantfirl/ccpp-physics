@@ -398,8 +398,8 @@
   kind = kind_phys
   intent = in
 [convective_humidity_area]
-  standard_name = convective_cloud_area_fraction
-  long_name = convective cloud cover in the phy_f3d array
+  standard_name = convective_cloud_cover
+  long_name = convective cloud cover
   units = frac
   dimensions = (horizontal_loop_extent,vertical_layer_dimension)
   type = real
