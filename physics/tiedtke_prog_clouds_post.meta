@@ -105,6 +105,30 @@
   dimensions = ()
   type = integer
   intent = in
+[dt]
+  standard_name = timestep_for_physics
+  long_name = physics timestep
+  units = s
+  dimensions = ()
+  type = real
+  kind = kind_phys
+  intent = in
+[qmin]
+  standard_name = minimum_value_of_cloud_water_species
+  long_name = mimimum value of cloud water species (used in prognostic clouds)
+  units = kg kg-1
+  dimensions = ()
+  type = real
+  kind = kind_phys
+  intent = in
+[tfreeze]
+  standard_name = temperature_at_zero_celsius
+  long_name = temperature at 0 degrees Celsius
+  units = K
+  dimensions = ()
+  type = real
+  kind = kind_phys
+  intent = in
 [ST]
   standard_name = change_of_temperature_due_to_tiedtke_condensation_adjustment
   long_name = change of temperature due to tiedtke condensation adjustment
@@ -161,6 +185,54 @@
   type = real
   kind = kind_phys
   intent = in
+[dcond_ls_l]
+  standard_name = change_in_liquid_cloud_condensate_due_to_nonconvective_condensation
+  long_name = change in liquid cloud condensate due to nonconvective condensation
+  units = kg kg-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[dcond_ls_i]
+  standard_name = change_in_ice_cloud_condensate_due_to_nonconvective_condensation
+  long_name = change in ice cloud condensate due to nonconvective condensation
+  units = kg kg-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[d_eros]
+  standard_name = tiedtke_cloud_erosion
+  long_name = erosion term from Tiedtke prognostic clouds
+  units = 1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[qa_upd]
+  standard_name = cloud_area_fraction_in_atmosphere_layer_of_new_state_after_realizability
+  long_name = cloud fraction updated by physics after realizability check
+  units = frac
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[ql_upd]
+  standard_name = cloud_liquid_water_mixing_ratio_of_new_state_after_realizability
+  long_name = ratio of mass of cloud water to mass of dry air plus vapor (without condensates) updated by physics  after realizability check
+  units = kg kg-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[qi_upd]
+  standard_name = cloud_ice_mixing_ratio_of_new_state_after_realizability
+  long_name = ratio of mass of ice water to mass of dry air plus vapor (without condensates) updated by physics  after realizability check
+  units = kg kg-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
 [gt0]
   standard_name = air_temperature_of_new_state
   long_name = temperature updated by physics
@@ -192,6 +264,54 @@
   dimensions = (number_of_tracers_plus_one_hundred,number_of_cumulative_change_processes)
   type = integer
   intent = in
+[d_eros_l]
+  standard_name = tendency_of_cloud_liquid_water_due_to_cloud_erosion
+  long_name = tendency of cloud liquid water due to prognostic cloud erosion
+  units = kg kg-1 s-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = out
+[d_eros_i]
+  standard_name = tendency_of_cloud_ice_water_due_to_cloud_erosion
+  long_name = tendency of cloud ice water due to prognostic cloud erosion
+  units = kg kg-1 s-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = out
+[nerosc]
+  standard_name = tendency_of_mass_number_concentration_of_cloud_liquid_water_particles_in_air_due_to_cloud_erosion
+  long_name = tendency of mass number concentration of cloud liquid water particles in air due to cloud erosion
+  units = kg-1 s-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = out
+[nerosi]
+  standard_name = tendency_of_mass_number_concentration_of_cloud_ice_water_crystals_in_air_due_to_cloud_erosion
+  long_name = tendency of mass number concentration of cloud ice water crystals in air due to cloud erosion
+  units = kg-1 s-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = out
+[dqcdt]
+  standard_name = tendency_of_liquid_cloud_condensate_due_to_nonconvective_condensation
+  long_name = tendency of liquid cloud condensate due to nonconvective condensation
+  units = kg kg-1 s-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = out
+[dqidt]
+  standard_name = tendency_of_ice_cloud_condensate_due_to_nonconvective_condensation
+  long_name = tendency of ice cloud condensate due to nonconvective condensation
+  units = kg kg-1 s-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = out
 [errmsg]
   standard_name = ccpp_error_message
   long_name = error message for error handling in CCPP

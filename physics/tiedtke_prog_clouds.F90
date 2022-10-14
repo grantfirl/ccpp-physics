@@ -43,7 +43,7 @@
           mc_thresh, diff_thresh, efact, dt, SA, SQ, ST, gamma, qs, dqsdT, U_ca, qsl, qsi, pfull, &
           phalf, mc_full, convective_humidity_area, diff_t, drop1, rh_crit, rh_crit_min, &
           tin, qin, ql_in, qi_in, qa_in, ql_upd, qi_upd, qa_upd, omega, radturbten, airdens, &
-          hom, qvg, da_ls, dcond_ls, D_eros, errmsg, errflg)
+          hom, qvg, da_ls, dcond_ls_l, dcond_ls_i, D_eros, errmsg, errflg)
 
       use machine, only : kind_phys
       
@@ -70,7 +70,7 @@
       real(kind=kind_phys), intent(in) :: airdens(:,:) !air density (kg m-3) calculated in lscloud_driver
       real(kind=kind_phys), intent(in) :: hom(:,:) !serves as a flag representing homogeneous ice nucleation (calculated in ice_nucl.F90/ice_nucl_k)
       real(kind=kind_phys), intent(inout) :: qa_upd(:,:) !these vars are initialized every physics timestep to 0 in lscloud_driver.F90/lscloud_alloc
-      real(kind=kind_phys), intent(inout) :: qvg(:,:), da_ls(:,:), dcond_ls(:,:), D_eros(:,:) !these vars are initialized every physics timestep to 0 in lscloud_driver.F90/lscloud_alloc
+      real(kind=kind_phys), intent(inout) :: qvg(:,:), da_ls(:,:), dcond_ls_l(:,:), dcond_ls_i(:,:), D_eros(:,:) !these vars are initialized every physics timestep to 0 in lscloud_driver.F90/lscloud_alloc
       !real(kind=kind_phys), intent(inout) :: dqa_dt_prod(:,:), dqa_dt_loss(:,:) !these vars are initialized every physics timestep to 0 in lscloud_driver.F90/lscloud_driver
       
       real(kind=kind_phys), intent(in)    :: SQ(:,:) !this is set to zero in lscloud_driver.F90/lscloud_driver; change in specific humidity due to impose_realiziabilty/adjust_condensate; should be interstitial var
@@ -91,22 +91,27 @@
 !                      a function of pressure 
 !       U00pr          gridbox mean rh needed for condensation, after
 !                      accounting for convective cloud area
+!       liq_frac       fraction of condensation which is liquid
+!       ice_frac       fraction of condensation which is frozen
 !       erosion_scale  cloud erosion scale
+!       delta_cf
+!       dcond_ls       total (liquid+ice) change in cloud condensate due to nonconvective condensation
 !       i,j,k          do-loop indices
 !-------------------------------------------------------------------------
       integer :: i,k
       real(kind=kind_phys) :: dt_inv, hls
-      real(kind=kind_phys), dimension(idim,kdim) :: mdum,bdum,edum,U00p,U00pr,erosion_scale,delta_cf
+      real(kind=kind_phys), dimension(idim,kdim) :: mdum,bdum,edum,U00p,U00pr,liq_frac,ice_frac,&
+                                                    erosion_scale,delta_cf,dcond_ls
 
 ! Initialize CCPP error handling variables
       errmsg = ''
       errflg = 0
       
-      !GJF need to call compute_qs_a to calculate qs,gamma,dqsdT,U_ca,qsl,qsi
-      
       dt_inv = 1.0/dt
       
       hls = con_hvap + con_hfus
+      
+      dcond_ls = 0.0
       
 !------------------------------------------------------------------------
 !    process the non-convective condensation for pdf clouds. 
@@ -278,7 +283,65 @@
                qa_upd, ql_upd, qi_upd, ST, SQ, da_ls, D_eros, dcond_ls, delta_cf, hom,   &
                edum, SA, U00p, erosion_scale, dt, dmin, qmin, efact, con_cp, con_g, con_hvap, hls, con_rv, con_t0c)
         endif
-      endif
+      endif !do_pdf_clouds
+      
+!-----------------------------------------------------------------------
+!    the next step is the apportionment of the non-convective condensation !    between liquid and ice phases. Following the suggestion of Rostayn
+!    (2000), all condensation at temperatures greater than -40C is in 
+!    liquid form as ice nuclei are generally limited in the atmosphere.
+!    The droplets may subsequently be converted to ice by the 
+!    Bergeron-Findeison mechanism.  
+!
+!    one problem with this formulation is that the proper saturation vapor 
+!    pressure is not used for cold clouds as it should be liquid saturation
+!    in the case of first forming liquid, but change to ice saturation as 
+!    the cloud glaciates.  The current use of ice saturation beneath -20C 
+!    thus crudely mimics the result that nearly all stratiform clouds are
+!    glaciated for temperatures less than -15C.
+!
+!    in the case of large-scale evaporation (dcond_ls<0.), it is assumed 
+!    that cloud liquid will evaporate faster than cloud ice because if 
+!    both are present in the same volume the saturation vapor pressure over
+!    the droplet is higher than that over the ice crystal.
+!
+!    the fraction of large-scale condensation that is liquid is stored in 
+!    the temporary variable liq_frac.
+!-----------------------------------------------------------------------
+      liq_frac = 1.
+      ice_frac = 0.
+
+!-----------------------------------------------------------------------
+!    for cases of cloud condensation where temperatures are less than -40C 
+!    create only ice,
+!-----------------------------------------------------------------------
+      where ((dcond_ls >= 0.) .and. (tin < con_t0c - 40.))
+        liq_frac = 0.
+        ice_frac = 1.
+      endwhere
+
+!-----------------------------------------------------------------------
+!    for cases of cloud evaporation of mixed phase clouds, set liquid 
+!    evaporation to preferentially occur first.
+!-----------------------------------------------------------------------
+      where ((dcond_ls < 0.) .and. (ql_upd > qmin) .and. (qi_upd > qmin))   
+        liq_frac = min(-1.*dcond_ls, ql_upd)/ &
+                              max(-1.*dcond_ls, qmin)
+        ice_frac = 1. - liq_frac
+      end where
+
+!-----------------------------------------------------------------------
+!    do evaporation of pure ice cloud.
+!-----------------------------------------------------------------------
+      where ((dcond_ls < 0.) .and. (ql_upd <= qmin) .and. (qi_upd > qmin))
+        liq_frac = 0.
+        ice_frac = 1.
+      end where
+              
+!-----------------------------------------------------------------------
+!    calculate partitioning among liquid and ice to dcond_ls.    
+!-----------------------------------------------------------------------
+      dcond_ls_i = ice_frac*dcond_ls
+      dcond_ls_l = liq_frac*dcond_ls 
 
       end subroutine tiedtke_prog_clouds_run
 
