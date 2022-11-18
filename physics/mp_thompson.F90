@@ -333,7 +333,9 @@ module mp_thompson
                               spp_prt_list, spp_var_list,          &
                               spp_stddev_cutoff,                   &
                               cplchm, pfi_lsan, pfl_lsan,          &
-                              errmsg, errflg)
+                              tiedtke_prog_clouds, d_eros_l,       &
+                              d_eros_i, nerosc, nerosi, dqcdt,     &
+                              dqidt, errmsg, errflg)
 
          implicit none
 
@@ -412,6 +414,15 @@ module mp_thompson
          ! ice and liquid water 3d precipitation fluxes - only allocated if cplchm is .true.
          real(kind=kind_phys), intent(inout), dimension(:,:) :: pfi_lsan
          real(kind=kind_phys), intent(inout), dimension(:,:) :: pfl_lsan
+         
+         ! Tiedtke prognostic clouds
+         logical, intent(in) :: tiedtke_prog_clouds
+         real(kind=kind_phys), intent(in) :: d_eros_l(:,:)
+         real(kind=kind_phys), intent(in) :: d_eros_i(:,:)
+         real(kind=kind_phys), intent(in) :: nerosc(:,:)
+         real(kind=kind_phys), intent(in) :: nerosi(:,:)
+         real(kind=kind_phys), intent(in) :: dqcdt(:,:)
+         real(kind=kind_phys), intent(in) :: dqidt(:,:)
 
          ! Local variables
 
@@ -704,7 +715,10 @@ module mp_thompson
                               ims=ims, ime=ime, jms=jms, jme=jme, kms=kms, kme=kme,          &
                               its=its, ite=ite, jts=jts, jte=jte, kts=kts, kte=kte,          &
                               reset_dBZ=reset_dBZ, istep=istep, nsteps=nsteps,               &
-                              first_time_step=first_time_step, errmsg=errmsg, errflg=errflg, &
+                              first_time_step=first_time_step,                               &
+                              tiedtke_prog_clouds=tiedtke_prog_clouds, d_eros_l=d_eros_l,    &
+                              d_eros_i=d_eros_i, nerosc=nerosc, nerosi=nerosi,               &
+                              dqcdt=dqcdt, dqidt=dqidt, errmsg=errmsg, errflg=errflg,        &
                               ! Extended diagnostics
                               ext_diag=ext_diag,                                             &
                               ! vts1=vts1, txri=txri, txrc=txrc,                             &
@@ -743,7 +757,10 @@ module mp_thompson
                               ims=ims, ime=ime, jms=jms, jme=jme, kms=kms, kme=kme,          &
                               its=its, ite=ite, jts=jts, jte=jte, kts=kts, kte=kte,          &
                               reset_dBZ=reset_dBZ, istep=istep, nsteps=nsteps,               &
-                              first_time_step=first_time_step, errmsg=errmsg, errflg=errflg, &
+                              first_time_step=first_time_step,                               &
+                              tiedtke_prog_clouds=tiedtke_prog_clouds, d_eros_l=d_eros_l,    &
+                              d_eros_i=d_eros_i, nerosc=nerosc, nerosi=nerosi,               &
+                              dqcdt=dqcdt, dqidt=dqidt, errmsg=errmsg, errflg=errflg,        &
                               ! Extended diagnostics
                               ext_diag=ext_diag,                                             &
                               ! vts1=vts1, txri=txri, txrc=txrc,                             &

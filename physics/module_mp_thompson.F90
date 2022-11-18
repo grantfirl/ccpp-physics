@@ -1002,6 +1002,9 @@ MODULE module_mp_thompson
                               ims,ime, jms,jme, kms,kme,              &  ! memory dims
                               its,ite, jts,jte, kts,kte,              &  ! tile dims
                               reset_dBZ, istep, nsteps,               &
+                              tiedtke_prog_clouds,                    &
+                              d_eros_l, d_eros_i, nerosc, nerosi,     &
+                              dqcdt, dqidt,                           &
                               errmsg, errflg,                         &
                               ! Extended diagnostics, array pointers
                               ! only associated if ext_diag flag is .true.
@@ -1068,6 +1071,11 @@ MODULE module_mp_thompson
       ! To support subcycling: current step and maximum number of steps
       INTEGER, INTENT (IN) :: istep, nsteps
       LOGICAL, INTENT (IN) :: reset_dBZ
+      ! Tiedtke prognostic clouds
+      LOGICAL, INTENT (IN) :: tiedtke_prog_clouds
+      REAL, DIMENSION(ims:ime, kms:kme, jms:jme), INTENT(IN) ::   &
+                          d_eros_l, d_eros_i, nerosc, nerosi,     &
+                          dqcdt, dqidt
       ! Extended diagnostics, array pointers only associated if ext_diag flag is .true.
       LOGICAL, INTENT (IN) :: ext_diag
       LOGICAL, OPTIONAL, INTENT(IN):: aero_ind_fdb
@@ -1092,6 +1100,9 @@ MODULE module_mp_thompson
                           qv1d, qc1d, qi1d, qr1d, qs1d, qg1d, ni1d,     &
                           nr1d, nc1d, nwfa1d, nifa1d,                   &
                           t1d, p1d, w1d, dz1d, rho, dBZ, pfil1, pfll1
+      REAL, DIMENSION(kts:kte):: &
+                          d_eros_l1d, d_eros_i1d, nerosc1d, nerosi1d,   &
+                          dqcdt1d, dqidt1d
 !..Extended diagnostics, single column arrays
       REAL, DIMENSION(:), ALLOCATABLE::                              &
                           !vtsk1, txri1, txrc1,                       &
@@ -1425,6 +1436,16 @@ MODULE module_mp_thompson
                nifa1d(k) = naIN1*0.01
             enddo
          endif
+         if (tiedtke_prog_clouds) then
+           do k=kts, kte
+             d_eros_l1d(k) = d_eros_l(i,k,j)
+             d_eros_i1d(k) = d_eros_i(i,k,j)
+             nerosc1d(k) = nerosc(i,k,j)
+             nerosi1d(k) = nerosi(i,k,j)
+             dqcdt1d(k) = dqcdt(i,k,j)
+             dqidt1d(k) = dqidt(i,k,j)
+           enddo
+         endif
 
 !> - Call mp_thompson()
          call mp_thompson(qv1d, qc1d, qi1d, qr1d, qs1d, qg1d, ni1d,     &
@@ -1436,6 +1457,8 @@ MODULE module_mp_thompson
                       rand1, rand2, rand3, &
                       kts, kte, dt, i, j, ext_diag,                    & 
                       sedi_semi, decfl,                                &
+                      tiedtke_prog_clouds, d_eros_l1d, d_eros_i1d,     &
+                      nerosc1d, nerosi1d, dqcdt1d, dqidt1d,            &
                       !vtsk1, txri1, txrc1,                            &
                       prw_vcdc1, prw_vcde1,                            &
                       tpri_inu1, tpri_ide1_d, tpri_ide1_s, tprs_ide1,  &
@@ -1851,6 +1874,8 @@ MODULE module_mp_thompson
                           ! allocated if ext_diag flag is .true.
                           ext_diag,                                        & 
                           sedi_semi, decfl,                                &
+                          tiedtke_prog_clouds, d_eros_l1d, d_eros_i1d,     &
+                          nerosc1d, nerosi1d, dqcdt1d, dqidt1d,            &
                           !vtsk1, txri1, txrc1,                            &
                           prw_vcdc1, prw_vcde1,                            &
                           tpri_inu1, tpri_ide1_d, tpri_ide1_s, tprs_ide1,  &
@@ -1880,6 +1905,9 @@ MODULE module_mp_thompson
       REAL, INTENT(INOUT):: pptrain, pptsnow, pptgraul, pptice
       REAL, INTENT(IN):: dt
       REAL, INTENT(IN):: rand1, rand2, rand3
+      LOGICAL, INTENT(IN) :: tiedtke_prog_clouds
+      REAL, DIMENSION(kts:kte), INTENT(IN):: d_eros_l1d, d_eros_i1d, &
+                          nerosc1d, nerosi1d, dqcdt1d, dqidt1d
       ! Extended diagnostics, most arrays only allocated if ext_diag is true
       LOGICAL, INTENT(IN) :: ext_diag
       LOGICAL, INTENT(IN) :: sedi_semi
@@ -2919,18 +2947,20 @@ MODULE module_mp_thompson
 
 !>  - Deposition nucleation of dust/mineral from DeMott et al (2010)
 !! we may need to relax the temperature and ssati constraints.
-          if ( (ssati(k).ge. 0.25) .or. (ssatw(k).gt. eps &
-                                .and. temp(k).lt.253.15) ) then
-           if (dustyIce .AND. (is_aerosol_aware .or. merra2_aerosol_aware)) then
-            xnc = iceDeMott(tempc,qv(k),qvs(k),qvsi(k),rho(k),nifa(k))
-            xnc = xnc*(1.0 + 50.*rand3)
-           else
-            xnc = MIN(250.E3, TNO*EXP(ATO*(T_0-temp(k))))
-           endif
-           xni = ni(k) + (pni_rfz(k)+pni_wfz(k))*dtsave
-           pni_inu(k) = 0.5*(xnc-xni + abs(xnc-xni))*odts
-           pri_inu(k) = MIN(DBLE(rate_max), xm0i*pni_inu(k))
-           pni_inu(k) = pri_inu(k)/xm0i
+          if (.not. tiedtke_prog_clouds) then
+            if ( (ssati(k).ge. 0.25) .or. (ssatw(k).gt. eps &
+                                  .and. temp(k).lt.253.15) ) then
+             if (dustyIce .AND. (is_aerosol_aware .or. merra2_aerosol_aware)) then
+              xnc = iceDeMott(tempc,qv(k),qvs(k),qvsi(k),rho(k),nifa(k))
+              xnc = xnc*(1.0 + 50.*rand3)
+             else
+              xnc = MIN(250.E3, TNO*EXP(ATO*(T_0-temp(k))))
+             endif
+             xni = ni(k) + (pni_rfz(k)+pni_wfz(k))*dtsave
+             pni_inu(k) = 0.5*(xnc-xni + abs(xnc-xni))*odts
+             pri_inu(k) = MIN(DBLE(rate_max), xm0i*pni_inu(k))
+             pni_inu(k) = pri_inu(k)/xm0i
+            endif
           endif
 
 !>  - Freezing of aqueous aerosols based on Koop et al (2001, Nature)
@@ -2946,39 +2976,41 @@ MODULE module_mp_thompson
 
 
 !>  - Deposition/sublimation of cloud ice (Srivastava & Coen 1992).
-          if (L_qi(k)) then
-           lami = (am_i*cig(2)*oig1*ni(k)/ri(k))**obmi
-           ilami = 1./lami
-           xDi = MAX(DBLE(D0i), (bm_i + mu_i + 1.) * ilami)
-           xmi = am_i*xDi**bm_i
-           oxmi = 1./xmi
-           pri_ide(k) = C_cube*t1_subl*diffu(k)*ssati(k)*rvs &
-                  *oig1*cig(5)*ni(k)*ilami
+          if (.not. tiedtke_prog_clouds) then
+            if (L_qi(k)) then
+             lami = (am_i*cig(2)*oig1*ni(k)/ri(k))**obmi
+             ilami = 1./lami
+             xDi = MAX(DBLE(D0i), (bm_i + mu_i + 1.) * ilami)
+             xmi = am_i*xDi**bm_i
+             oxmi = 1./xmi
+             pri_ide(k) = C_cube*t1_subl*diffu(k)*ssati(k)*rvs &
+                    *oig1*cig(5)*ni(k)*ilami
 
-           if (pri_ide(k) .lt. 0.0) then
-            pri_ide(k) = MAX(DBLE(-ri(k)*odts), pri_ide(k), DBLE(rate_max))
-            pni_ide(k) = pri_ide(k)*oxmi
-            pni_ide(k) = MAX(DBLE(-ni(k)*odts), pni_ide(k))
-           else
-            pri_ide(k) = MIN(pri_ide(k), DBLE(rate_max))
-            prs_ide(k) = (1.0D0-tpi_ide(idx_i,idx_i1))*pri_ide(k)
-            pri_ide(k) = tpi_ide(idx_i,idx_i1)*pri_ide(k)
-           endif
+             if (pri_ide(k) .lt. 0.0) then
+              pri_ide(k) = MAX(DBLE(-ri(k)*odts), pri_ide(k), DBLE(rate_max))
+              pni_ide(k) = pri_ide(k)*oxmi
+              pni_ide(k) = MAX(DBLE(-ni(k)*odts), pni_ide(k))
+             else
+              pri_ide(k) = MIN(pri_ide(k), DBLE(rate_max))
+              prs_ide(k) = (1.0D0-tpi_ide(idx_i,idx_i1))*pri_ide(k)
+              pri_ide(k) = tpi_ide(idx_i,idx_i1)*pri_ide(k)
+             endif
 
 !>  - Some cloud ice needs to move into the snow category.  Use lookup
 !! table that resulted from explicit bin representation of distrib.
-           if ( (idx_i.eq. ntb_i) .or. (xDi.gt. 5.0*D0s) ) then
-            prs_iau(k) = ri(k)*.99*odts
-            pni_iau(k) = ni(k)*.95*odts
-           elseif (xDi.lt. 0.1*D0s) then
-            prs_iau(k) = 0.
-            pni_iau(k) = 0.
-           else
-            prs_iau(k) = tps_iaus(idx_i,idx_i1)*odts
-            prs_iau(k) = MIN(DBLE(ri(k)*.99*odts), prs_iau(k))
-            pni_iau(k) = tni_iaus(idx_i,idx_i1)*odts
-            pni_iau(k) = MIN(DBLE(ni(k)*.95*odts), pni_iau(k))
-           endif
+             if ( (idx_i.eq. ntb_i) .or. (xDi.gt. 5.0*D0s) ) then
+              prs_iau(k) = ri(k)*.99*odts
+              pni_iau(k) = ni(k)*.95*odts
+             elseif (xDi.lt. 0.1*D0s) then
+              prs_iau(k) = 0.
+              pni_iau(k) = 0.
+             else
+              prs_iau(k) = tps_iaus(idx_i,idx_i1)*odts
+              prs_iau(k) = MIN(DBLE(ri(k)*.99*odts), prs_iau(k))
+              pni_iau(k) = tni_iaus(idx_i,idx_i1)*odts
+              pni_iau(k) = MIN(DBLE(ni(k)*.95*odts), pni_iau(k))
+             endif
+            endif
           endif
 
 !>  - Snow collecting cloud ice.  In CE, assume Di<<Ds and vti=~0.
@@ -3202,10 +3234,19 @@ MODULE module_mp_thompson
             endif
          endif
 
+         if (tiedtke_prog_clouds) then
+             !only handling ice part of tiedtke clouds here
 !>  - Water vapor tendency
-         qvten(k) = qvten(k) + (-pri_inu(k) - pri_iha(k) - pri_ide(k)   &
+             qvten(k) = qvten(k) + ((-pri_inu(k) - pri_iha(k) - pri_ide(k)   &
+                       - prs_ide(k) - prs_sde(k) - prg_gde(k)) &
+                       * orho) &
+                       - dqidt1d(k) - d_eros_i1d(k)
+          else
+!>  - Water vapor tendency
+            qvten(k) = qvten(k) + (-pri_inu(k) - pri_iha(k) - pri_ide(k)   &
                       - prs_ide(k) - prs_sde(k) - prg_gde(k)) &
-                      * orho
+                      * orho            
+          endif
 
 !>  - Cloud water tendency
          qcten(k) = qcten(k) + (-prr_wau(k) - pri_wfz(k) &
@@ -3248,18 +3289,33 @@ MODULE module_mp_thompson
          xnc=MAX(0.,(nc1d(k) + ncten(k)*dtsave)*rho(k))
          if (xnc.gt.Nt_c_max) &
                 ncten(k) = (Nt_c_max-nc1d(k)*rho(k))*odts*orho
+         if (tiedtke_prog_clouds) then
+           !only handling ice part of tiedtke clouds here (liquid is below during cond/evap step)
+!>  - Cloud ice mixing ratio tendency
+            qiten(k) = qiten(k) + ((pri_inu(k) + pri_iha(k) + pri_ihm(k)    &
+                      + pri_wfz(k) + pri_rfz(k) + pri_ide(k) &
+                      - prs_iau(k) - prs_sci(k) - pri_rci(k)) &
+                      * orho) + dqidt1d(k) + d_eros_i1d(k)
+
+!>  - Cloud ice number tendency.
+            niten(k) = niten(k) + ((pni_inu(k) + pni_iha(k) + pni_ihm(k)    &
+                      + pni_wfz(k) + pni_rfz(k) + pni_ide(k) &
+                      - pni_iau(k) - pni_sci(k) - pni_rci(k)) &
+                      * orho) + nerosi1d(k)
+         else
 
 !>  - Cloud ice mixing ratio tendency
-         qiten(k) = qiten(k) + (pri_inu(k) + pri_iha(k) + pri_ihm(k)    &
+            qiten(k) = qiten(k) + (pri_inu(k) + pri_iha(k) + pri_ihm(k)    &
                       + pri_wfz(k) + pri_rfz(k) + pri_ide(k) &
                       - prs_iau(k) - prs_sci(k) - pri_rci(k)) &
                       * orho
 
 !>  - Cloud ice number tendency.
-         niten(k) = niten(k) + (pni_inu(k) + pni_iha(k) + pni_ihm(k)    &
+            niten(k) = niten(k) + (pni_inu(k) + pni_iha(k) + pni_ihm(k)    &
                       + pni_wfz(k) + pni_rfz(k) + pni_ide(k) &
                       - pni_iau(k) - pni_sci(k) - pni_rci(k)) &
                       * orho
+         endif
 
 !>  - Cloud ice mass/number balance; keep mass-wt mean size between
 !! 5 and 300 microns.  Also no more than 500 xtals per liter.
@@ -3353,7 +3409,9 @@ MODULE module_mp_thompson
                       + lsub*ocp(k)*(prs_sde(k) + prg_gde(k)) &
                        )*orho * (1-IFDRY)
          endif
-
+         if (tiedtke_prog_clouds) then
+            tten(k) = tten(k) + lsub*ocp(k)*(dqidt1d(k) + d_eros_i1d(k))
+         endif
       enddo
 
 !+---+-----------------------------------------------------------------+
@@ -3540,8 +3598,26 @@ MODULE module_mp_thompson
 !! drops using calculation of max drop size capable of evaporating in
 !! single timestep and explicit number of drops smaller than Dc_star
 !! from lookup table.
-!+---+-----------------------------------------------------------------+
-      do k = kts, kte
+!+---+-----------------------------------------------------------------+     
+      if (tiedtke_prog_clouds) then
+        do k = kts, kte
+          qvten(k) = qvten(k) - dqcdt1d(k) - d_eros_l1d(k)
+          qcten(k) = qcten(k) + dqcdt1d(k) + d_eros_l1d(k)
+          ncten(k) = ncten(k) + nerosc1d(k)
+          nwfaten(k) = nwfaten(k) - nerosc1d(k)
+          tten(k) = tten(k) + lvap(k)*ocp(k)*(dqcdt1d(k) + d_eros_l1d(k))*(1-IFDRY)
+          rc(k) = MAX(R1, (qc1d(k) + DT*qcten(k))*rho(k))
+          if (rc(k).eq.R1) L_qc(k) = .false.
+          nc(k) = MAX(2., MIN((nc1d(k)+ncten(k)*DT)*rho(k), Nt_c_max))
+          if (.NOT. (is_aerosol_aware .or. merra2_aerosol_aware)) nc(k) = Nt_c
+          qv(k) = MAX(1.E-10, qv1d(k) + DT*qvten(k))
+          temp(k) = t1d(k) + DT*tten(k)
+          rho(k) = 0.622*pres(k)/(R*temp(k)*(qv(k)+0.622))
+          qvs(k) = rslf(pres(k), temp(k))
+          ssatw(k) = qv(k)/qvs(k) - 1.
+        end do
+      else
+        do k = kts, kte
          orho = 1./rho(k)
          if ( (ssatw(k).gt. eps) .or. (ssatw(k).lt. -eps .and. &
                    L_qc(k)) ) then
@@ -3637,7 +3713,8 @@ MODULE module_mp_thompson
           qvs(k) = rslf(pres(k), temp(k))
           ssatw(k) = qv(k)/qvs(k) - 1.
          endif
-      enddo
+        enddo
+      endif 
 
 !+---+-----------------------------------------------------------------+
 !> - If still subsaturated, allow rain to evaporate, following
