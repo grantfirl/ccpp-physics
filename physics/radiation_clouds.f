@@ -407,8 +407,8 @@
      &       iovr_dcorr, iovr_exp, iovr_exprand, idcor_con,             &
      &       idcor_hogan, idcor_oreopoulos,                             &
      &       imfdeepcnv, imfdeepcnv_gf, do_mynnedmf, lgfdlmprad,        &
-     &       uni_cld, lmfshal, lmfdeep2, cldcov, clouds1,               &
-     &       effrl, effri, effrr, effrs, effr_in,                       &
+     &       uni_cld, tiedtke_prog_clouds, lmfshal, lmfdeep2, cldcov,   &
+     &       clouds1, effrl, effri, effrr, effrs, effr_in,              &
      &       effrl_inout, effri_inout, effrs_inout,                     &
      &       lwp_ex, iwp_ex, lwp_fc, iwp_fc,                            &
      &       dzlay, latdeg, julian, yearlen, gridkm,                    &
@@ -592,7 +592,8 @@
      &     idcor_oreopoulos
 
 
-      logical, intent(in)  :: uni_cld, lmfshal, lmfdeep2, effr_in
+      logical, intent(in)  :: uni_cld, lmfshal, lmfdeep2, effr_in,      &
+     &                        tiedtke_prog_clouds
       logical, intent(in)  :: do_mynnedmf, lgfdlmprad
 
       real (kind=kind_phys), dimension(:,:,:), intent(in) :: ccnd,      &
@@ -811,14 +812,22 @@
      &                    cld_resnow)
             else
 
-              !-- MYNN PBL or convective GF
-              !-- use cloud fractions with SGS clouds
-              do k=1,NLAY
-                do i=1,IX
-                  cld_frac(i,k)  = clouds1(i,k)
+              if (tiedtke_prog_clouds) then
+                do k=1,NLAY
+                  do i=1,IX
+                    cld_frac(i,k)  = cldcov(i,k)
+                  enddo
                 enddo
-              enddo
-
+              else
+                !-- MYNN PBL or convective GF
+                !-- use cloud fractions with SGS clouds
+                do k=1,NLAY
+                  do i=1,IX
+                    cld_frac(i,k)  = clouds1(i,k)
+                  enddo
+                enddo
+              endif 
+              
                 ! --- use clduni as with the GFDL microphysics.
                 ! --- make sure that effr_in=.true. in the input.nml!
                 call progclduni (plyr, plvl, tlyr, tvly, ccnd, ncndl,   & !  ---  inputs

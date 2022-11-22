@@ -233,6 +233,13 @@
   dimensions = ()
   type = logical
   intent = in
+[tiedtke_prog_clouds]
+  standard_name = do_tiedtke_prognostic_clouds
+  long_name = flag for tiedtke prognostic cloud scheme
+  units = flag
+  dimensions = ()
+  type = logical
+  intent = in
 [ntclamt]
   standard_name = index_of_cloud_area_fraction_in_atmosphere_layer_in_tracer_concentration_array
   long_name = tracer index for cloud amount integer

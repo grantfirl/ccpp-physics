@@ -25,6 +25,7 @@
         ntdu1, ntdu2, ntdu3, ntdu4, ntdu5, ntss1, ntss2,                       &
         ntss3, ntss4, ntss5, ntsu, ntbcb, ntbcl, ntocb, ntocl, ntchm,          &
         imp_physics,imp_physics_nssl, nssl_ccn_on, nssl_invertccn,             &
+        tiedtke_prog_clouds,                                                   &
         imp_physics_thompson, imp_physics_gfdl, imp_physics_zhao_carr,         &
         imp_physics_zhao_carr_pdf, imp_physics_mg, imp_physics_wsm6,           &
         imp_physics_fer_hires, iovr_rand, iovr_maxrand, iovr_max, iovr_dcorr,  &
@@ -126,7 +127,7 @@
       logical,              intent(in) :: aero_dir_fdb
       real(kind=kind_phys), dimension(:,:), intent(in) :: smoke_ext, dust_ext
 
-      logical,              intent(in) :: nssl_ccn_on, nssl_invertccn
+      logical,              intent(in) :: nssl_ccn_on, nssl_invertccn, tiedtke_prog_clouds
       integer,              intent(in) :: spp_rad
       real(kind_phys),      intent(in) :: spp_wts_rad(:,:)
 
@@ -903,6 +904,9 @@
               effrs_inout(i,k) = effrs(i,k1)
             enddo
           enddo
+          if (tiedtke_prog_clouds) then
+            cldcov(1:IM,1+kd:LM+kd) = tracer1(1:IM,1:LM,ntclamt)
+          end if
         else                                                           ! all other cases
           cldcov = 0.0
         endif
@@ -962,8 +966,8 @@
      &       iovr_dcorr, iovr_exp, iovr_exprand, idcor_con,             &
      &       idcor_hogan, idcor_oreopoulos,                             &
      &       imfdeepcnv, imfdeepcnv_gf, do_mynnedmf, lgfdlmprad,        &
-     &       uni_cld, lmfshal, lmfdeep2, cldcov, clouds1,               &
-     &       effrl, effri, effrr, effrs, effr_in,                       &
+     &       uni_cld, tiedtke_prog_clouds, lmfshal, lmfdeep2, cldcov,   &
+     &       clouds1, effrl, effri, effrr, effrs, effr_in,              &
      &       effrl_inout, effri_inout, effrs_inout,                     &
      &       lwp_ex, iwp_ex, lwp_fc, iwp_fc,                            &
      &       dzb, xlat_d, julian, yearlen, gridkm,                      &
