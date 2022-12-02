@@ -1073,7 +1073,7 @@ MODULE module_mp_thompson
       LOGICAL, INTENT (IN) :: reset_dBZ
       ! Tiedtke prognostic clouds
       LOGICAL, INTENT (IN) :: tiedtke_prog_clouds
-      REAL, DIMENSION(ims:ime, kms:kme, jms:jme), INTENT(IN) ::   &
+      REAL, DIMENSION(:,:,:), INTENT(IN) ::   &
                           d_eros_l, d_eros_i, nerosc, nerosi,     &
                           dqcdt, dqidt
       ! Extended diagnostics, array pointers only associated if ext_diag flag is .true.
@@ -1100,7 +1100,7 @@ MODULE module_mp_thompson
                           qv1d, qc1d, qi1d, qr1d, qs1d, qg1d, ni1d,     &
                           nr1d, nc1d, nwfa1d, nifa1d,                   &
                           t1d, p1d, w1d, dz1d, rho, dBZ, pfil1, pfll1
-      REAL, DIMENSION(kts:kte):: &
+      REAL, DIMENSION(:), ALLOCATABLE:: &
                           d_eros_l1d, d_eros_i1d, nerosc1d, nerosi1d,   &
                           dqcdt1d, dqidt1d
 !..Extended diagnostics, single column arrays
@@ -1138,6 +1138,7 @@ MODULE module_mp_thompson
       INTEGER, OPTIONAL, INTENT(IN) :: do_radar_ref
       logical :: melti = .false.
       INTEGER :: ndt, it
+      REAL:: tiedtke_ice_prod
 
       ! CCPP error handling
       character(len=*), optional, intent(  out) :: errmsg
@@ -1240,7 +1241,15 @@ MODULE module_mp_thompson
          allocate (ncten1(kts:kte))
          allocate (qcten1(kts:kte))
       end if allocate_extended_diagnostics
-
+      
+      if (tiedtke_prog_clouds) then
+        allocate(d_eros_l1d(kts:kte))
+        allocate(d_eros_i1d(kts:kte))
+        allocate(nerosc1d(kts:kte))
+        allocate(nerosi1d(kts:kte))
+        allocate(dqcdt1d(kts:kte))
+        allocate(dqidt1d(kts:kte))
+      end if
 !+---+
       i_start = its
       j_start = jts
@@ -1906,7 +1915,7 @@ MODULE module_mp_thompson
       REAL, INTENT(IN):: dt
       REAL, INTENT(IN):: rand1, rand2, rand3
       LOGICAL, INTENT(IN) :: tiedtke_prog_clouds
-      REAL, DIMENSION(kts:kte), INTENT(IN):: d_eros_l1d, d_eros_i1d, &
+      REAL, DIMENSION(:), INTENT(IN):: d_eros_l1d, d_eros_i1d, &
                           nerosc1d, nerosi1d, dqcdt1d, dqidt1d
       ! Extended diagnostics, most arrays only allocated if ext_diag is true
       LOGICAL, INTENT(IN) :: ext_diag
@@ -1965,6 +1974,8 @@ MODULE module_mp_thompson
       DOUBLE PRECISION, DIMENSION(kts:kte):: prg_scw, prg_rfz, prg_gde, &
            prg_gcw, prg_rci, prg_rcs, &
            prg_rcg, prg_ihm
+      
+      DOUBLE PRECISION, DIMENSION(kts:kte):: pri_vtk, prw_vtk
 
       DOUBLE PRECISION, PARAMETER:: zeroD0 = 0.0d0
       REAL :: dtcfl,rainsfc,graulsfc
@@ -2043,7 +2054,8 @@ MODULE module_mp_thompson
 !! represent processes: "de" for sublimation/deposition, "ev" for
 !! evaporation, "fz" for freezing, "ml" for melting, "au" for
 !! autoconversion, "nu" for ice nucleation, "hm" for Hallet/Mossop
-!! secondary ice production, and "c" for collection followed by the
+!! secondary ice production, "tk" for Tiedtke prognostic clouds, 
+!! and "c" for collection followed by the
 !! character for the species being collected.  ALL of these terms are
 !! positive (except for deposition/sublimation terms which can switch
 !! signs based on super/subsaturation) and are treated as negatives
@@ -2065,6 +2077,7 @@ MODULE module_mp_thompson
          nifaten(k) = 0.
 
          prw_vcd(k) = 0.
+         prw_vtk(k) = 0.
 
          pnc_wcd(k) = 0.
          pnc_wau(k) = 0.
@@ -2106,6 +2119,7 @@ MODULE module_mp_thompson
          pni_iau(k) = 0.
          pri_iha(k) = 0.
          pni_iha(k) = 0.
+         pri_vtk(k) = 0.
 
          prs_iau(k) = 0.
          prs_sci(k) = 0.
@@ -2950,27 +2964,28 @@ MODULE module_mp_thompson
           if (.not. tiedtke_prog_clouds) then
             if ( (ssati(k).ge. 0.25) .or. (ssatw(k).gt. eps &
                                   .and. temp(k).lt.253.15) ) then
-             if (dustyIce .AND. (is_aerosol_aware .or. merra2_aerosol_aware)) then
-              xnc = iceDeMott(tempc,qv(k),qvs(k),qvsi(k),rho(k),nifa(k))
-              xnc = xnc*(1.0 + 50.*rand3)
-             else
-              xnc = MIN(250.E3, TNO*EXP(ATO*(T_0-temp(k))))
-             endif
-             xni = ni(k) + (pni_rfz(k)+pni_wfz(k))*dtsave
-             pni_inu(k) = 0.5*(xnc-xni + abs(xnc-xni))*odts
-             pri_inu(k) = MIN(DBLE(rate_max), xm0i*pni_inu(k))
-             pni_inu(k) = pri_inu(k)/xm0i
+              if (dustyIce .AND. (is_aerosol_aware .or. merra2_aerosol_aware)) then
+                xnc = iceDeMott(tempc,qv(k),qvs(k),qvsi(k),rho(k),nifa(k))
+                xnc = xnc*(1.0 + 50.*rand3)
+              else
+                xnc = MIN(250.E3, TNO*EXP(ATO*(T_0-temp(k))))
+              endif
+               xni = ni(k) + (pni_rfz(k)+pni_wfz(k))*dtsave
+               pni_inu(k) = 0.5*(xnc-xni + abs(xnc-xni))*odts
+               pri_inu(k) = MIN(DBLE(rate_max), xm0i*pni_inu(k))
+               pni_inu(k) = pri_inu(k)/xm0i
             endif
-          endif
+          
 
 !>  - Freezing of aqueous aerosols based on Koop et al (2001, Nature)
-          xni = smo0(k)+ni(k) + (pni_rfz(k)+pni_wfz(k)+pni_inu(k))*dtsave
-          if ((is_aerosol_aware .or. merra2_aerosol_aware) .AND. homogIce .AND. (xni.le.4999.E3)    &
+            xni = smo0(k)+ni(k) + (pni_rfz(k)+pni_wfz(k)+pni_inu(k))*dtsave
+            if ((is_aerosol_aware .or. merra2_aerosol_aware) .AND. homogIce .AND. (xni.le.4999.E3)    &
      &                .AND.(temp(k).lt.238).AND.(ssati(k).ge.0.4) ) then
-            xnc = iceKoop(temp(k),qv(k),qvs(k),nwfa(k), dtsave)
-            pni_iha(k) = xnc*odts
-            pri_iha(k) = MIN(DBLE(rate_max), xm0i*0.1*pni_iha(k))
-            pni_iha(k) = pri_iha(k)/(xm0i*0.1)
+              xnc = iceKoop(temp(k),qv(k),qvs(k),nwfa(k), dtsave)
+              pni_iha(k) = xnc*odts
+              pri_iha(k) = MIN(DBLE(rate_max), xm0i*0.1*pni_iha(k))
+              pni_iha(k) = pri_iha(k)/(xm0i*0.1)
+            endif
           endif
 !+---+------------------ END NEW ICE NUCLEATION -----------------------+
 
@@ -3108,9 +3123,22 @@ MODULE module_mp_thompson
           endif
 
          endif
+         
+         if (tiedtke_prog_clouds) then
+           pri_vtk(k) = dqidt1d(k) + d_eros_i1d(k)
+           !if (pri_vtk(k) .lt. 0.0) then
+          !  pri_vtk(k) = MAX(DBLE(-ri(k)*odts), pri_vtk(k), DBLE(rate_max))
+           !else
+            !pri_vtk(k) = MIN(pri_vtk(k), DBLE(rate_max))
+            !write(0,*) k, 'pri_vtk', dqidt1d(k), d_eros_i1d(k), pri_vtk(k), rate_max
+           !endif
+           
+         endif
 
       enddo
       endif
+      
+      
 
 !+---+-----------------------------------------------------------------+
 !> - Ensure we do not deplete more hydrometeor species than exists.
@@ -3122,7 +3150,8 @@ MODULE module_mp_thompson
 !! sum of sublimation terms such that vapor does not reproduce ice
 !! supersat again.
          sump = pri_inu(k) + pri_ide(k) + prs_ide(k) &
-              + prs_sde(k) + prg_gde(k) + pri_iha(k)
+              + prs_sde(k) + prg_gde(k) + pri_iha(k) &
+              + pri_vtk(k)
          rate_max = (qv(k)-qvsi(k))*rho(k)*odts*0.999
          if ( (sump.gt. eps .and. sump.gt. rate_max) .or. &
               (sump.lt. -eps .and. sump.lt. rate_max) ) then
@@ -3134,6 +3163,7 @@ MODULE module_mp_thompson
           prs_sde(k) = prs_sde(k) * ratio
           prg_gde(k) = prg_gde(k) * ratio
           pri_iha(k) = pri_iha(k) * ratio
+          pri_vtk(k) = pri_vtk(k) * ratio
          endif
 
 !>  - Cloud water conservation.
@@ -3152,7 +3182,7 @@ MODULE module_mp_thompson
 
 !>  - Cloud ice conservation.
          sump = pri_ide(k) - prs_iau(k) - prs_sci(k) &
-                - pri_rci(k)
+                - pri_rci(k) + pri_vtk(k)
          rate_max = -ri(k)*odts
          if (sump.lt. rate_max .and. L_qi(k)) then
           ratio = rate_max/sump
@@ -3160,6 +3190,7 @@ MODULE module_mp_thompson
           prs_iau(k) = prs_iau(k) * ratio
           prs_sci(k) = prs_sci(k) * ratio
           pri_rci(k) = pri_rci(k) * ratio
+          pri_vtk(k) = pri_vtk(k) * ratio
          endif
 
 !>  - Rain conservation.
@@ -3234,19 +3265,14 @@ MODULE module_mp_thompson
             endif
          endif
 
+!>  - Water vapor tendency
+         qvten(k) = qvten(k) + (-pri_inu(k) - pri_iha(k) - pri_ide(k)   &
+                  - prs_ide(k) - prs_sde(k) - prg_gde(k)) &
+                  * orho
          if (tiedtke_prog_clouds) then
              !only handling ice part of tiedtke clouds here
-!>  - Water vapor tendency
-             qvten(k) = qvten(k) + ((-pri_inu(k) - pri_iha(k) - pri_ide(k)   &
-                       - prs_ide(k) - prs_sde(k) - prg_gde(k)) &
-                       * orho) &
-                       - dqidt1d(k) - d_eros_i1d(k)
-          else
-!>  - Water vapor tendency
-            qvten(k) = qvten(k) + (-pri_inu(k) - pri_iha(k) - pri_ide(k)   &
-                      - prs_ide(k) - prs_sde(k) - prg_gde(k)) &
-                      * orho            
-          endif
+             qvten(k) = qvten(k) - pri_vtk(k)*orho         
+         endif
 
 !>  - Cloud water tendency
          qcten(k) = qcten(k) + (-prr_wau(k) - pri_wfz(k) &
@@ -3289,32 +3315,22 @@ MODULE module_mp_thompson
          xnc=MAX(0.,(nc1d(k) + ncten(k)*dtsave)*rho(k))
          if (xnc.gt.Nt_c_max) &
                 ncten(k) = (Nt_c_max-nc1d(k)*rho(k))*odts*orho
+
+!>  - Cloud ice mixing ratio tendency
+         qiten(k) = qiten(k) + (pri_inu(k) + pri_iha(k) + pri_ihm(k)    &
+                  + pri_wfz(k) + pri_rfz(k) + pri_ide(k) &
+                  - prs_iau(k) - prs_sci(k) - pri_rci(k)) &
+                  * orho 
+!>  - Cloud ice number tendency.
+         niten(k) = niten(k) + (pni_inu(k) + pni_iha(k) + pni_ihm(k)    &
+                  + pni_wfz(k) + pni_rfz(k) + pni_ide(k) &
+                  - pni_iau(k) - pni_sci(k) - pni_rci(k)) &
+                  * orho                  
+         
          if (tiedtke_prog_clouds) then
            !only handling ice part of tiedtke clouds here (liquid is below during cond/evap step)
-!>  - Cloud ice mixing ratio tendency
-            qiten(k) = qiten(k) + ((pri_inu(k) + pri_iha(k) + pri_ihm(k)    &
-                      + pri_wfz(k) + pri_rfz(k) + pri_ide(k) &
-                      - prs_iau(k) - prs_sci(k) - pri_rci(k)) &
-                      * orho) + dqidt1d(k) + d_eros_i1d(k)
-
-!>  - Cloud ice number tendency.
-            niten(k) = niten(k) + ((pni_inu(k) + pni_iha(k) + pni_ihm(k)    &
-                      + pni_wfz(k) + pni_rfz(k) + pni_ide(k) &
-                      - pni_iau(k) - pni_sci(k) - pni_rci(k)) &
-                      * orho) + nerosi1d(k)
-         else
-
-!>  - Cloud ice mixing ratio tendency
-            qiten(k) = qiten(k) + (pri_inu(k) + pri_iha(k) + pri_ihm(k)    &
-                      + pri_wfz(k) + pri_rfz(k) + pri_ide(k) &
-                      - prs_iau(k) - prs_sci(k) - pri_rci(k)) &
-                      * orho
-
-!>  - Cloud ice number tendency.
-            niten(k) = niten(k) + (pni_inu(k) + pni_iha(k) + pni_ihm(k)    &
-                      + pni_wfz(k) + pni_rfz(k) + pni_ide(k) &
-                      - pni_iau(k) - pni_sci(k) - pni_rci(k)) &
-                      * orho
+            qiten(k) = qiten(k) + pri_vtk(k)*orho
+            !niten(k) = niten(k) + nerosi1d(k)*orho
          endif
 
 !>  - Cloud ice mass/number balance; keep mass-wt mean size between
@@ -3410,7 +3426,11 @@ MODULE module_mp_thompson
                        )*orho * (1-IFDRY)
          endif
          if (tiedtke_prog_clouds) then
-            tten(k) = tten(k) + lsub*ocp(k)*(dqidt1d(k) + d_eros_i1d(k))
+            tten(k) = tten(k) + lsub*ocp(k)*pri_vtk(k)*orho*(1-IFDRY)
+            !if (pri_vtk(k) /= 0.0_kind_phys) then
+            !if (tiedtke_prog_clouds) then
+               !write(0,*) k, 'qv i', pri_vtk(k), dqidt1d(k), d_eros_i1d(k)
+            !end if
          endif
       enddo
 
@@ -3598,123 +3618,130 @@ MODULE module_mp_thompson
 !! drops using calculation of max drop size capable of evaporating in
 !! single timestep and explicit number of drops smaller than Dc_star
 !! from lookup table.
-!+---+-----------------------------------------------------------------+     
-      if (tiedtke_prog_clouds) then
-        do k = kts, kte
-          qvten(k) = qvten(k) - dqcdt1d(k) - d_eros_l1d(k)
-          qcten(k) = qcten(k) + dqcdt1d(k) + d_eros_l1d(k)
-          ncten(k) = ncten(k) + nerosc1d(k)
-          nwfaten(k) = nwfaten(k) - nerosc1d(k)
-          tten(k) = tten(k) + lvap(k)*ocp(k)*(dqcdt1d(k) + d_eros_l1d(k))*(1-IFDRY)
-          rc(k) = MAX(R1, (qc1d(k) + DT*qcten(k))*rho(k))
-          if (rc(k).eq.R1) L_qc(k) = .false.
-          nc(k) = MAX(2., MIN((nc1d(k)+ncten(k)*DT)*rho(k), Nt_c_max))
-          if (.NOT. (is_aerosol_aware .or. merra2_aerosol_aware)) nc(k) = Nt_c
-          qv(k) = MAX(1.E-10, qv1d(k) + DT*qvten(k))
-          temp(k) = t1d(k) + DT*tten(k)
-          rho(k) = 0.622*pres(k)/(R*temp(k)*(qv(k)+0.622))
-          qvs(k) = rslf(pres(k), temp(k))
-          ssatw(k) = qv(k)/qvs(k) - 1.
-        end do
-      else
-        do k = kts, kte
-         orho = 1./rho(k)
-         if ( (ssatw(k).gt. eps) .or. (ssatw(k).lt. -eps .and. &
-                   L_qc(k)) ) then
-          clap = (qv(k)-qvs(k))/(1. + lvt2(k)*qvs(k))
-          do n = 1, 3
-             fcd = qvs(k)* EXP(lvt2(k)*clap) - qv(k) + clap
-             dfcd = qvs(k)*lvt2(k)* EXP(lvt2(k)*clap) + 1.
-             clap = clap - fcd/dfcd
-          enddo
-          xrc = rc(k) + clap*rho(k)
-          xnc = 0.
-          if (xrc.gt. R1) then
-           prw_vcd(k) = clap*odt
+!+---+-----------------------------------------------------------------+
+      
+      do k = kts, kte
+       orho = 1./rho(k)
+       if (tiedtke_prog_clouds) then
+       !if (.false.) then   
+         prw_vtk(k) = dqcdt1d(k) + d_eros_l1d(k)
+         rate_max = -rc(k)*odts
+         prw_vtk(k) = MAX(DBLE(rate_max), prw_vtk(k))
+         
+         qvten(k) = qvten(k) - prw_vtk(k)
+         qcten(k) = qcten(k) + prw_vtk(k)
+         !ncten(k) = ncten(k) + nerosc1d(k)
+         !nwfaten(k) = nwfaten(k) - nerosc1d(k)
+         tten(k) = tten(k) + lvap(k)*ocp(k)*prw_vtk(k)*(1-IFDRY)
+         rc(k) = MAX(R1, (qc1d(k) + DT*qcten(k))*rho(k))
+         if (rc(k).eq.R1) L_qc(k) = .false.
+         nc(k) = MAX(2., MIN((nc1d(k)+ncten(k)*DT)*rho(k), Nt_c_max))
+         if (.NOT. (is_aerosol_aware .or. merra2_aerosol_aware)) nc(k) = Nt_c
+         qv(k) = MAX(1.E-10, qv1d(k) + DT*qvten(k))
+         temp(k) = t1d(k) + DT*tten(k)
+         rho(k) = 0.622*pres(k)/(R*temp(k)*(qv(k)+0.622))
+         qvs(k) = rslf(pres(k), temp(k))
+         ssatw(k) = qv(k)/qvs(k) - 1.
+       elseif ( (ssatw(k).gt. eps) .or. (ssatw(k).lt. -eps .and. &
+                 L_qc(k)) ) then
+        clap = (qv(k)-qvs(k))/(1. + lvt2(k)*qvs(k))
+        do n = 1, 3
+           fcd = qvs(k)* EXP(lvt2(k)*clap) - qv(k) + clap
+           dfcd = qvs(k)*lvt2(k)* EXP(lvt2(k)*clap) + 1.
+           clap = clap - fcd/dfcd
+        enddo
+        xrc = rc(k) + clap*rho(k)
+        xnc = 0.
+        if (xrc.gt. R1) then
+         prw_vcd(k) = clap*odt
 !+---+-----------------------------------------------------------------+ !  DROPLET NUCLEATION
-           if (clap .gt. eps) then
-            if (is_aerosol_aware .or. merra2_aerosol_aware) then
-               xnc = MAX(2., activ_ncloud(temp(k), w1d(k)+rand3, nwfa(k)))
-            else
-               xnc = Nt_c
-            endif
-            pnc_wcd(k) = 0.5*(xnc-nc(k) + abs(xnc-nc(k)))*odts*orho
+         if (clap .gt. eps) then
+          if (is_aerosol_aware .or. merra2_aerosol_aware) then
+             xnc = MAX(2., activ_ncloud(temp(k), w1d(k)+rand3, nwfa(k)))
+          else
+             xnc = Nt_c
+          endif
+          pnc_wcd(k) = 0.5*(xnc-nc(k) + abs(xnc-nc(k)))*odts*orho
 
 !+---+-----------------------------------------------------------------+ !  EVAPORATION
-           elseif (clap .lt. -eps .AND. ssatw(k).lt.-1.E-6 .AND.     &
-                  (is_aerosol_aware .or. merra2_aerosol_aware)) then  
-            tempc = temp(k) - 273.15
-            otemp = 1./temp(k)
-            rvs = rho(k)*qvs(k)
-            rvs_p = rvs*otemp*(lvap(k)*otemp*oRv - 1.)
-            rvs_pp = rvs * ( otemp*(lvap(k)*otemp*oRv - 1.) &
-                            *otemp*(lvap(k)*otemp*oRv - 1.) &
-                            + (-2.*lvap(k)*otemp*otemp*otemp*oRv) &
-                            + otemp*otemp)
-            gamsc = lvap(k)*diffu(k)/tcond(k) * rvs_p
-            alphsc = 0.5*(gamsc/(1.+gamsc))*(gamsc/(1.+gamsc)) &
-                       * rvs_pp/rvs_p * rvs/rvs_p
-            alphsc = MAX(1.E-9, alphsc)
-            xsat = ssatw(k)
-            if (abs(xsat).lt. 1.E-9) xsat=0.
-            t1_evap = 2.*PI*( 1.0 - alphsc*xsat  &
-                   + 2.*alphsc*alphsc*xsat*xsat  &
-                   - 5.*alphsc*alphsc*alphsc*xsat*xsat*xsat ) &
-                   / (1.+gamsc)
+         elseif (clap .lt. -eps .AND. ssatw(k).lt.-1.E-6 .AND.     &
+                (is_aerosol_aware .or. merra2_aerosol_aware)) then  
+          tempc = temp(k) - 273.15
+          otemp = 1./temp(k)
+          rvs = rho(k)*qvs(k)
+          rvs_p = rvs*otemp*(lvap(k)*otemp*oRv - 1.)
+          rvs_pp = rvs * ( otemp*(lvap(k)*otemp*oRv - 1.) &
+                          *otemp*(lvap(k)*otemp*oRv - 1.) &
+                          + (-2.*lvap(k)*otemp*otemp*otemp*oRv) &
+                          + otemp*otemp)
+          gamsc = lvap(k)*diffu(k)/tcond(k) * rvs_p
+          alphsc = 0.5*(gamsc/(1.+gamsc))*(gamsc/(1.+gamsc)) &
+                     * rvs_pp/rvs_p * rvs/rvs_p
+          alphsc = MAX(1.E-9, alphsc)
+          xsat = ssatw(k)
+          if (abs(xsat).lt. 1.E-9) xsat=0.
+          t1_evap = 2.*PI*( 1.0 - alphsc*xsat  &
+                 + 2.*alphsc*alphsc*xsat*xsat  &
+                 - 5.*alphsc*alphsc*alphsc*xsat*xsat*xsat ) &
+                 / (1.+gamsc)
 
-            Dc_star = DSQRT(-2.D0*DT * t1_evap/(2.*PI) &
-                    * 4.*diffu(k)*ssatw(k)*rvs/rho_w)
-            idx_d = MAX(1, MIN(INT(1.E6*Dc_star), nbc))
+          Dc_star = DSQRT(-2.D0*DT * t1_evap/(2.*PI) &
+                  * 4.*diffu(k)*ssatw(k)*rvs/rho_w)
+          idx_d = MAX(1, MIN(INT(1.E6*Dc_star), nbc))
 
-            idx_n = NINT(1.0 + FLOAT(nbc) * DLOG(nc(k)/t_Nc(1)) / nic1)
-            idx_n = MAX(1, MIN(idx_n, nbc))
+          idx_n = NINT(1.0 + FLOAT(nbc) * DLOG(nc(k)/t_Nc(1)) / nic1)
+          idx_n = MAX(1, MIN(idx_n, nbc))
 
 !>  - Cloud water lookup table index.
-            if (rc(k).gt. r_c(1)) then
-             nic = NINT(ALOG10(rc(k)))
-             do nn = nic-1, nic+1
-                n = nn
-                if ( (rc(k)/10.**nn).ge.1.0 .and. &
-                     (rc(k)/10.**nn).lt.10.0) goto 159
-             enddo
- 159         continue
-             idx_c = INT(rc(k)/10.**n) + 10*(n-nic2) - (n-nic2)
-             idx_c = MAX(1, MIN(idx_c, ntb_c))
-            else
-             idx_c = 1
-            endif
-
-           !prw_vcd(k) = MAX(DBLE(-rc(k)*orho*odt),                     &
-           !           -tpc_wev(idx_d, idx_c, idx_n)*orho*odt)
-            prw_vcd(k) = MAX(DBLE(-rc(k)*0.99*orho*odt), prw_vcd(k))
-            pnc_wcd(k) = MAX(DBLE(-nc(k)*0.99*orho*odt),                &
-                       -tnc_wev(idx_d, idx_c, idx_n)*orho*odt)
-
-           endif
+          if (rc(k).gt. r_c(1)) then
+           nic = NINT(ALOG10(rc(k)))
+           do nn = nic-1, nic+1
+              n = nn
+              if ( (rc(k)/10.**nn).ge.1.0 .and. &
+                   (rc(k)/10.**nn).lt.10.0) goto 159
+           enddo
+ 159       continue
+           idx_c = INT(rc(k)/10.**n) + 10*(n-nic2) - (n-nic2)
+           idx_c = MAX(1, MIN(idx_c, ntb_c))
           else
-           prw_vcd(k) = -rc(k)*orho*odt
-           pnc_wcd(k) = -nc(k)*orho*odt
+           idx_c = 1
           endif
+
+         !prw_vcd(k) = MAX(DBLE(-rc(k)*orho*odt),                     &
+         !           -tpc_wev(idx_d, idx_c, idx_n)*orho*odt)
+          prw_vcd(k) = MAX(DBLE(-rc(k)*0.99*orho*odt), prw_vcd(k))
+          pnc_wcd(k) = MAX(DBLE(-nc(k)*0.99*orho*odt),                &
+                     -tnc_wev(idx_d, idx_c, idx_n)*orho*odt)
+
+          endif
+        else
+          prw_vcd(k) = -rc(k)*orho*odt
+          pnc_wcd(k) = -nc(k)*orho*odt
+        endif
 
 !+---+-----------------------------------------------------------------+
 
-          qvten(k) = qvten(k) - prw_vcd(k)
-          qcten(k) = qcten(k) + prw_vcd(k)
-          ncten(k) = ncten(k) + pnc_wcd(k)
-          nwfaten(k) = nwfaten(k) - pnc_wcd(k)
-          tten(k) = tten(k) + lvap(k)*ocp(k)*prw_vcd(k)*(1-IFDRY)
-          rc(k) = MAX(R1, (qc1d(k) + DT*qcten(k))*rho(k))
-          if (rc(k).eq.R1) L_qc(k) = .false.
-          nc(k) = MAX(2., MIN((nc1d(k)+ncten(k)*DT)*rho(k), Nt_c_max))
-          if (.NOT. (is_aerosol_aware .or. merra2_aerosol_aware)) nc(k) = Nt_c
-          qv(k) = MAX(1.E-10, qv1d(k) + DT*qvten(k))
-          temp(k) = t1d(k) + DT*tten(k)
-          rho(k) = 0.622*pres(k)/(R*temp(k)*(qv(k)+0.622))
-          qvs(k) = rslf(pres(k), temp(k))
-          ssatw(k) = qv(k)/qvs(k) - 1.
-         endif
-        enddo
-      endif 
+        qvten(k) = qvten(k) - prw_vcd(k)
+        qcten(k) = qcten(k) + prw_vcd(k)
+        ncten(k) = ncten(k) + pnc_wcd(k)
+        nwfaten(k) = nwfaten(k) - pnc_wcd(k)
+        tten(k) = tten(k) + lvap(k)*ocp(k)*prw_vcd(k)*(1-IFDRY)
+          
+        rc(k) = MAX(R1, (qc1d(k) + DT*qcten(k))*rho(k))
+        if (rc(k).eq.R1) L_qc(k) = .false.
+        nc(k) = MAX(2., MIN((nc1d(k)+ncten(k)*DT)*rho(k), Nt_c_max))
+        if (.NOT. (is_aerosol_aware .or. merra2_aerosol_aware)) nc(k) = Nt_c
+        qv(k) = MAX(1.E-10, qv1d(k) + DT*qvten(k))
+        temp(k) = t1d(k) + DT*tten(k)
+        rho(k) = 0.622*pres(k)/(R*temp(k)*(qv(k)+0.622))
+        qvs(k) = rslf(pres(k), temp(k))
+        ssatw(k) = qv(k)/qvs(k) - 1.
+       endif
+       !if (prw_vcd(k) /= 0.0_kind_phys .or. (prw_vtk(k)) /= 0.0_kind_phys) then
+       !if (tiedtke_prog_clouds) then
+          !write(0,*) k, 'qv l', prw_vcd(k), prw_vtk(k), 'nc', ncten(k), nerosc1d(k), 'T', tten(k), lvap(k)*ocp(k)*(prw_vtk(k))*(1-IFDRY)
+       !end if
+      enddo 
 
 !+---+-----------------------------------------------------------------+
 !> - If still subsaturated, allow rain to evaporate, following

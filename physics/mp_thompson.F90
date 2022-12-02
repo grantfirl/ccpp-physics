@@ -448,6 +448,10 @@ module mp_thompson
 
          real(kind_phys) :: pfils(1:ncol,1:nlev,1)
          real(kind_phys) :: pflls(1:ncol,1:nlev,1)
+         
+         real(kind_phys), DIMENSION(:,:,:), ALLOCATABLE :: d_eros_l3d, d_eros_i3d, &
+                                                           nerosc3d, nerosi3d, &
+                                                           dqcdt3d, dqidt3d
          ! Radar reflectivity
          logical         :: diagflag                        ! must be true if do_radar_ref is true, not used otherwise
          integer         :: do_radar_ref_mp                 ! integer instead of logical do_radar_ref
@@ -690,6 +694,29 @@ module mp_thompson
             ncten3     => diag3d(:,:,36:36)
             qcten3     => diag3d(:,:,37:37)
          end if set_extended_diagnostic_pointers
+         if (tiedtke_prog_clouds) then
+           allocate(d_eros_l3d(ncol,nlev,1))
+           allocate(d_eros_i3d(ncol,nlev,1))
+           allocate(nerosc3d(ncol,nlev,1))
+           allocate(nerosi3d(ncol,nlev,1))
+           allocate(dqcdt3d(ncol,nlev,1))
+           allocate(dqidt3d(ncol,nlev,1))
+           if (convert_dry_rho) then
+             d_eros_l3d(:,:,1) = d_eros_l(:,:)/(1.0_kind_phys-spechum)
+             d_eros_i3d(:,:,1) = d_eros_i(:,:)/(1.0_kind_phys-spechum)
+             nerosc3d(:,:,1) = nerosc(:,:)/(1.0_kind_phys-spechum)
+             nerosi3d(:,:,1) = nerosi(:,:)/(1.0_kind_phys-spechum)
+             dqcdt3d(:,:,1) = dqcdt(:,:)/(1.0_kind_phys-spechum)
+             dqidt3d(:,:,1) = dqidt(:,:)/(1.0_kind_phys-spechum)
+           else
+             d_eros_l3d(:,:,1) = d_eros_l(:,:)
+             d_eros_i3d(:,:,1) = d_eros_i(:,:)
+             nerosc3d(:,:,1) = nerosc(:,:)
+             nerosi3d(:,:,1) = nerosi(:,:)
+             dqcdt3d(:,:,1) = dqcdt(:,:)
+             dqidt3d(:,:,1) = dqidt(:,:)
+           end if
+         end if
          if (merra2_aerosol_aware) then
            call get_niwfa(aerfld, nifa, nwfa, ncol, nlev)
          end if
@@ -716,9 +743,9 @@ module mp_thompson
                               its=its, ite=ite, jts=jts, jte=jte, kts=kts, kte=kte,          &
                               reset_dBZ=reset_dBZ, istep=istep, nsteps=nsteps,               &
                               first_time_step=first_time_step,                               &
-                              tiedtke_prog_clouds=tiedtke_prog_clouds, d_eros_l=d_eros_l,    &
-                              d_eros_i=d_eros_i, nerosc=nerosc, nerosi=nerosi,               &
-                              dqcdt=dqcdt, dqidt=dqidt, errmsg=errmsg, errflg=errflg,        &
+                              tiedtke_prog_clouds=tiedtke_prog_clouds, d_eros_l=d_eros_l3d,  &
+                              d_eros_i=d_eros_i3d, nerosc=nerosc3d, nerosi=nerosi3d,         &
+                              dqcdt=dqcdt3d, dqidt=dqidt3d, errmsg=errmsg, errflg=errflg,    &
                               ! Extended diagnostics
                               ext_diag=ext_diag,                                             &
                               ! vts1=vts1, txri=txri, txrc=txrc,                             &
@@ -758,9 +785,9 @@ module mp_thompson
                               its=its, ite=ite, jts=jts, jte=jte, kts=kts, kte=kte,          &
                               reset_dBZ=reset_dBZ, istep=istep, nsteps=nsteps,               &
                               first_time_step=first_time_step,                               &
-                              tiedtke_prog_clouds=tiedtke_prog_clouds, d_eros_l=d_eros_l,    &
-                              d_eros_i=d_eros_i, nerosc=nerosc, nerosi=nerosi,               &
-                              dqcdt=dqcdt, dqidt=dqidt, errmsg=errmsg, errflg=errflg,        &
+                              tiedtke_prog_clouds=tiedtke_prog_clouds, d_eros_l=d_eros_l3d,  &
+                              d_eros_i=d_eros_i3d, nerosc=nerosc3d, nerosi=nerosi3d,         &
+                              dqcdt=dqcdt3d, dqidt=dqidt3d, errmsg=errmsg, errflg=errflg,    &
                               ! Extended diagnostics
                               ext_diag=ext_diag,                                             &
                               ! vts1=vts1, txri=txri, txrc=txrc,                             &

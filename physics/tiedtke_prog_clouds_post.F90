@@ -41,17 +41,17 @@
       dt_inv = 1.0/dt
       dcond_ls_tot = 0.0
           
-      gq0(:,:,ntcw)    = gq0(:,:,ntcw)    + SL
-      gq0(:,:,ntiw)    = gq0(:,:,ntiw)    + SI
+      !gq0(:,:,ntcw)    = gq0(:,:,ntcw)    + SL
+      !gq0(:,:,ntiw)    = gq0(:,:,ntiw)    + SI
       gq0(:,:,ntclamt) = gq0(:,:,ntclamt) + SA
-      if (do_liq_num) then
-        gq0(:,:,ntlnc) = gq0(:,:,ntlnc)   + SN
-      end if
-      if (do_ice_num) then
-        gq0(:,:,ntinc) = gq0(:,:,ntinc)   + SNi
-      end if
-      gt0              = gt0              + ST
-      gq0(:,:,ntqv)    = gq0(:,:,ntqv)    + SQ
+      !if (do_liq_num) then
+      !  gq0(:,:,ntlnc) = gq0(:,:,ntlnc)   + SN
+      !end if
+      !if (do_ice_num) then
+      !  gq0(:,:,ntinc) = gq0(:,:,ntinc)   + SNi
+      !end if
+      !gt0              = gt0              + ST
+      !gq0(:,:,ntqv)    = gq0(:,:,ntqv)    + SQ
       
       if (ldiag3d) then
         idtend = dtidx(i_temp,i_macro)
@@ -106,6 +106,7 @@
           if (ql_upd(i,k) >= qmin .and. do_liq_num) then
             !GJF: can use gq0(:,:,ntlnc) as calculated above, since it should be equivalent to qn_upd
             !     I don't understand why we need to use qa_upd here (as in AM4), instead of gq0(:,:,ntclamt)
+            !write(*,*) k, D_eros_l(i,k), gq0(i,k,ntlnc), qa_upd(i,k), D_eros(i,k)
             nerosc(i,k) = D_eros_l(i,k)/ql_upd(i,k)*gq0(i,k,ntlnc)/MAX(0.0001, qa_upd(i,k))
           else
             nerosc(i,k) = 0.
@@ -116,6 +117,7 @@
           else
             nerosi(i,k) = 0.
           endif
+          !write(*,*) k, nerosc(i,k), nerosi(i,k)
           if (dcond_ls_tot(i,k) > 0.) then
             if (gt0(i,k) <= (tfreeze - 40.) ) then
               dqcdt (i,k) = 0.
