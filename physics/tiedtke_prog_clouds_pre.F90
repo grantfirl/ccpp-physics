@@ -203,6 +203,7 @@
 !------------------------------------------------------------------------
 !    call subroutine adjust_condensate to conservatively fill ql if needed.
 !------------------------------------------------------------------------
+      !write(*,*) 'ql_too_small',ql_too_small,ql_in,qa_in
       call adjust_condensate (ql_too_small, sl, sq, st, ql_in, hlv, cp, ql_upd)
       
 !------------------------------------------------------------------------

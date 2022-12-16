@@ -750,6 +750,22 @@
   dimensions = ()
   type = logical
   intent = in
+[qmin]
+  standard_name = minimum_value_of_cloud_water_species
+  long_name = mimimum value of cloud water species (used in prognostic clouds)
+  units = kg kg-1
+  dimensions = ()
+  type = real
+  kind = kind_phys
+  intent = in
+[cld_frc]
+  standard_name = cloud_area_fraction_in_atmosphere_layer_of_new_state
+  long_name = cloud fraction updated by physics
+  units = frac
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = inout
 [d_eros_l]
   standard_name = tendency_of_cloud_liquid_water_due_to_cloud_erosion
   long_name = tendency of cloud liquid water due to prognostic cloud erosion
@@ -794,6 +810,14 @@
   standard_name = tendency_of_ice_cloud_condensate_due_to_nonconvective_condensation
   long_name = tendency of ice cloud condensate due to nonconvective condensation
   units = kg kg-1 s-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[con_hum_area]
+  standard_name = convective_cloud_cover
+  long_name = convective cloud cover
+  units = frac
   dimensions = (horizontal_loop_extent,vertical_layer_dimension)
   type = real
   kind = kind_phys

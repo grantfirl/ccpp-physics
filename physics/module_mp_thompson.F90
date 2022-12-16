@@ -1002,9 +1002,10 @@ MODULE module_mp_thompson
                               ims,ime, jms,jme, kms,kme,              &  ! memory dims
                               its,ite, jts,jte, kts,kte,              &  ! tile dims
                               reset_dBZ, istep, nsteps,               &
-                              tiedtke_prog_clouds,                    &
+                              tiedtke_prog_clouds, qmin,              &
+                              cld_frc,                                &
                               d_eros_l, d_eros_i, nerosc, nerosi,     &
-                              dqcdt, dqidt,                           &
+                              dqcdt, dqidt, con_hum_area,             &
                               errmsg, errflg,                         &
                               ! Extended diagnostics, array pointers
                               ! only associated if ext_diag flag is .true.
@@ -1073,9 +1074,11 @@ MODULE module_mp_thompson
       LOGICAL, INTENT (IN) :: reset_dBZ
       ! Tiedtke prognostic clouds
       LOGICAL, INTENT (IN) :: tiedtke_prog_clouds
+      REAL, INTENT (IN) :: qmin
+      REAL, DIMENSION(:,:,:), INTENT(INOUT) :: cld_frc
       REAL, DIMENSION(:,:,:), INTENT(IN) ::   &
                           d_eros_l, d_eros_i, nerosc, nerosi,     &
-                          dqcdt, dqidt
+                          dqcdt, dqidt, con_hum_area
       ! Extended diagnostics, array pointers only associated if ext_diag flag is .true.
       LOGICAL, INTENT (IN) :: ext_diag
       LOGICAL, OPTIONAL, INTENT(IN):: aero_ind_fdb
@@ -1101,8 +1104,9 @@ MODULE module_mp_thompson
                           nr1d, nc1d, nwfa1d, nifa1d,                   &
                           t1d, p1d, w1d, dz1d, rho, dBZ, pfil1, pfll1
       REAL, DIMENSION(:), ALLOCATABLE:: &
-                          d_eros_l1d, d_eros_i1d, nerosc1d, nerosi1d,   &
-                          dqcdt1d, dqidt1d
+                          cld_frc1d, d_eros_l1d, d_eros_i1d, &
+                          nerosc1d, nerosi1d,   &
+                          dqcdt1d, dqidt1d, con_hum_area1d
 !..Extended diagnostics, single column arrays
       REAL, DIMENSION(:), ALLOCATABLE::                              &
                           !vtsk1, txri1, txrc1,                       &
@@ -1243,12 +1247,14 @@ MODULE module_mp_thompson
       end if allocate_extended_diagnostics
       
       if (tiedtke_prog_clouds) then
+        allocate(cld_frc1d(kts:kte))
         allocate(d_eros_l1d(kts:kte))
         allocate(d_eros_i1d(kts:kte))
         allocate(nerosc1d(kts:kte))
         allocate(nerosi1d(kts:kte))
         allocate(dqcdt1d(kts:kte))
         allocate(dqidt1d(kts:kte))
+        allocate(con_hum_area1d(kts:kte))
       end if
 !+---+
       i_start = its
@@ -1447,12 +1453,14 @@ MODULE module_mp_thompson
          endif
          if (tiedtke_prog_clouds) then
            do k=kts, kte
+             cld_frc1d(k) = cld_frc(i,k,j)
              d_eros_l1d(k) = d_eros_l(i,k,j)
              d_eros_i1d(k) = d_eros_i(i,k,j)
              nerosc1d(k) = nerosc(i,k,j)
              nerosi1d(k) = nerosi(i,k,j)
              dqcdt1d(k) = dqcdt(i,k,j)
              dqidt1d(k) = dqidt(i,k,j)
+             con_hum_area1d(k) = con_hum_area(i,k,j)
            enddo
          endif
 
@@ -1466,8 +1474,10 @@ MODULE module_mp_thompson
                       rand1, rand2, rand3, &
                       kts, kte, dt, i, j, ext_diag,                    & 
                       sedi_semi, decfl,                                &
-                      tiedtke_prog_clouds, d_eros_l1d, d_eros_i1d,     &
+                      tiedtke_prog_clouds, qmin, cld_frc1d,            &
+                      d_eros_l1d, d_eros_i1d,                          &
                       nerosc1d, nerosi1d, dqcdt1d, dqidt1d,            &
+                      con_hum_area1d,                                  &
                       !vtsk1, txri1, txrc1,                            &
                       prw_vcdc1, prw_vcde1,                            &
                       tpri_inu1, tpri_ide1_d, tpri_ide1_s, tprs_ide1,  &
@@ -1626,7 +1636,13 @@ MODULE module_mp_thompson
              endif
             endif
          enddo
-
+         
+         if (tiedtke_prog_clouds) then
+           do k=kts,kte
+             cld_frc(i,k,j) = cld_frc1d(k)
+           enddo
+         endif
+         
          assign_extended_diagnostics: if (ext_diag) then
            do k=kts,kte
             !vts1(i,k,j)       = vtsk1(k)
@@ -1883,8 +1899,10 @@ MODULE module_mp_thompson
                           ! allocated if ext_diag flag is .true.
                           ext_diag,                                        & 
                           sedi_semi, decfl,                                &
-                          tiedtke_prog_clouds, d_eros_l1d, d_eros_i1d,     &
+                          tiedtke_prog_clouds, qmin, cld_frc1d,            &
+                          d_eros_l1d, d_eros_i1d,                          &
                           nerosc1d, nerosi1d, dqcdt1d, dqidt1d,            &
+                          con_hum_area1d,                                  &
                           !vtsk1, txri1, txrc1,                            &
                           prw_vcdc1, prw_vcde1,                            &
                           tpri_inu1, tpri_ide1_d, tpri_ide1_s, tprs_ide1,  &
@@ -1915,8 +1933,10 @@ MODULE module_mp_thompson
       REAL, INTENT(IN):: dt
       REAL, INTENT(IN):: rand1, rand2, rand3
       LOGICAL, INTENT(IN) :: tiedtke_prog_clouds
+      REAL, INTENT(IN):: qmin
+      REAL, DIMENSION(:), INTENT(INOUT) :: cld_frc1d
       REAL, DIMENSION(:), INTENT(IN):: d_eros_l1d, d_eros_i1d, &
-                          nerosc1d, nerosi1d, dqcdt1d, dqidt1d
+                          nerosc1d, nerosi1d, dqcdt1d, dqidt1d, con_hum_area1d
       ! Extended diagnostics, most arrays only allocated if ext_diag is true
       LOGICAL, INTENT(IN) :: ext_diag
       LOGICAL, INTENT(IN) :: sedi_semi
@@ -3890,6 +3910,7 @@ MODULE module_mp_thompson
 
 !+---+-----------------------------------------------------------------+
 
+      !if (.not. tiedtke_prog_clouds) then
       if (ANY(L_qc .eqv. .true.)) then
       hgt_agl = 0.
       do k = kts, kte-1
@@ -3916,9 +3937,11 @@ MODULE module_mp_thompson
           vtck(k) = vtc
           vtc = rhof(k)*av_c*ccg(4,nu_c)*ocg1(nu_c) * ilamc**bv_c
           vtnck(k) = vtc
+          !write(*,*) 'vtck, k',k,vtck(k),nu_c,nc(k),rc(k),rhof(k)
          endif
       enddo
       endif
+      !endif
 
 !+---+-----------------------------------------------------------------+
 
@@ -4112,11 +4135,16 @@ MODULE module_mp_thompson
       endif
 
 !+---+-----------------------------------------------------------------+
-
+      
+      if (.not. tiedtke_prog_clouds) then
+      ! do k=kts,kte
+      !   write(*,*) 'before sed: k, qcten',k, qcten(k), cld_frc1d(k)
+      ! end do
       if (ANY(L_qc .eqv. .true.)) then
       do k = kte, kts, -1
          sed_c(k) = vtck(k)*rc(k)
          sed_n(k) = vtnck(k)*nc(k)
+         ! write(*,*) 'sed',k,vtck(k),rc(k)
       enddo
       do k = ksed1(5), kts, -1
          odzq = 1./dzq(k)
@@ -4127,6 +4155,11 @@ MODULE module_mp_thompson
          nc(k) = MAX(10., nc(k) + (sed_n(k+1)-sed_n(k)) *odzq*DT)
       enddo
       endif
+      ! do k=kts,kte
+      !   write(*,*) 'after sed: k, qcten',k, qcten(k), cld_frc1d(k)
+      ! end do
+      endif
+      
 
 !+---+-----------------------------------------------------------------+
 
@@ -4292,6 +4325,15 @@ MODULE module_mp_thompson
          endif
       enddo
       endif
+      
+      !if (.false.) then
+      if (tiedtke_prog_clouds) then
+         ! called before application of MP tendencies in AM4/MG
+        call destroy_tiny_clouds(kte, dt, qmin, qv1d, qc1d, qi1d, nc1d, &
+           ni1d, cld_frc1d, con_hum_area1d, qvten, qcten, qiten, ncten, niten, tten) 
+      end if
+       
+       
 
 !+---+-----------------------------------------------------------------+
 !> - All tendencies computed, apply and pass back final values to parent.
@@ -6522,6 +6564,150 @@ MODULE module_mp_thompson
       rql(:) = max(qn(:),R1)
 
   END SUBROUTINE semi_lagrange_sedim
+  
+  subroutine destroy_tiny_clouds (kx, dt, qmin, qv1d, qc1d, qi1d, nc1d, ni1d, &
+              cld_frc1d, con_hum_area1d, qvten, qcten, qiten, ncten, niten, tten)
+
+!-----------------------------------------------------------------------
+!    routine to conservatively remove unacceptably small clouds.
+!-----------------------------------------------------------------------
+
+    integer,                    intent(in)    :: kx
+    REAL,                       intent(in)    :: dt, qmin
+    REAL, DIMENSION(kx),        intent(in)    :: qv1d, qc1d, qi1d, nc1d, ni1d, con_hum_area1d
+    REAL, DIMENSION(kx),        intent(inout) :: cld_frc1d, qvten, qcten, qiten, ncten, niten, tten
+
+!-----------------------------------------------------------------------
+!   local variables:
+
+     real, dimension (kx)   :: ql_new, qi_new, qn_new, qni_new, &
+                                     qa_new
+     integer :: k
+     real :: odt
+     
+     odt = 1.0/dt
+
+
+!-----------------------------------------------------------------------
+!    define current cloud and particle values.
+!----------------------------------------------------------------------
+     ql_new  = qc1d  + qcten*dt 
+     qi_new  = qi1d  + qiten*dt
+     qn_new  = nc1d  + ncten*dt         
+     qni_new = ni1d  + niten*dt        
+
+!-----------------------------------------------------------------------
+!    if these values are lower than acceptable, or if the new cloud area
+!    is lower than acceptable, set the tendency to balance the input value,
+!    so that the field is 0. upon exiting this routine. include 
+!    adjustments to temp and vapor to conserve energy and water mass.
+!-----------------------------------------------------------------------
+     do k=1,kx
+       if ((ql_new(k) <= qmin  .and. qi_new(k) <= qmin) .or.   &
+               (cld_frc1d(k) <= qmin)) then
+             qcten(k) = qcten(k) - ql_new(k)*odt
+             qiten(k) = qiten(k) - qi_new(k)*odt
+             cld_frc1d(k) = 0.0
+             tten(k) = tten(k) - (lvap0*ql_new(k) + lsub*qi_new(k))/cp*odt
+             qvten(k) = qvten(k) + (ql_new(k) + qi_new(k))*odt
+             ncten(k) = ncten(k) - qn_new(k)*odt
+             niten(k) = niten(k) - qni_new(k)*odt
+       endif 
+     end do
+
+!-----------------------------------------------------------------------
+!    redefine the new cloud tracer values.
+!-----------------------------------------------------------------------
+     ql_new  =  qc1d  + qcten*dt 
+     qi_new  =  qi1d  + qiten*dt
+     qn_new  =  nc1d  + ncten*dt
+     qni_new =  ni1d  + niten*dt
+
+!-----------------------------------------------------------------------
+!    if the new value of cloud water is too small (including negative 
+!    roundoff values), and the vapor will remain positive when 
+!    conservatively adjusted, eliminate the cloudwater by adjusting the
+!    vapor.  
+!-----------------------------------------------------------------------
+     do k=1,kx
+       if (abs(ql_new(k)) .le. qmin  .and.  &
+                qv1d(k) + qvten(k) + ql_new(k) > 0.0) then
+             qcten(k) = -qc1d(k)*odt
+             qvten(k) = qvten(k) + ql_new(k)*odt
+             tten(k)  = tten(k) - (lvap0*ql_new(k))/cp*odt
+
+!------------------------------------------------------------------------
+!    with the removal of all liquid, the cloud droplet number must also
+!    be set to 0.0. define diagnostic for droplet loss due to this cleanup.
+!------------------------------------------------------------------------
+             ncten(k) = ncten(k) - qn_new(k)*odt 
+       endif
+     end do
+
+!-----------------------------------------------------------------------
+!    if the new value of cloud ice is too small (including negative 
+!    roundoff values), and the vapor will remain positive when 
+!    conservatively adjusted, eliminate the cloudice by adjusting the
+!    vapor.  
+!-----------------------------------------------------------------------
+     do k=1,kx
+       if (abs(qi_new(k)) .le. qmin  .and.  &
+                 qv1d(k) + qvten(k) + qi_new(k) > 0.0) then
+             qcten(k) = -qi1d(k)*odt
+             qvten(k) = qvten(k) + qi_new(k)*odt
+             tten(k)  = tten(k) - (lsub*qi_new(k))/cp*odt
+
+!------------------------------------------------------------------------
+!    with the removal of all ice, the ice particle number must also
+!    be set to 0.0. define diagnostic for crystal loss due to this cleanup.
+!------------------------------------------------------------------------
+             niten(k) = niten(k) - qni_new(k)*odt
+       endif
+     end do
+   
+!-----------------------------------------------------------------------
+!    force the change in ice crystal number to not be so large as to 
+!    eliminate more crystals than were present initially. save a diagnostic
+!    if desired.
+!-----------------------------------------------------------------------
+     do k=1,kx
+       niten(k) = MAX(niten(k), -ni1d(k)*odt)
+     end do
+
+   
+!-----------------------------------------------------------------------
+!    force the change in cloud droplet number to not be so large as to 
+!    eliminate more droplets than were present initially. save a diagnostic
+!    if desired.
+!-----------------------------------------------------------------------
+     do k=1,kx
+       ncten(k) = MAX(ncten(k), -nc1d(k)*odt)
+     end do
+
+!----------------------------------------------------------------------
+!    make sure the new cloud area is not smaller than the minimum 
+!    allowable. if not set the tendency so that cloud area is reduced to 
+!    zero after the step. save a diagnostic if desired.
+!----------------------------------------------------------------------
+     where ( abs(cld_frc1d) .le. qmin )
+       cld_frc1d = 0.0
+     endwhere
+
+!------------------------------------------------------------------------
+!    enforce constraints on the cloud area. the change must not be so
+!    large as to eliminate more cloud than is present. also it must not
+!    be so large as to more than fill the available area in the grid box
+!    (some area may have been taken up by the convective system, so the
+!    max available area is (1 - conv area). Include a diagnostic if
+!    desired. this constraint has already been imposed with r-k 
+!    microphysics, as part of the destruction diagnostic.
+!------------------------------------------------------------------------
+      cld_frc1d = MIN(cld_frc1d, 1.0 - con_hum_area1d) 
+       
+!-----------------------------------------------------------------------
+
+
+  end subroutine destroy_tiny_clouds
 
 !+---+-----------------------------------------------------------------+
 !+---+-----------------------------------------------------------------+

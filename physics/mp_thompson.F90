@@ -333,9 +333,10 @@ module mp_thompson
                               spp_prt_list, spp_var_list,          &
                               spp_stddev_cutoff,                   &
                               cplchm, pfi_lsan, pfl_lsan,          &
-                              tiedtke_prog_clouds, d_eros_l,       &
-                              d_eros_i, nerosc, nerosi, dqcdt,     &
-                              dqidt, errmsg, errflg)
+                              tiedtke_prog_clouds, qmin, cld_frc,  &
+                              d_eros_l, d_eros_i, nerosc, nerosi,  &
+                              dqcdt, dqidt, con_hum_area,          &
+                              errmsg, errflg)
 
          implicit none
 
@@ -417,12 +418,15 @@ module mp_thompson
          
          ! Tiedtke prognostic clouds
          logical, intent(in) :: tiedtke_prog_clouds
+         real(kind=kind_phys), intent(in) :: qmin
+         real(kind=kind_phys), intent(inout) :: cld_frc(:,:)
          real(kind=kind_phys), intent(in) :: d_eros_l(:,:)
          real(kind=kind_phys), intent(in) :: d_eros_i(:,:)
          real(kind=kind_phys), intent(in) :: nerosc(:,:)
          real(kind=kind_phys), intent(in) :: nerosi(:,:)
          real(kind=kind_phys), intent(in) :: dqcdt(:,:)
          real(kind=kind_phys), intent(in) :: dqidt(:,:)
+         real(kind=kind_phys), intent(in) :: con_hum_area(:,:)
 
          ! Local variables
 
@@ -451,7 +455,8 @@ module mp_thompson
          
          real(kind_phys), DIMENSION(:,:,:), ALLOCATABLE :: d_eros_l3d, d_eros_i3d, &
                                                            nerosc3d, nerosi3d, &
-                                                           dqcdt3d, dqidt3d
+                                                           dqcdt3d, dqidt3d, &
+                                                           cld_frc3d, con_hum_area3d
          ! Radar reflectivity
          logical         :: diagflag                        ! must be true if do_radar_ref is true, not used otherwise
          integer         :: do_radar_ref_mp                 ! integer instead of logical do_radar_ref
@@ -701,6 +706,8 @@ module mp_thompson
            allocate(nerosi3d(ncol,nlev,1))
            allocate(dqcdt3d(ncol,nlev,1))
            allocate(dqidt3d(ncol,nlev,1))
+           allocate(cld_frc3d(ncol,nlev,1))
+           allocate(con_hum_area3d(ncol,nlev,1))
            if (convert_dry_rho) then
              d_eros_l3d(:,:,1) = d_eros_l(:,:)/(1.0_kind_phys-spechum)
              d_eros_i3d(:,:,1) = d_eros_i(:,:)/(1.0_kind_phys-spechum)
@@ -716,6 +723,8 @@ module mp_thompson
              dqcdt3d(:,:,1) = dqcdt(:,:)
              dqidt3d(:,:,1) = dqidt(:,:)
            end if
+           cld_frc3d(:,:,1) = cld_frc(:,:)
+           con_hum_area3d(:,:,1) = con_hum_area(:,:)
          end if
          if (merra2_aerosol_aware) then
            call get_niwfa(aerfld, nifa, nwfa, ncol, nlev)
@@ -743,9 +752,11 @@ module mp_thompson
                               its=its, ite=ite, jts=jts, jte=jte, kts=kts, kte=kte,          &
                               reset_dBZ=reset_dBZ, istep=istep, nsteps=nsteps,               &
                               first_time_step=first_time_step,                               &
-                              tiedtke_prog_clouds=tiedtke_prog_clouds, d_eros_l=d_eros_l3d,  &
-                              d_eros_i=d_eros_i3d, nerosc=nerosc3d, nerosi=nerosi3d,         &
-                              dqcdt=dqcdt3d, dqidt=dqidt3d, errmsg=errmsg, errflg=errflg,    &
+                              tiedtke_prog_clouds=tiedtke_prog_clouds, qmin=qmin, cld_frc=cld_frc3d, &
+                              d_eros_l=d_eros_l3d, d_eros_i=d_eros_i3d,                      &
+                              nerosc=nerosc3d, nerosi=nerosi3d,                              &
+                              dqcdt=dqcdt3d, dqidt=dqidt3d, con_hum_area=con_hum_area3d,       &
+                              errmsg=errmsg, errflg=errflg,                     &
                               ! Extended diagnostics
                               ext_diag=ext_diag,                                             &
                               ! vts1=vts1, txri=txri, txrc=txrc,                             &
@@ -785,9 +796,11 @@ module mp_thompson
                               its=its, ite=ite, jts=jts, jte=jte, kts=kts, kte=kte,          &
                               reset_dBZ=reset_dBZ, istep=istep, nsteps=nsteps,               &
                               first_time_step=first_time_step,                               &
-                              tiedtke_prog_clouds=tiedtke_prog_clouds, d_eros_l=d_eros_l3d,  &
-                              d_eros_i=d_eros_i3d, nerosc=nerosc3d, nerosi=nerosi3d,         &
-                              dqcdt=dqcdt3d, dqidt=dqidt3d, errmsg=errmsg, errflg=errflg,    &
+                              tiedtke_prog_clouds=tiedtke_prog_clouds, qmin=qmin, cld_frc=cld_frc3d,      &
+                              d_eros_l=d_eros_l3d, d_eros_i=d_eros_i3d,                      &
+                              nerosc=nerosc3d, nerosi=nerosi3d,                              &
+                              dqcdt=dqcdt3d, dqidt=dqidt3d, con_hum_area=con_hum_area3d,       &
+                              errmsg=errmsg, errflg=errflg,    &
                               ! Extended diagnostics
                               ext_diag=ext_diag,                                             &
                               ! vts1=vts1, txri=txri, txrc=txrc,                             &
@@ -853,7 +866,11 @@ module mp_thompson
            pfi_lsan(:,:) = pfils(:,:,1)
            pfl_lsan(:,:) = pflls(:,:,1)
          end if
-
+         
+         if (tiedtke_prog_clouds) then
+           cld_frc(:,:) = cld_frc3d(:,:,1)
+         end if
+         
          unset_extended_diagnostic_pointers: if (ext_diag) then
            !vts1       => null()
            !txri       => null()

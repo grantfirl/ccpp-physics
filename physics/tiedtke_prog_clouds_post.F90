@@ -41,17 +41,23 @@
       dt_inv = 1.0/dt
       dcond_ls_tot = 0.0
           
-      !gq0(:,:,ntcw)    = gq0(:,:,ntcw)    + SL
-      !gq0(:,:,ntiw)    = gq0(:,:,ntiw)    + SI
+      gq0(:,:,ntcw)    = gq0(:,:,ntcw)    + SL
+      gq0(:,:,ntiw)    = gq0(:,:,ntiw)    + SI
       gq0(:,:,ntclamt) = gq0(:,:,ntclamt) + SA
-      !if (do_liq_num) then
-      !  gq0(:,:,ntlnc) = gq0(:,:,ntlnc)   + SN
-      !end if
-      !if (do_ice_num) then
-      !  gq0(:,:,ntinc) = gq0(:,:,ntinc)   + SNi
-      !end if
-      !gt0              = gt0              + ST
-      !gq0(:,:,ntqv)    = gq0(:,:,ntqv)    + SQ
+      if (do_liq_num) then
+       gq0(:,:,ntlnc) = gq0(:,:,ntlnc)   + SN
+      end if
+      if (do_ice_num) then
+       gq0(:,:,ntinc) = gq0(:,:,ntinc)   + SNi
+      end if
+      gt0(:,:)         = gt0(:,:)         + ST
+      gq0(:,:,ntqv)    = gq0(:,:,ntqv)    + SQ
+      !write(*,*) 'SL', SL
+      !write(*,*) 'SI', SI
+      !write(*,*) 'ST', ST, gt0
+      !write(*,*) 'SQ', SQ, gq0(:,:,ntqv)
+      
+      
       
       if (ldiag3d) then
         idtend = dtidx(i_temp,i_macro)
