@@ -49,6 +49,13 @@
   dimensions = ()
   type = logical
   intent = in
+[do_mynnedmf]
+  standard_name = flag_for_mellor_yamada_nakanishi_niino_pbl_scheme
+  long_name = flag to activate MYNN-EDMF
+  units = flag
+  dimensions = ()
+  type = logical
+  intent = in
 [ldiag3d]
   standard_name = flag_for_diagnostics_3D
   long_name = flag for 3d diagnostic fields
@@ -312,6 +319,22 @@
   type = real
   kind = kind_phys
   intent = out
+[dqadt_pbl]
+  standard_name = tendency_of_cloud_fraction_due_to_pbl_scheme
+  long_name = cloud fraction tendency due to pbl scheme
+  units = s-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[dqcdt_pbl]
+  standard_name = tendency_of_cloud_liquid_water_due_to_pbl_scheme
+  long_name = cloud liquid water tendency due to pbl scheme
+  units = kg kg-1 s-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
 [errmsg]
   standard_name = ccpp_error_message
   long_name = error message for error handling in CCPP

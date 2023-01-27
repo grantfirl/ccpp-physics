@@ -9,17 +9,17 @@
 !> \section arg_table_tiedtke_prog_clouds_post_run Argument Table
 !! \htmlinclude tiedtke_prog_clouds_post_run.html
 !!
-    subroutine tiedtke_prog_clouds_post_run (idim, kdim, i_macro, i_temp, do_liq_num, do_ice_num, ldiag3d, qdiag3d, ntqv, ntcw, ntiw, ntclamt, ntlnc, ntinc, dt, qmin, tfreeze, ST, SQ, SL, SI, SA, SN, SNI, dcond_ls_l, dcond_ls_i, d_eros, qa_upd, ql_upd, qi_upd, gt0, gq0, dtend, dtidx, d_eros_l, d_eros_i, nerosc, nerosi, dqcdt, dqidt, errmsg, errflg)
+    subroutine tiedtke_prog_clouds_post_run (idim, kdim, i_macro, i_temp, do_liq_num, do_ice_num, do_mynnedmf, ldiag3d, qdiag3d, ntqv, ntcw, ntiw, ntclamt, ntlnc, ntinc, dt, qmin, tfreeze, ST, SQ, SL, SI, SA, SN, SNI, dcond_ls_l, dcond_ls_i, d_eros, qa_upd, ql_upd, qi_upd, gt0, gq0, dtend, dtidx, d_eros_l, d_eros_i, nerosc, nerosi, dqcdt, dqidt, dqadt_pbl, dqcdt_pbl, errmsg, errflg)
 
       use machine  , only : kind_phys
       
       implicit none
       
       integer, intent(in) :: idim, kdim, i_macro, i_temp, ntqv, ntcw, ntiw, ntclamt, ntlnc, ntinc
-      logical, intent(in) :: do_liq_num, do_ice_num, ldiag3d, qdiag3d
+      logical, intent(in) :: do_liq_num, do_ice_num, ldiag3d, qdiag3d, do_mynnedmf
       real(kind=kind_phys), intent(in) :: dt, qmin, tfreeze
       real(kind=kind_phys), intent(in) :: ST(:,:), SQ(:,:), SL(:,:), SI(:,:), SA(:,:), SN(:,:), SNI(:,:)
-      real(kind=kind_phys), intent(in) :: dcond_ls_l(:,:), dcond_ls_i(:,:), d_eros(:,:), qa_upd(:,:), ql_upd(:,:), qi_upd(:,:)
+      real(kind=kind_phys), intent(in) :: dcond_ls_l(:,:), dcond_ls_i(:,:), d_eros(:,:), qa_upd(:,:), ql_upd(:,:), qi_upd(:,:), dqadt_pbl(:,:), dqcdt_pbl(:,:)
       
       real(kind=kind_phys), intent(inout) :: gt0(:,:)
       real(kind=kind_phys), intent(inout) :: gq0(:,:,:)
@@ -43,7 +43,18 @@
           
       gq0(:,:,ntcw)    = gq0(:,:,ntcw)    + SL
       gq0(:,:,ntiw)    = gq0(:,:,ntiw)    + SI
-      gq0(:,:,ntclamt) = gq0(:,:,ntclamt) + SA
+      if (do_mynnedmf) then
+         gq0(:,:,ntclamt) = gq0(:,:,ntclamt) + SA + dqadt_pbl*dt
+         !print*,dqadt_pbl
+         !test
+         !do k = 1,kdim
+         !  do i = 1,idim
+         !    gq0(i,k,ntclamt) = gq0(i,k,ntclamt) + SA(i,k) + dqadt_pbl(i,k)*dt
+         !  enddo
+         !enddo
+      else
+         gq0(:,:,ntclamt) = gq0(:,:,ntclamt) + SA
+      endif
       if (do_liq_num) then
        gq0(:,:,ntlnc) = gq0(:,:,ntlnc)   + SN
       end if

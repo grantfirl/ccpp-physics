@@ -98,6 +98,7 @@
 SUBROUTINE mynnedmf_wrapper_run(        &
      &  im,levs,                        &
      &  flag_init,flag_restart,         &
+     &  tiedtke_prog_clouds,            &
      &  lssav, ldiag3d, qdiag3d,        &
      &  lsidea, cplflx,                 &
      &  delt,dtf,dx,zorl,               &
@@ -111,6 +112,7 @@ SUBROUTINE mynnedmf_wrapper_run(        &
      &  qgrs_water_aer_num_conc,        &
      &  qgrs_ice_aer_num_conc,          &
      &  qgrs_cccn,                      &
+     &  qgrs_cldfra,                    &
      &  prsl,exner,                     &
      &  slmsk,tsurf,qsfc,ps,            &
      &  ust,ch,hflx,qflx,wspd,rb,       &
@@ -134,6 +136,7 @@ SUBROUTINE mynnedmf_wrapper_run(        &
      &  dqke,qwt,qshear,qbuoy,qdiss,    &
      &  Pblh,kpbl,                      &
      &  qc_bl,qi_bl,cldfra_bl,          &
+     &  net_mass_flux,                  &
      &  edmf_a,edmf_w,edmf_qt,          &
      &  edmf_thl,edmf_ent,edmf_qc,      &
      &  sub_thl,sub_sqv,det_thl,det_sqv,&
@@ -144,6 +147,7 @@ SUBROUTINE mynnedmf_wrapper_run(        &
      &  dqdt_cloud_droplet_num_conc, dqdt_ice_num_conc,    & ! <=== ntlnc, ntinc
      &  dqdt_water_aer_num_conc,     dqdt_ice_aer_num_conc,& ! <=== ntwa, ntia
      &  dqdt_cccn,                                         & ! <=== ntccn
+     &  dqadt_pbl, dqcdt_pbl,                              & ! for prog cloud
      &  flag_for_pbl_generic_tend,                         &
      &  dtend, dtidx, index_of_temperature,                &
      &  index_of_x_wind, index_of_y_wind, ntke,            &
@@ -177,7 +181,7 @@ SUBROUTINE mynnedmf_wrapper_run(        &
      integer, intent(out)          :: errflg
 
      logical, intent(in) :: lssav, ldiag3d, lsidea, qdiag3d
-     logical, intent(in) :: cplflx
+     logical, intent(in) :: cplflx, tiedtke_prog_clouds
 
      !smoke/chem
      integer, intent(in) :: nchem, ndvel
@@ -246,11 +250,12 @@ SUBROUTINE mynnedmf_wrapper_run(        &
      &        dtdt, dudt, dvdt,                                          &
      &        dqdt_water_vapor, dqdt_liquid_cloud, dqdt_ice_cloud,       &
      &        dqdt_cloud_droplet_num_conc, dqdt_ice_num_conc,            &
-     &        dqdt_ozone, dqdt_water_aer_num_conc, dqdt_ice_aer_num_conc
+     &        dqdt_ozone, dqdt_water_aer_num_conc, dqdt_ice_aer_num_conc,&
+     &        dqadt_pbl, dqcdt_pbl
       real(kind=kind_phys), dimension(:,:), intent(inout) ::dqdt_cccn
       real(kind=kind_phys), dimension(:,:), intent(inout) ::             &
      &        qke, qke_adv, EL_PBL, Sh3D, Sm3D,                          &
-     &        qc_bl, qi_bl, cldfra_bl
+     &        qc_bl, qi_bl, cldfra_bl, net_mass_flux
      !These 10 arrays are only allocated when bl_mynn_output > 0
       real(kind=kind_phys), dimension(:,:), intent(inout) ::             &
      &        edmf_a,edmf_w,edmf_qt,                                     &
@@ -267,7 +272,8 @@ SUBROUTINE mynnedmf_wrapper_run(        &
      &        qgrs_cloud_ice_num_conc,                                   &
      &        qgrs_ozone,                                                &
      &        qgrs_water_aer_num_conc,                                   &
-     &        qgrs_ice_aer_num_conc
+     &        qgrs_ice_aer_num_conc,                                     &
+     &        qgrs_cldfra
       real(kind=kind_phys), dimension(:,:), intent(in) ::qgrs_cccn
       real(kind=kind_phys), dimension(:,:), intent(out) ::               &
      &        Tsq, Qsq, Cov, exch_h, exch_m
@@ -730,6 +736,7 @@ SUBROUTINE mynnedmf_wrapper_run(        &
               CALL  mynn_bl_driver(                                    &
      &             initflag=initflag,restart=flag_restart,             &
      &             cycling=cycling,                                    &
+     &             tiedtke_prog_clouds=tiedtke_prog_clouds,            &
      &             delt=delt,dz=dz,dx=dx,znt=znt,                      &
      &             u=u,v=v,w=w,th=th,sqv3D=sqv,sqc3D=sqc,              &
      &             sqi3D=sqi,qnc=qnc,qni=qni,                          &
@@ -753,17 +760,20 @@ SUBROUTINE mynnedmf_wrapper_run(        &
      &             RQIBLTEN=rqiblten,RQNCBLTEN=rqncblten,              & !output
      &             RQNIBLTEN=rqniblten,RQNWFABLTEN=RQNWFABLTEN,        & !output
      &             RQNIFABLTEN=RQNIFABLTEN,dozone=dqdt_ozone,          & !output
+     &             dqadt_pbl=dqadt_pbl,dqcdt_pbl=dqcdt_pbl,            & !inout
      &             EXCH_H=exch_h,EXCH_M=exch_m,                        & !output
      &             pblh=pblh,KPBL=KPBL,                                & !output
      &             el_pbl=el_pbl,                                      & !output
      &             dqke=dqke,                                          & !output
      &             qWT=qWT,qSHEAR=qSHEAR,qBUOY=qBUOY,qDISS=qDISS,      & !output
+     &             qc_bl=qc_bl,qi_bl=qi_bl,cldfra_bl=cldfra_bl,        & !output
+     &             qgrs_cldfra=qgrs_cldfra,                            & !input (prog cloud)
+     &             net_mass_flux=net_mass_flux,                        & !inout
      &             bl_mynn_tkeadvect=bl_mynn_tkeadvect,                &
      &             bl_mynn_tkebudget=bl_mynn_tkebudget,                & !input parameter
      &             bl_mynn_cloudpdf=bl_mynn_cloudpdf,                  & !input parameter
      &             bl_mynn_mixlength=bl_mynn_mixlength,                & !input parameter
-     &             icloud_bl=icloud_bl,                                & !input parameter
-     &             qc_bl=qc_bl,qi_bl=qi_bl,cldfra_bl=cldfra_bl,        & !output
+     &             icloud_bl=icloud_bl,                                & !input parameter         
      &             closure=bl_mynn_closure,bl_mynn_edmf=bl_mynn_edmf,  & !input parameter
      &             bl_mynn_edmf_mom=bl_mynn_edmf_mom,                  & !input parameter
      &             bl_mynn_edmf_tke=bl_mynn_edmf_tke,                  & !input parameter
