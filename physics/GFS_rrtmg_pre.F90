@@ -33,9 +33,9 @@
         julian, yearlen, lndp_var_list, lsswr, lslwr,                          &
         ltaerosol, mraerosol, lgfdlmprad, uni_cld, effr_in, do_mynnedmf, lmfshal, &
         lmfdeep2, fhswr, fhlwr, solhr, sup, con_eps, epsm1, fvirt,             &
-        rog, rocp, con_rd, xlat_d, xlat, xlon, coslat, sinlat, tsfc, slmsk,    &
+        rog, rocp, con_rd, con_g, xlat_d, xlat, xlon, coslat, sinlat, tsfc, slmsk,    &
         prsi, prsl, prslk, tgrs, sfc_wts, mg_cld, effrr_in, pert_clds,         &
-        sppt_wts, sppt_amp, cnvw_in, cnvc_in, qgrs, aer_nm, dx, icloud,        & !inputs from here and above
+        sppt_wts, sppt_amp, cnvw_in, cnvc_in, qgrs, qc_bl, qi_bl, aer_nm, dx, icloud,        & !inputs from here and above
         coszen, coszdg, effrl_inout, effri_inout, effrs_inout,                 &
         clouds1, clouds2, clouds3, clouds4, clouds5, qci_conv,                 & !in/out from here and above
         kd, kt, kb, mtopa, mbota, raddt, tsfg, tsfa, de_lgth, alb1d, delp, dz, & !output from here and below
@@ -132,7 +132,7 @@
       real(kind_phys),      intent(in) :: spp_wts_rad(:,:)
 
       real(kind=kind_phys), intent(in) :: fhswr, fhlwr, solhr, sup, julian, sppt_amp
-      real(kind=kind_phys), intent(in) :: con_eps, epsm1, fvirt, rog, rocp, con_rd
+      real(kind=kind_phys), intent(in) :: con_eps, epsm1, fvirt, rog, rocp, con_rd, con_g
 
       real(kind=kind_phys), dimension(:), intent(in) :: xlat_d, xlat, xlon,    &
                                                         coslat, sinlat, tsfc,  &
@@ -142,7 +142,7 @@
                                                           tgrs, sfc_wts,       &
                                                           mg_cld, effrr_in,    &
                                                           cnvw_in, cnvc_in,    &
-                                                          sppt_wts
+                                                          sppt_wts, qc_bl, qi_bl
 
       real(kind=kind_phys), dimension(:,:,:), intent(in) :: qgrs
       real(kind=kind_phys), dimension(:,:,:), intent(inout) :: aer_nm
@@ -211,7 +211,7 @@
 
       integer :: i, j, k, k1, k2, lsk, lv, n, itop, ibtc, LP1, lla, llb, lya,lyb
 
-      real(kind=kind_phys) :: es, qs, delt, tem0d, pfac
+      real(kind=kind_phys) :: es, qs, delt, tem0d, pfac, gfac, Tc, snow_frac, ice_frac
       real(kind=kind_phys), dimension(im) :: gridkm
 
       real(kind=kind_phys), dimension(im) :: cvt1, cvb1, tem1d, tskn, xland
@@ -271,7 +271,9 @@
       else
          max_relh = 1.1
       endif
-
+      
+      gfac=1.0e5/con_g
+      
       do i = 1, IM
          gridkm(i) = dx(i)*0.001
          lwp_ex(i) = 0.0
@@ -722,6 +724,55 @@
               endif
             enddo
           enddo
+          if (imp_physics == imp_physics_thompson .and. tiedtke_prog_clouds) then
+            !GJF: The following code had been executed in sgscloud_radpre and moved here temporarily until
+            !Joe updates qc from MYNN PBL.
+            do k = 1, levs
+              do i = 1, im
+                if (ccnd(i,k,1) < 1.e-6 .and. tracer1(i,k,ntclamt)>0.001) then
+                  ccnd(i,k,1) = qc_bl(i,k)*tracer1(i,k,ntclamt)
+
+                  !eff radius cloud water (microns) from Miles et al. (2007)
+                  if (nint(slmsk(i)) == 1) then !land
+                    if(ccnd(i,k,1)>1.E-8)clouds3(i,k)=5.4
+                  else
+                    if(ccnd(i,k,1)>1.E-8)clouds3(i,k)=9.6
+                  endif
+
+                  !calculate the liquid water path using additional BL clouds
+                  clouds2(i,k) = max(0.0, ccnd(i,k,1) * gfac * delp(i,k))
+                endif
+                
+                Tc = tgrs(i,k) - 273.15
+                !crudely split frozen species into 50% ice and 50% snow below
+                !~700 mb and decrease snow to zero by ~300 mb 
+                snow_frac = min(0.5, max((prsl(i,k)-30000.0),0.0)/140000.0)
+                ice_frac  = 1.0 - snow_frac
+                if (ccnd(i,k,2) < 1.e-8 .and. tracer1(i,k,ntclamt)>0.001) then
+                  ccnd(i,k,2) = ice_frac*qi_bl(i,k)*tracer1(i,k,ntclamt)
+
+                  !eff radius cloud ice (microns), from Mishra et al. (2014, JGR Atmos, fig 6b)
+                  if(ccnd(i,k,2)>1.E-8)clouds5(i,k)=max(173.45 + 2.14*Tc, 20.)
+                  !eff radius cloud ice (microns), from Mishra et al. (2014, JGR Atmos, fig 8b)
+                  !iwc = qi(i,k)*1.0e6*rho(i,k)
+                  !IF(qi(i,k)>1.E-8)clouds5(i,k)=MAX(139.7 + 1.76*Tc + 13.49*LOG(iwc), 20.)
+
+                  !calculate the ice water path using additional BL clouds
+                  clouds4(i,k) = max(0.0, ccnd(i,k,2) * gfac * delp(i,k))
+                endif
+
+                if (ccnd(i,k,4) < 1.e-8 .and. tracer1(i,k,ntclamt)>0.001) then
+                  ccnd(i,k,4) = snow_frac*qi_bl(i,k)*tracer1(i,k,ntclamt)
+
+                  !eff radius cloud ice (microns), from Mishra et al. (2014, JGR Atmos, fig 6b)
+                  if(ccnd(i,k,4)>1.E-8)clouds9(i,k)=max(2.*(173.45 + 2.14*Tc), 50.)
+
+                  !calculate the snow water path using additional BL clouds
+                  clouds8(i,k) = max(0.0, ccnd(i,k,4) * gfac * delp(i,k))
+                endif
+              enddo
+            enddo
+          end if
           ! for Thompson MP - prepare variables for calc_effr
           if_thompson: if (imp_physics == imp_physics_thompson .and. (ltaerosol .or. mraerosol)) then
             do k=1,LMK

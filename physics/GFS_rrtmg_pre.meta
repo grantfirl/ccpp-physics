@@ -693,6 +693,14 @@
   type = real
   kind = kind_phys
   intent = in
+[con_g]
+  standard_name = gravitational_acceleration
+  long_name = gravitational acceleration
+  units = m s-2
+  dimensions = ()
+  type = real
+  kind = kind_phys
+  intent = in
 [xlat_d]
   standard_name = latitude_in_degree
   long_name = latitude in degree north
@@ -849,6 +857,22 @@
   long_name = model layer mean tracer concentration
   units = kg kg-1
   dimensions = (horizontal_loop_extent,vertical_layer_dimension,number_of_tracers)
+  type = real
+  kind = kind_phys
+  intent = in
+[QC_BL]
+  standard_name = subgrid_scale_cloud_liquid_water_mixing_ratio
+  long_name = subgrid cloud water mixing ratio from PBL scheme
+  units = kg kg-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[QI_BL]
+  standard_name = subgrid_scale_cloud_ice_mixing_ratio
+  long_name = subgrid cloud ice mixing ratio from PBL scheme
+  units = kg kg-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
   type = real
   kind = kind_phys
   intent = in
