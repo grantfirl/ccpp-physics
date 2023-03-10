@@ -15,25 +15,23 @@
 !         inputs:                                                      !
 !           ( NLAY, me )                                               !
 !         outputs:                                                     !
-!           ( none )                                                   !
+!           ( errflg, errmsg )                                         !
 !                                                                      !
 !      'aer_update' -- updating aerosol data                           !
 !         inputs:                                                      !
 !           ( iyear, imon, me )                                        !
 !         outputs:                                                     !
-!           ( none )                                                   !
+!           ( errflg, errmsg )                                         !
 !                                                                      !
 !      'setaer'     -- mapping aeros profile, compute aeros opticals   !
 !         inputs:                                                      !
 !           (prsi,prsl,prslk,tvly,rhlay,slmsk,tracer,aerfld,xlon,xlat, !
 !            IMAX,NLAY,NLP1, lsswr,lslwr,                              !
 !         outputs:                                                     !
-!          (aerosw,aerolw,aerodp)                                      !
+!          (aerosw,aerolw,aerodp,errmsg,errflg)                        !
 !                                                                      !
 !                                                                      !
 !   external modules referenced:                                       !
-!       'module physparam'               in 'physparam.f'              !
-!       'module physcons'                in 'physcons.f'               !
 !       'module module_radsw_parameters' in 'radsw_xxxx#_param.f'      !
 !       'module module_radlw_parameters' in 'radlw_xxxx#_param.f'      !
 !       'module module_radlw_cntr_para'  in 'radsw_xxxx#_param.f'      !
@@ -128,11 +126,7 @@
       module module_radiation_aerosols   !
 !........................................!
 !
-      use physparam,only : iaermdl, iaerflg, lalw1bd, aeros_file,       &
-     &                     ivflip, kind_phys, kind_io4, kind_io8
-      use physcons, only : con_pi, con_rd, con_g, con_t0c, con_c,       &
-     &                     con_boltz, con_plnk, con_amd
-
+      use machine,  only : kind_phys, kind_io4, kind_io8
       use module_iounitdef,        only : NIAERCM
       use module_radsw_parameters, only : NBDSW,  wvnsw1=>wvnum1,       &
      &                                    NSWSTR, wvnsw2=>wvnum2
@@ -405,7 +399,7 @@
 !    ssarhi_grt(KCM1,NSWLWBD) - single scattering albedo for sw+lw band
 !    asyrhi_grt(KCM1,NSWLWBD) - asymmetry parameter for sw+lw band
       real (kind=kind_phys),allocatable,save,dimension(:,:) ::          &
-     &           extrhi_grt, scarhi_grt, ssarhi_grt, asyrhi_grt
+     &   extrhi_grt, extrhi_grt_550, scarhi_grt, ssarhi_grt, asyrhi_grt
 !
 !> \name relative humidity dependent aerosol optical properties:
 !! species : ss001, ss002, ss003, ss004, ss005, so4,
@@ -417,7 +411,7 @@
 
 !> extinction coefficient
       real (kind=kind_phys),allocatable,save,dimension(:,:,:) ::        &
-     &           extrhd_grt, scarhd_grt, ssarhd_grt, asyrhd_grt
+     &   extrhd_grt, extrhd_grt_550, scarhd_grt, ssarhd_grt, asyrhd_grt
 
 !> gocart species
       integer, parameter         :: num_gc = 5
@@ -453,6 +447,7 @@
       real (kind=kind_phys), parameter :: wvn550 = 1.0e4/0.55
 !> the sw spectral band covering wvn550 (comp in aer_init)
       integer, save      :: nv_aod = 1
+      integer            :: i550,id550
 
 !  ---  public interfaces
 
@@ -498,8 +493,8 @@
 !>\section gen_al General Algorithm
 !-----------------------------------
       subroutine aer_init                                               &
-     &     ( NLAY, me ) !  ---  inputs
-!  ---  outputs: ( to module variables )
+     &     ( NLAY, me, iaermdl, iaerflg, lalw1bd, aeros_file, con_pi,   &
+     &     con_t0c, con_c, con_boltz, con_plnk, errflg, errmsg)
 
 !  ==================================================================  !
 !                                                                      !
@@ -509,24 +504,26 @@
 !  inputs:                                                             !
 !     NLAY    - number of model vertical layers  (not used)            !
 !     me      - print message control flag                             !
-!                                                                      !
-!  outputs: (to module variables)                                      !
-!                                                                      !
-!  external module variables: (in physparam)                           !
 !     iaermdl - tropospheric aerosol model scheme flag                 !
 !               =0 opac-clim; =1 gocart-clim, =2 gocart-prognostic     !
 !               =5 opac-clim new spectral mapping                      !
+!     lalw1bd = logical lw aeros propty 1 band vs multi-band cntl flag !
+!               =t use 1 broad band optical property                   !
+!               =f use multi bands optical property                    !
+!                                                                      !
+!  outputs: (CCPP error handling)                                      !
+!     errmsg  - CCPP error message                                     !
+!     errflg  - CCPP error flag                                        !
+!                                                                      !
+!  internal module variables:                                          !
 !     lalwflg - logical lw aerosols effect control flag                !
 !               =t compute lw aerosol optical prop                     !
 !     laswflg - logical sw aerosols effect control flag                !
 !               =t compute sw aerosol optical prop                     !
 !     lavoflg - logical stratosphere volcanic aerosol control flag     !
 !               =t include volcanic aerosol effect                     !
-!     lalw1bd = logical lw aeros propty 1 band vs multi-band cntl flag !
-!               =t use 1 broad band optical property                   !
-!               =f use multi bands optical property                    !
 !                                                                      !
-!  module constants:                                                   !
+!  internal module constants:                                          !
 !     NWVSOL  - num of wvnum regions where solar flux is constant      !
 !     NWVTOT  - total num of wave numbers used in sw spectrum          !
 !     NWVTIR  - total num of wave numbers used in the ir region        !
@@ -541,9 +538,14 @@
 !  ==================================================================  !
 
 !  ---  inputs:
-      integer,  intent(in) :: NLAY, me
-
-!  ---  output: ( none )
+      integer,          intent(in) :: NLAY, me, iaermdl, iaerflg
+      logical,          intent(in) :: lalw1bd
+      character(len=26),intent(in) :: aeros_file
+      real(kind_phys),  intent(in) :: con_pi,con_t0c, con_c, con_boltz, & 
+     &     con_plnk
+!  ---  output:
+      integer,          intent(out) :: errflg
+      character(len=*), intent(out) :: errmsg
 
 !  ---  locals:
       real (kind=kind_phys), dimension(NWVTOT) :: solfwv        ! one wvn sol flux
@@ -551,6 +553,11 @@
 !
 !===>  ...  begin here
 !
+
+! Initialize CCPP error handling variables
+      errmsg = ''
+      errflg = 0
+
       kyrstr  = 1
       kyrend  = 1
       kyrsav  = 1
@@ -560,13 +567,13 @@
       lalwflg= (mod(iaerflg/10,10) > 0) ! control flag for lw tropospheric aerosol
       lavoflg= (mod(iaerflg/100,10) >0) ! control flag for stratospheric volcanic aeros
 
-!> -# Call wrt_aerlog() to write aerosol parameter configuration to output logs.
+!> -# Call wrt_aerlog to write aerosol parameter configuration to output logs.
 
       if ( me == 0 ) then
 
-        call wrt_aerlog      ! write aerosol param info to log file
+        call wrt_aerlog(iaermdl, iaerflg, lalw1bd, errflg, errmsg)      ! write aerosol param info to log file
 !  ---  inputs:   (in scope variables)
-!  ---  outputs:  ( none )
+!  ---  outputs:  (CCPP error handling)
 
       endif
 
@@ -613,49 +620,52 @@
 
       if ( iaerflg /= 100 ) then
 
-!> -# Call set_spectrum() to set up spectral one wavenumber solar/IR
+!> -# Call set_spectrum to set up spectral one wavenumber solar/IR
 !! fluxes.
 
-        call set_spectrum
+        call set_spectrum(con_pi, con_t0c, con_c, con_boltz, con_plnk,  &
+     &        errflg, errmsg)
 !  ---  inputs:   (module constants)
-!  ---  outputs:  (in-scope variables)
+!  ---  outputs:  (ccpp error handling)
 
 !> -# Call clim_aerinit() to invoke tropospheric aerosol initialization.
 
         if ( iaermdl==0 .or. iaermdl==5 ) then      ! opac-climatology scheme
-
           call clim_aerinit                                             &
 !  ---  inputs:
-     &     ( solfwv, eirfwv, me                                         &
+     &     ( solfwv, eirfwv, me, aeros_file,                            &
 !  ---  outputs:
-     &     )
+     &     errflg, errmsg)
 
         elseif ( iaermdl==1 .or. iaermdl==2 ) then  ! gocart clim/prog scheme
 
           call gocart_aerinit                                           &
 !  ---  inputs:
-     &     ( solfwv, eirfwv, me                                         &
+     &     ( solfwv, eirfwv, me,                                        &
 !  ---  outputs:
-     &     )
+     &     errflg, errmsg)
 
         else
           if ( me == 0 ) then
             print *,'  !!! ERROR in aerosol model scheme selection',    &
      &              ' iaermdl =',iaermdl
-            stop
+            errflg = 1
+            errmsg = 'ERROR(aer_init): aerosol model scheme selected'// &
+     &           'is invalid'
+            return
           endif
         endif
 
       endif    ! end if_iaerflg_block
 
-!> -# Call set_volcaer() to invoke stratospheric volcanic aerosol
+!> -# Call set_volcaer to invoke stratospheric volcanic aerosol
 !! initialization.
 
       if ( lavoflg ) then
 
-        call set_volcaer
+        call set_volcaer(errflg, errmsg)
 !  ---  inputs:  (module variables)
-!  ---  outputs: (module variables)
+!  ---  outputs: (module variables: ccpp error handling)
 
       endif    ! end if_lavoflg_block
 
@@ -666,11 +676,7 @@
 
 !> This subroutine writes aerosol parameter configuration to run log file.
 !--------------------------------
-      subroutine wrt_aerlog
-!................................
-!  ---  inputs:    (in scope variables)
-!  ---  outputs:   ( none )
-
+      subroutine wrt_aerlog(iaermdl, iaerflg, lalw1bd, errflg, errmsg)
 !  ==================================================================  !
 !                                                                      !
 !  subprogram : wrt_aerlog                                             !
@@ -679,15 +685,18 @@
 !                                                                      !
 !  ====================  defination of variables  ===================  !
 !                                                                      !
-!  external module variables:  (in physparam)                          !
-!   iaermdl  - aerosol scheme flag: 0:opac-clm; 1:gocart-clim;         !
-!              2:gocart-prog; 5:opac-clim+new mapping                  !
-!   iaerflg  - aerosol effect control flag: 3-digits (volc,lw,sw)      !
+!  internal module variables:                                          !
 !   lalwflg  - toposphere lw aerosol effect: =f:no; =t:yes             !
 !   laswflg  - toposphere sw aerosol effect: =f:no; =t:yes             !
-!   lavoflg  - stratospherer volcanic aeros effect: =f:no; =t:yes      !
+!   lavoflg  - stratosphere volcanic aeros effect: =f:no; =t:yes       !
 !                                                                      !
-!  outputs: ( none )                                                   !
+!  inputs:                                                             !
+!   iaerflg  - aerosol effect control flag: 3-digits (volc,lw,sw)      !
+!   iaermdl  - tropospheric aerosol model scheme flag                  !
+!                                                                      !
+!  outputs:                                                            !
+!   errmsg   - CCPP error message                                      !
+!   errflg   - CCPP error flag                                         !
 !                                                                      !
 !  subroutines called: none                                            !
 !                                                                      !
@@ -695,13 +704,22 @@
 !                                                                      !
 !  ==================================================================  !
 
-!  ---  inputs: ( none )
-!  ---  output: ( none )
+!  ---  inputs: ()
+      integer,          intent(in) :: iaermdl, iaerflg
+      logical,          intent(in) :: lalw1bd
+!  ---  output: (CCPP error handling)
+      integer,          intent(out) :: errflg
+      character(len=*), intent(out) :: errmsg
 !  ---  locals:
 
 !
 !===>  ...  begin here
 !
+
+! Initialize CCPP error handling variables
+      errmsg = ''
+      errflg = 0
+
       print *, VTAGAER    ! print out version tag
 
       if ( iaermdl==0 .or. iaermdl==5 ) then
@@ -716,7 +734,10 @@
       else
         print *,' !!! ERROR in selection of aerosol model scheme',      &
      &          ' IAER_MDL =',iaermdl
-        stop
+        errflg = 1
+        errmsg = 'ERROR(wrt_aerlog): Selected aerosol model scheme is'//&
+     &       'is invalid'
+        return
       endif   ! end_if_iaermdl_block
 
       print *,'   IAER=',iaerflg,'  LW-trop-aer=',lalwflg,              &
@@ -763,10 +784,8 @@
 !> This subroutine defines the one wavenumber solar fluxes based on toa
 !! solar spectral distribution, and define the one wavenumber IR fluxes
 !! based on black-body emission distribution at a predefined temperature.
-      subroutine set_spectrum
-!................................
-!  ---  inputs:   (module constants)
-!  ---  outputs:  (in-scope variables)
+      subroutine set_spectrum(con_pi, con_t0c, con_c, con_boltz,        &
+     &     con_plnk, errflg, errmsg)
 
 !  ==================================================================  !
 !                                                                      !
@@ -778,7 +797,14 @@
 !                                                                      !
 !  ====================  defination of variables  ===================  !
 !                                                                      !
-!> -  inputs:  (module constants)
+!> -  inputs: (CCPP Interstitials)
+!!  -   con_pi:  Physical constant (pi)
+!!  -   con_t0c: Physical constant (temperature kelvin at zero celcius)
+!!  -   con_c:   Physical constant (speed of light)
+!!  -   con_boltz: Physical constant (Boltzmann constant)
+!!  -   con_plnk: Physical constant (Planck constant)
+!!
+!> -  inputs: (in-scope variables)
 !!  -   NWVTOT:  total num of wave numbers used in sw spectrum
 !!  -   NWVTIR:  total num of wave numbers used in the ir region
 !!
@@ -787,6 +813,10 @@
 !!                        (\f$W/m^2\f$)
 !!  -   eirfwv(NWVTIR):   ir flux(273k) for each individual wavenumber
 !!                        (\f$W/m^2\f$)
+!!
+!> -  outputs: (CCPP error-handling) 
+!!  -   errflg:           CCPP error flag
+!!  -   errmsg:           CCPP error message
 !                                                                      !
 !  subroutines called: none                                            !
 !                                                                      !
@@ -796,15 +826,24 @@
 
 !  ---  inputs: (module constants)
 !     integer :: NWVTOT, NWVTIR
+!  ---  inputs: (CCPP Interstitials)
+      real(kind_phys),intent(in) :: con_pi, con_t0c, con_c, con_boltz,  &
+     &     con_plnk
 
 !  ---  output: (in-scope variables)
 !     real (kind=kind_phys), dimension(NWVTOT) :: solfwv        ! one wvn sol flux
 !     real (kind=kind_phys), dimension(NWVTIR) :: eirfwv        ! one wvn ir flux
-
+!  ---  output: (CCPP error-handling)
+      integer,          intent(out) :: errflg
+      character(len=*), intent(out) :: errmsg
 !  ---  locals:
       real (kind=kind_phys) :: soltot, tmp1, tmp2, tmp3
 
       integer :: nb, nw, nw1, nw2, nmax, nmin
+
+! Initialize CCPP error handling variables
+      errmsg = ''
+      errflg = 0
 !
 !===>  ...  begin here
 !
@@ -856,11 +895,12 @@
 
 !> The initialization program for stratospheric volcanic aerosols.
 !-----------------------------
-      subroutine set_volcaer
+      subroutine set_volcaer(errflg, errmsg)
 !.............................
-!  ---  inputs:   ( none )
-!  ---  outputs:  (module variables)
-
+!  ---  inputs:   ( none )                                             !
+!  outputs: (CCPP error handling)                                      !
+!   errflg           - CCPP error flag                                 !
+!   errmsg           - CCPP error message                              ! 
 !  ==================================================================  !
 !                                                                      !
 !  subprogram : set_volcaer                                            !
@@ -876,13 +916,19 @@
 
 !  ---  inputs: (none)
 
-!  ---  output: (module variables)
+!  ---  output: (CCPP error handling)
 !     integer :: ivolae(:,:,:)
-
+      integer,          intent(out) :: errflg
+      character(len=*), intent(out) :: errmsg
 !  ---  locals:
 !
 !===>  ...  begin here
 !
+
+! Initialize CCPP error handling variables
+      errmsg = ''
+      errflg = 0
+
 !  ---  allocate data space
 
       if ( .not. allocated(ivolae) ) then
@@ -909,8 +955,8 @@
 !!
 !!\section gen_clim_aerinit General Algorithm
       subroutine clim_aerinit                                           &
-     &     ( solfwv, eirfwv, me                                         &          ! ---  inputs
-     &     )                                                           !  ---  outputs
+     &     ( solfwv, eirfwv, me, aeros_file,                            &          ! ---  inputs
+     &     errflg, errmsg)                                                         !  ---  outputs
 
 !  ==================================================================  !
 !                                                                      !
@@ -921,24 +967,17 @@
 !   solfwv(NWVTOT)   - solar flux for each individual wavenumber (w/m2)!
 !   eirfwv(NWVTIR)   - ir flux(273k) for each individual wavenum (w/m2)!
 !   me               - print message control flag                      !
+!   aeros_file       - external aerosol data file name                 !
 !                                                                      !
-!  outputs: (to module variables)                                      !
+!  outputs: (CCPP error handling)                                      !
+!   errflg           - CCPP error flag                                 !
+!   errmsg           - CCPP error message                              !
 !                                                                      !
-!  external module variables: (in physparam)                           !
-!     iaerflg - abc 3-digit integer aerosol flag (abc:volc,lw,sw)      !
-!               a: =0 use background stratospheric aerosol             !
-!                  =1 incl stratospheric vocanic aeros (MINVYR-MAXVYR) !
-!               b: =0 no topospheric aerosol in lw radiation           !
-!                  =1 include tropspheric aerosols for lw radiation    !
-!               c: =0 no topospheric aerosol in sw radiation           !
-!                  =1 include tropspheric aerosols for sw radiation    !
+!  internal module variables:                                          !
 !     lalwflg - logical lw aerosols effect control flag                !
 !               =t compute lw aerosol optical prop                     !
 !     laswflg - logical sw aerosols effect control flag                !
 !               =t compute sw aerosol optical prop                     !
-!     lalw1bd = logical lw aeros propty 1 band vs multi-band cntl flag !
-!               =t use 1 broad band optical property                   !
-!               =f use multi bands optical property                    !
 !                                                                      !
 !  module constants:                                                   !
 !     NWVSOL  - num of wvnum regions where solar flux is constant      !
@@ -959,10 +998,11 @@
 !  ---  inputs:
       real (kind=kind_phys), dimension(:) :: solfwv        ! one wvn sol flux
       real (kind=kind_phys), dimension(:) :: eirfwv        ! one wvn ir flux
-
       integer,  intent(in) :: me
-
-!  ---  output: ( none )
+      character(len=26), intent(in) :: aeros_file
+!  ---  output: (CCPP error handling)
+      integer,          intent(out) :: errflg
+      character(len=*), intent(out) :: errmsg
 
 !  ---  locals:
       real (kind=kind_phys), dimension(NAERBND,NCM1)       ::           &
@@ -981,10 +1021,14 @@
 !
 !===>  ...  begin here
 !
+! Initialize CCPP error handling variables
+      errmsg = ''
+      errflg = 0
+
 !  --- ...  invoke tropospheric aerosol initialization
 
 !> - call set_aercoef() to invoke tropospheric aerosol initialization.
-      call set_aercoef
+      call set_aercoef(aeros_file, errflg, errmsg)
 !  ---  inputs:   (in-scope variables, module constants)
 !  ---  outputs:  (module variables)
 
@@ -998,10 +1042,10 @@
 !! corresponding SW radiation spectral bands.
 !!\section det_set_aercoef General Algorithm
 !--------------------------------
-      subroutine set_aercoef
+      subroutine set_aercoef(aeros_file,errflg, errmsg)
 !................................
 !  ---  inputs:   (in-scope variables, module constants)
-!  ---  outputs:  (module variables)
+!  ---  outputs:  (CCPP error handling)
 
 !  ==================================================================  !
 !                                                                      !
@@ -1020,8 +1064,11 @@
 !   me           - integer, select cpu number as print control flag    !
 !                                                                      !
 !  outputs: (to the module variables)                                  !
+!  outputs: (CCPP error handling)                                      !
+!   errflg       - CCPP error flag                                     !
+!   errmsg       - CCPP error message                                  !
 !                                                                      !
-!  external module variables:  (in physparam)                          !
+!  external module variables:                                          !
 !   lalwflg   - module control flag for lw trop-aer: =f:no; =t:yes     !
 !   laswflg   - module control flag for sw trop-aer: =f:no; =t:yes     !
 !   aeros_file- external aerosol data file name                        !
@@ -1075,7 +1122,10 @@
 !  ==================================================================  !
 !
 !  ---  inputs:  ( none )
-!  ---  output: ( none )
+      character(len=26),intent(in) :: aeros_file
+!  ---  output: (CCPP error handling)
+      integer,          intent(out) :: errflg
+      character(len=*), intent(out) :: errmsg
 
 !  ---  locals:
       integer, dimension(NAERBND) :: iendwv
@@ -1089,6 +1139,11 @@
 !
 !===>  ...  begin here
 !
+
+! Initialize CCPP error handling variables
+      errmsg = ''
+      errflg = 0
+
 !> -# Reading climatological aerosols optical data from aeros_file,
 !! including:
 
@@ -1103,7 +1158,10 @@
         print *,'    Requested aerosol data file "',aeros_file,         &
      &          '" not found!'
         print *,'    *** Stopped in subroutine aero_init !!'
-        stop
+        errflg = 1
+        errmsg = 'ERROR(set_aercoef): Requested aerosol data file '//   &
+     &       aeros_file//' not found'
+        return
       endif     ! end if_file_exist_block
 
 !  --- ...  skip monthly global distribution
@@ -1469,7 +1527,7 @@
 !   NSWBND           - total number of sw spectral bands               !
 !   NLWBND           - total number of lw spectral bands               !
 !                                                                      !
-! external module variables:  (in physparam)                           !
+! external module variables:                                           !
 !   laswflg          - control flag for sw spectral region             !
 !   lalwflg          - control flag for lw spectral region             !
 !                                                                      !
@@ -1704,22 +1762,25 @@
 !>\section gen_aer_upd General Algorithm
 !-----------------------------------
       subroutine aer_update                                             &
-     &     ( iyear, imon, me ) !  ---  inputs:
-!  ---  outputs: ( to module variables )
+     &     ( iyear, imon, me, iaermdl, aeros_file, errflg, errmsg )
 
 !  ==================================================================  !
 !                                                                      !
 !  aer_update checks and update time varying climatology aerosol       !
 !    data sets.                                                        !
 !                                                                      !
-!  inputs:                                          size               !
-!     iyear   - 4-digit calender year                 1                !
-!     imon    - month of the year                     1                !
-!     me      - print message control flag            1                !
+!  inputs:                                                  size       !
+!     iyear      - 4-digit calender year                      1        !
+!     imon       - month of the year                          1        !
+!     me         - print message control flag                 1        !
+!     iaermdl    - tropospheric aerosol model scheme flag     1        !
+!     aeros_file - external aerosol data file name          len=26     !
 !                                                                      !
-!  outputs: ( none )                                                   !
+!  outputs: (CCPP error handling)                           len=*      !
+!     errmsg  - CCPP error message                            1        !
+!     errflg  - CCPP error flag                                        !  
 !                                                                      !
-!  external module variables: (in physparam)                           !
+!  internal module variables:                                          !
 !     lalwflg     - control flag for tropospheric lw aerosol           !
 !     laswflg     - control flag for tropospheric sw aerosol           !
 !     lavoflg     - control flag for stratospheric volcanic aerosol    !
@@ -1731,33 +1792,41 @@
 !  ==================================================================  !
 
 !  ---  inputs:
-      integer,  intent(in) :: iyear, imon, me
-
-!  ---  output: ( none )
-
+      integer,  intent(in) :: iyear, imon, me, iaermdl
+      character(len=26),intent(in) :: aeros_file
+!  ---  output: (CCPP error-handling)
+      integer,          intent(out) :: errflg
+      character(len=*), intent(out) :: errmsg
 !  ---  locals: ( none )
 !
 !===> ...  begin here
 !
+
+! Initialize CCPP error handling variables
+      errmsg = ''
+      errflg = 0
+
       if ( imon < 1 .or. imon > 12 ) then
         print *,' ***** ERROR in specifying requested month !!! ',      &
      &          'imon=', imon
         print *,' ***** STOPPED in subroutinte aer_update !!!'
-        stop
+        errflg = 1
+        errmsg = 'ERROR(aer_update): Requested month not valid'
+        return
       endif
 
 !> -# Call trop_update() to update monthly tropospheric aerosol data.
       if ( lalwflg .or. laswflg ) then
 
         if ( iaermdl == 0 .or. iaermdl==5 ) then    ! opac-climatology scheme
-        call trop_update
+        call trop_update(aeros_file, errflg, errmsg)
         endif
 
       endif
 
 !> -# Call volc_update() to update yearly stratospheric volcanic aerosol data.
       if ( lavoflg ) then
-        call volc_update
+        call volc_update(errflg, errmsg)
       endif
 
 
@@ -1768,10 +1837,7 @@
 !> This subroutine updates the monthly global distribution of aerosol
 !! profiles in five degree horizontal resolution.
 !--------------------------------
-      subroutine trop_update
-!................................
-!  ---  inputs:    (in scope variables, module variables)
-!  ---  outputs:   (module variables)
+      subroutine trop_update(aeros_file, errflg, errmsg)
 
 !  ==================================================================  !
 !                                                                      !
@@ -1785,11 +1851,14 @@
 !  inputs:  (in-scope variables, module constants)                     !
 !   imon     - integer, month of the year                              !
 !   me       - integer, print message control flag                     !
+!  inputs:  (CCPP Interstitials)                                       !
+!   aeros_file   - external aerosol data file name                     !
 !                                                                      !
 !  outputs: (module variables)                                         !
-!                                                                      !
-!  external module variables: (in physparam)                           !
-!    aeros_file   - external aerosol data file name                    !
+! 
+!  outputs: (CCPP error-handling)                                      !
+!   errmsg  - Error message                                            !
+!   errflg  - Error flag                                               !
 !                                                                      !
 !  internal module variables:                                          !
 !    kprfg (    IMXAE*JMXAE)   - aeros profile index                   !
@@ -1805,8 +1874,11 @@
 !                                                                      !
 !  ==================================================================  !
 
-!  ---  inputs: ( none )
-!  ---  output: ( none )
+!  ---  inputs: (CCPP Interstitials)
+      character(len=26),intent(in) :: aeros_file
+!  ---  output: (CCPP error handling)
+      integer,          intent(out) :: errflg
+      character(len=*), intent(out) :: errmsg
 
 !  ---  locals:
 !     real (kind=kind_io8)  :: cmix(NXC), denn, tem
@@ -1820,6 +1892,11 @@
 !
 !===>  ...  begin here
 !
+
+! Initialize CCPP error handling variables
+      errmsg = ''
+      errflg = 0
+
 !  --- ...  reading climatological aerosols data
 
       inquire (file=aeros_file, exist=file_exist)
@@ -1837,7 +1914,10 @@
         print *,'    Requested aerosol data file "',aeros_file,         &
      &          '" not found!'
         print *,'    *** Stopped in subroutine trop_update !!'
-        stop
+        errflg = 1
+        errmsg = 'ERROR(trop_update):Requested aerosol data file '//    &
+     &       aeros_file // ' not found.'
+        return
       endif      ! end if_file_exist_block
 
 !$omp parallel do private(i,j,m)
@@ -1929,10 +2009,10 @@
 !> This subroutine searches historical volcanic data sets to find and
 !! read in monthly 45-degree lat-zone band of optical depth.
 !--------------------------------
-      subroutine volc_update
+      subroutine volc_update(errflg, errmsg)
 !................................
 !  ---  inputs:    (in scope variables, module variables)
-!  ---  outputs:   (module variables)
+!  ---  outputs:   (CCPP error handling)
 
 !  ==================================================================  !
 !                                                                      !
@@ -1956,6 +2036,10 @@
 !   kyrsav   - integer, the year of data in use in the input file      !
 !   kmonsav  - integer, the month of data in use in the input file     !
 !                                                                      !
+!  outputs: (CCPP error-handling)                                      !
+!   errmsg  - Error message                                            !
+!   errflg  - Error flag                                               !
+!                                                                      ! 
 !  subroutines called: none                                            !
 !                                                                      !
 !  usage:    call volc_aerinit                                         !
@@ -1967,6 +2051,9 @@
 
 !  ---  output: (module variables)
 !     integer :: ivolae(:,:,:), kyrstr, kyrend, kyrsav, kmonsav
+!  ---  output: (CCPP error-handling)
+      integer,          intent(out) :: errflg
+      character(len=*), intent(out) :: errmsg
 
 !  ---  locals:
       integer :: i, j, k
@@ -1977,6 +2064,11 @@
 !
 !===>  ...  begin here
 !
+
+! Initialize CCPP error handling variables
+      errmsg = ''
+      errflg = 0
+
       kmonsav = imon
 
       if ( kyrstr<=iyear .and. iyear<=kyrend ) then   ! use previously input data
@@ -2031,7 +2123,10 @@
             print *,'   Requested volcanic data file "',                &
      &              volcano_file,'" not found!'
             print *,'   *** Stopped in subroutine VOLC_AERINIT !!'
-            stop
+            errflg = 1
+            errmsg = 'ERROR(volc_update): Requested volcanic data '//   &
+     &              'file '//volcano_file//' not found!'
+            return
           endif   ! end if_file_exist_block
 
         endif   ! end if_iyear_block
@@ -2082,9 +2177,9 @@
 !-----------------------------------
       subroutine setaer                                                 &
      &     ( prsi,prsl,prslk,tvly,rhlay,slmsk,tracer,aerfld,xlon,xlat,  &   !  ---  inputs
-     &       IMAX,NLAY,NLP1, lsswr,lslwr,                               &
-     &       aerosw,aerolw                                              &   !  ---  outputs
-     &,      aerodp                                                     &
+     &       IMAX,NLAY,NLP1, lsswr,lslwr,iaermdl,iaerflg,top_at_1,      &
+     &       con_pi,con_rd,con_g,aerosw,aerolw,                         &   !  ---  outputs
+     &       aerodp, errflg, errmsg                                     &
      &     )
 
 !  ==================================================================  !
@@ -2108,6 +2203,12 @@
 !     NLAY,NLP1-vertical dimensions of arrays                   1      !
 !     lsswr,lslwr                                                      !
 !             - logical flags for sw/lw radiation calls         1      !
+!     con_pi  - Physical constant (pi)                                 !
+!     con_t0c - Physical constant (temperature kelvin at zero celcius) !
+!     con_c   - Physical constant (speed of light)                     !
+!     iaermdl - tropospheric aerosol model scheme flag                 !
+!     iaerflg - aerosol effect control flag                            ! 
+!     top_at_1 - Vertical ordering convection flag                     !
 !                                                                      !
 !  outputs:                                                            !
 !     aerosw - aeros opt properties for sw      IMAX*NLAY*NBDSW*NF_AESW!
@@ -2121,18 +2222,16 @@
 !     tau_gocart - 550nm aeros opt depth     IMAX*NLAY*MAX_NUM_GRIDCOMP!
 !!    aerodp - vertically integrated optical depth         IMAX*NSPC1  !
 !                                                                      !
-!  external module variable: (in physparam)                            !
-!     iaerflg - aerosol effect control flag (volc,lw,sw, 3-dig)        !
+!     errflg  - CCPP error flag                                        !
+!     errmsg  - CCPP error message                                     !
+!                                                                      !
+!  internal module variable:                                           !
 !     laswflg - tropospheric aerosol control flag for sw radiation     !
 !               =f: no sw aeros calc.  =t: do sw aeros calc.           !
 !     lalwflg - tropospheric aerosol control flag for lw radiation     !
 !               =f: no lw aeros calc.  =t: do lw aeros calc.           !
 !     lavoflg - control flag for stratospheric vocanic aerosols        !
 !               =t: add volcanic aerosols to the background aerosols   !
-!     ivflip  - control flag for direction of vertical index           !
-!               =0: index from toa to surface                          !
-!               =1: index from surface to toa                          !
-!                                                                      !
 !  internal module variable: (set by subroutine aer_init)              !
 !     ivolae  - stratosphere volcanic aerosol optical depth (fac 1.e4) !
 !                                                     12*4*10          !
@@ -2143,8 +2242,8 @@
 !  ==================================================================  !
 
 !  ---  inputs:
-      integer, intent(in) :: IMAX, NLAY, NLP1
-
+      integer, intent(in) :: IMAX, NLAY, NLP1, iaermdl, iaerflg
+      real (kind=kind_phys), intent(in) :: con_pi, con_rd, con_g
       real (kind=kind_phys), dimension(:,:), intent(in) :: prsi, prsl,  &
      &       prslk, tvly, rhlay
       real (kind=kind_phys), dimension(:),   intent(in) :: xlon, xlat,  &
@@ -2152,7 +2251,7 @@
       real (kind=kind_phys), dimension(:,:,:),intent(in):: tracer
       real (kind=kind_phys), dimension(:,:,:),intent(in):: aerfld
 
-      logical, intent(in) :: lsswr, lslwr
+      logical, intent(in) :: lsswr, lslwr, top_at_1
 
 
 !  ---  outputs:
@@ -2160,6 +2259,8 @@
      &       aerosw, aerolw
 
       real (kind=kind_phys), dimension(:,:)    , intent(out) :: aerodp
+      integer,          intent(out) :: errflg
+      character(len=*), intent(out) :: errmsg
 
 !  ---  locals:
       real (kind=kind_phys), parameter :: psrfh = 5.0    ! ref press (mb) for upper bound
@@ -2176,10 +2277,16 @@
       logical               :: laddlw=.false.,  laerlw=.false.
 
 !  ---  conversion constants
-      real (kind=kind_phys), parameter :: rdg  = 180.0 / con_pi
-      real (kind=kind_phys), parameter :: rovg = 0.001 * con_rd / con_g
+      real (kind=kind_phys) :: rdg
+      real (kind=kind_phys) :: rovg
 
 !===>  ...  begin here
+      rdg  = 180._kind_phys / con_pi
+      rovg = 0.001_kind_phys * con_rd / con_g
+
+! Initialize CCPP error handling variables
+      errmsg = ''
+      errflg = 0
 
       do m = 1, NF_AESW
         do j = 1, NBDSW
@@ -2234,7 +2341,7 @@
 
         lab_do_IMAX : do i = 1, IMAX
 
-          lab_if_flip : if (ivflip == 1) then       ! input from sfc to toa
+          lab_if_flip : if (.not. top_at_1) then       ! input from sfc to toa
 
             do k = 1, NLAY
               prsln(k) = log(prsi(i,k))
@@ -2289,10 +2396,10 @@
 !  ---  inputs:
      &       ( prsi,prsl,prslk,tvly,rhlay,dz,hz,tracer,                   &
      &         alon,alat,slmsk, laersw,laerlw,                            &
-     &         IMAX,NLAY,NLP1,                                            &
+     &         IMAX,NLAY,NLP1,top_at_1,                                   &
 !    &         IMAX,NLAY,NLP1,NSPC1,                                      &
 !  ---  outputs:
-     &         aerosw,aerolw,aerodp                                       &
+     &         aerosw,aerolw,aerodp,errflg,errmsg                         &
      &       )
 
 !
@@ -2301,10 +2408,10 @@
           call aer_property_gocart                                        &
 !  ---  inputs:
      &       ( prsi,prsl,prslk,tvly,rhlay,dz,hz,tracer,aerfld,            &
-     &         alon,alat,slmsk,laersw,laerlw,                             &
+     &         alon,alat,slmsk,laersw,laerlw,con_rd,                      &
      &         IMAX,NLAY,NLP1,                                            &
 !  ---  outputs:
-     &         aerosw,aerolw,aerodp                                       &
+     &         aerosw,aerolw,aerodp,errflg,errmsg                         &
      &       )
         endif     ! end if_iaerflg_block
 
@@ -2391,7 +2498,7 @@
           endif
         enddo
 
-        if ( ivflip == 0 ) then         ! input data from toa to sfc
+        if (top_at_1) then         ! input data from toa to sfc
 
 !  ---  find lower boundary of stratosphere
 
@@ -2626,7 +2733,7 @@
             endif      ! end if_NLWBND_block
           endif        ! end if_laddlw_block
 
-        endif                           ! end if_ivflip_block
+        endif                           ! end if_top_at_1_block
 
       endif   ! end if_lavoflg_block
 !
@@ -2666,8 +2773,8 @@
       subroutine aer_property                                           &
      &     ( prsi,prsl,prslk,tvly,rhlay,dz,hz,tracer,                   &     !  ---  inputs:
      &       alon,alat,slmsk, laersw,laerlw,                            &
-     &       IMAX,NLAY,NLP1,                                            &
-     &       aerosw,aerolw,aerodp                                       &     !  ---  outputs:
+     &       IMAX,NLAY,NLP1,top_at_1,                                   &
+     &       aerosw,aerolw,aerodp,errflg,errmsg                         &     !  ---  outputs:
      &     )
 
 !  ==================================================================  !
@@ -2693,6 +2800,7 @@
 !     IMAX    - horizontal dimension of arrays                  1      !
 !     NLAY,NLP1-vertical dimensions of arrays                   1      !
 !!    NSPC    - num of species for optional aod output fields   1      !
+!     top_at_1 - vertical ordering flag                                !
 !                                                                      !
 !  outputs:                                                            !
 !     aerosw - aeros opt properties for sw      IMAX*NLAY*NBDSW*NF_AESW!
@@ -2705,15 +2813,13 @@
 !               (:,:,:,3): asymmetry parameter                         !
 !!    aerodp - vertically integrated aer-opt-depth         IMAX*NSPC+1 !
 !                                                                      !
+!     errflg  - CCPP error flag                                        !
+!     errmsg  - CCPP error message                                     !
+!                                                                      !
 !  module parameters and constants:                                    !
 !     NSWBND  - total number of actual sw spectral bands computed      !
 !     NLWBND  - total number of actual lw spectral bands computed      !
 !     NSWLWBD - total number of sw+lw bands computed                   !
-!                                                                      !
-!  external module variables: (in physparam)                           !
-!     ivflip  - control flag for direction of vertical index           !
-!               =0: index from toa to surface                          !
-!               =1: index from surface to toa                          !
 !                                                                      !
 !  module variable: (set by subroutine aer_init)                       !
 !     kprfg   - aerosols profile index                IMXAE*JMXAE      !
@@ -2734,7 +2840,7 @@
 !  ---  inputs:
       integer, intent(in) :: IMAX, NLAY, NLP1
 !     integer, intent(in) :: IMAX, NLAY, NLP1, NSPC
-      logical, intent(in) :: laersw, laerlw
+      logical, intent(in) :: laersw, laerlw, top_at_1
 
       real (kind=kind_phys), dimension(:,:), intent(in) :: prsi, prsl,  &
      &       prslk, tvly, rhlay, dz, hz
@@ -2746,6 +2852,8 @@
       real (kind=kind_phys), dimension(:,:,:,:), intent(out) ::         &
      &       aerosw, aerolw
       real (kind=kind_phys), dimension(:,:)    , intent(out) :: aerodp
+      integer,          intent(out) :: errflg
+      character(len=*), intent(out) :: errmsg
 
 !  ---  locals:
       real (kind=kind_phys), dimension(NCM) :: cmix
@@ -2772,6 +2880,11 @@
 !
 !===>  ...  begin here
 !
+
+! Initialize CCPP error handling variables
+      errmsg = ''
+      errflg = 0
+
 !> -# Map aerosol data to model grids
 !!    - Map grid in longitude direction, lon from 0 to 355 deg resolution
 !!    - Map grid in latitude direction, lat from 90n to 90s in 5 deg resolution
@@ -2797,7 +2910,9 @@
             if ( i3 > IMXAE ) then
               print *,' ERROR! In setclimaer alon>360. ipt =',i,        &
      &           ',  dltg,alon,tlon,dlon =',dltg,alon(i),tmp1,dtmp
-              stop
+              errflg = 1
+              errmsg = 'ERROR(aer_property)'
+              return
             endif
           elseif ( dtmp >= f_zero ) then
             i1 = i3
@@ -2815,7 +2930,9 @@
             if ( i3 < 1 ) then
               print *,' ERROR! In setclimaer alon< 0. ipt =',i,         &
      &           ',  dltg,alon,tlon,dlon =',dltg,alon(i),tmp1,dtmp
-              stop
+              errflg = 1
+              errmsg = 'ERROR(aer_property)'
+              return
             endif
           endif
         enddo  lab_do_IMXAE
@@ -2834,7 +2951,9 @@
             if ( j3 >= JMXAE ) then
               print *,' ERROR! In setclimaer alat<-90. ipt =',i,        &
      &           ',  dltg,alat,tlat,dlat =',dltg,alat(i),tmp2,dtmp
-              stop
+              errflg = 1
+              errmsg = 'ERROR(aer_property)'
+              return
             endif
           elseif ( dtmp >= f_zero ) then
             j1 = j3
@@ -2852,7 +2971,9 @@
             if ( j3 < 1 ) then
               print *,' ERROR! In setclimaer alat>90. ipt =',i,         &
      &           ',  dltg,alat,tlat,dlat =',dltg,alat(i),tmp2,dtmp
-              stop
+              errflg = 1
+              errmsg = 'ERROR(aer_property)'
+              return
             endif
           endif
         enddo  lab_do_JMXAE
@@ -2949,14 +3070,16 @@
           dz1(k) = dz   (i,k)
         enddo
 
-        lab_if_flip : if (ivflip == 1) then       ! input from sfc to toa
+        lab_if_flip : if (.not. top_at_1) then       ! input from sfc to toa
 
           if ( prsi(i,1) > 100.0 ) then
             rps = f_one / prsi(i,1)
           else
             print *,' !!! (1) Error in subr radiation_aerosols:',       &
      &              ' unrealistic surface pressure =', i,prsi(i,1)
-            stop
+            errflg = 1
+            errmsg = 'ERROR(aer_property): Unrealistic surface pressure'
+            return
           endif
 
           ii = 1
@@ -3029,7 +3152,7 @@
 !> -# Call radclimaer() to calculate SW/LW aerosol optical properties
 !!    for the corresponding frequency bands.
 
-        call radclimaer
+        call radclimaer(top_at_1)
 !  ---  inputs:  (in-scope variables)
 !  ---  outputs: (in-scope variables)
 
@@ -3090,7 +3213,7 @@
 !! troposphere, aerosol distribution at each grid point is composed
 !! from up to six components out of ten different substances.
 !--------------------------------
-      subroutine radclimaer
+      subroutine radclimaer(top_at_1)
 !................................
 
 !  ---  inputs:  (in scope variables)
@@ -3126,6 +3249,7 @@
       parameter (crt1=30.0, crt2=0.03333)
 
 !  ---  inputs:
+      logical, intent(in) :: top_at_1
 !  ---  outputs:
 
 !  ---  locals:
@@ -3328,7 +3452,7 @@
 !
 !===> ... smooth profile at domain boundaries
 !
-      if ( ivflip == 0 ) then    ! input from toa to sfc
+      if (top_at_1) then    ! input from toa to sfc
 
         do ib = 1, NSWLWBD
         do kk = 2, NLAY
@@ -3403,8 +3527,8 @@
 !>\section gel_go_ini General Algorithm
 !-----------------------------------
       subroutine gocart_aerinit                                         &
-     &     ( solfwv, eirfwv, me                                         &
-     &     )
+     &     ( solfwv, eirfwv, me,                                        &
+     &     errflg, errmsg)
 
 !  ==================================================================  !
 !                                                                      !
@@ -3418,7 +3542,9 @@
 !   eirfwv(NWVTIR)   - ir flux(273k) for each individual wavenum (w/m2)!
 !   me               - print message control flag                      !
 !                                                                      !
-!  outputs: (to module variables)                                      !
+!  outputs: (CCPP error handling)                                      !
+!   errflg           - CCPP error flag                                 !
+!   errmsg           - CCPP error message                              !
 !                                                                      !
 !  module variables:                                                   !
 !     NWVSOL  - num of wvnum regions where solar flux is constant      !
@@ -3444,7 +3570,9 @@
 
       integer,  intent(in) :: me
 
-!  ---  output: ( none )
+!  ---  output: (CCPP error handling)
+      integer,          intent(out) :: errflg
+      character(len=*), intent(out) :: errmsg
 
 !  ---  locals:
       real (kind=kind_phys), dimension(kaerbndi,kcm1)       ::          &
@@ -3475,23 +3603,32 @@
 
 !
 !===>  ...  begin here
+
+! Initialize CCPP error handling variables
+      errmsg = ''
+      errflg = 0
+
 !
 !  --- ...  invoke gocart aerosol initialization
 
 
       if (KCM /= ntrcaerm ) then
         print *, 'ERROR in # of gocart aer species',KCM
-        stop 3000
+        errflg = 1
+        errmsg = 'ERROR(gocart_init): Incorrect # of species'
+        return
       endif
 
 !  --- ...  aloocate and input aerosol optical data
 
       if ( .not. allocated( extrhi_grt ) ) then
         allocate ( extrhi_grt (       kcm1,nswlwbd) )
+        allocate ( extrhi_grt_550 (       kcm1,1) )
         allocate ( scarhi_grt (       kcm1,nswlwbd) )
         allocate ( ssarhi_grt (       kcm1,nswlwbd) )
         allocate ( asyrhi_grt (       kcm1,nswlwbd) )
         allocate ( extrhd_grt (krhlev,kcm2,nswlwbd) )
+        allocate ( extrhd_grt_550 (krhlev,kcm2,1) )
         allocate ( scarhd_grt (krhlev,kcm2,nswlwbd) )
         allocate ( ssarhd_grt (krhlev,kcm2,nswlwbd) )
         allocate ( asyrhd_grt (krhlev,kcm2,nswlwbd) )
@@ -3798,7 +3935,9 @@
        else
          print *,' Requested luts file ',trim(fin),' not found'
          print *,' ** Stopped in rd_gocart_luts ** '
-         stop 1220
+         errflg = 1
+         errmsg = 'Requested luts file '//trim(fin)//' not found'
+         return
        endif      ! end if_file_exist_block
 
        iradius = 5
@@ -3834,6 +3973,9 @@
        do i = 1, kaerbndi         ! convert from m to micron
           j = kaerbndi -i + 1     ! flip i-index
           wavelength_du(j) = 1.e6 * lambda_du(i)
+           if (int(wavelength_du(j)*100) == 55) then
+              id550=j
+           endif
        enddo
        do k = 1, iradius
           do i = 1, kaerbndi
@@ -3860,7 +4002,9 @@
         else
           print *,' Requested luts file ',trim(fin),' not found'
           print *,' ** Stopped in rd_gocart_luts ** '
-          stop 1222
+          errflg = 1
+          errmsg = 'Requested luts file '//trim(fin)//' not found'
+          return
         endif      ! end if_file_exist_block
 
         ibeg  =  radius_lower(ib) - kcm1
@@ -3898,6 +4042,9 @@
         do i = 1, kaerbndd         ! convert from m to micron
            j = kaerbndd -i + 1     ! flip i-index
            wavelength(j) = 1.e6 * lambda(i)
+           if (int(wavelength(j)*100) == 55) then
+              i550=j
+           endif
         enddo
         do k = 1, iradius
           ik = ibeg + k - 1
@@ -3968,7 +4115,7 @@
 !   nswbnd           - total number of sw spectral bands               !
 !   nlwbnd           - total number of lw spectral bands               !
 !                                                                      !
-! external module variables:  (in physparam)                           !
+! external module variables:                                           !
 !   laswflg          - control flag for sw spectral region             !
 !   lalwflg          - control flag for lw spectral region             !
 !                                                                      !
@@ -4016,6 +4163,9 @@
             refb = sumreft * rsolbd
 
             extrhi_grt(nc,nb) = sumk   * rsolbd
+            if (nb==nv_aod) then
+              extrhi_grt_550(nc,1) = rhidext0_grt(id550,nc)
+            endif
             scarhi_grt(nc,nb) = sums   * rsolbd
             asyrhi_grt(nc,nb) = sumokg / (sumok + 1.0e-10)
             ssarhi_grt(nc,nb) = 4.0*refb                                &
@@ -4048,6 +4198,9 @@
               refb = sumreft * rsolbd
 
               extrhd_grt(nh,nc,nb) = sumk   * rsolbd
+              if (nb==nv_aod) then
+                extrhd_grt_550(nh,nc,1) = rhdpext0_grt(i550,nh,nc)
+              endif
               scarhd_grt(nh,nc,nb) = sums   * rsolbd
               asyrhd_grt(nh,nc,nb) = sumokg / (sumok + 1.0e-10)
               ssarhd_grt(nh,nc,nb) = 4.0*refb                           &
@@ -4178,10 +4331,10 @@
 
 !  ---  inputs:
      &     ( prsi,prsl,prslk,tvly,rhlay,dz,hz,tracer,aerfld,            &
-     &       alon,alat,slmsk, laersw,laerlw,                            &
+     &       alon,alat,slmsk, laersw,laerlw,con_rd,                     &
      &       imax,nlay,nlp1,                                            &
 !  ---  outputs:
-     &       aerosw,aerolw,aerodp                                       &
+     &       aerosw,aerolw,aerodp,errflg,errmsg                         &
      &     )
 
 !  ==================================================================  !
@@ -4207,6 +4360,7 @@
 !             - logical flag for sw/lw aerosol calculations            !
 !     IMAX    - horizontal dimension of arrays                  1      !
 !     NLAY,NLP1-vertical dimensions of arrays                   1      !
+!     con_rd  - Physical constant (gas constant for dry air)           !
 !                                                                      !
 !  outputs:                                                            !
 !     aerosw - aeros opt properties for sw      IMAX*NLAY*NBDSW*NF_AESW!
@@ -4218,16 +4372,13 @@
 !               (:,:,:,2): single scattering albedo                    !
 !               (:,:,:,3): asymmetry parameter                         !
 !     aerodp - vertically integrated aer-opt-depth         IMAX*NSPC+1 !
+!     errflg  - CCPP error flag                                        !
+!     errmsg  - CCPP error message                                     !
 !                                                                      !
 !  module parameters and constants:                                    !
 !     NSWBND  - total number of actual sw spectral bands computed      !
 !     NLWBND  - total number of actual lw spectral bands computed      !
 !     NSWLWBD - total number of sw+lw bands computed                   !
-!                                                                      !
-!  external module variables: (in physparam)                           !
-!     ivflip  - control flag for direction of vertical index           !
-!               =0: index from toa to surface                          !
-!               =1: index from surface to toa                          !
 !                                                                      !
 !  module variable: (set by subroutine aer_init)                       !
 !                                                                      !
@@ -4238,7 +4389,7 @@
 !  ---  inputs:
       integer, intent(in) :: IMAX, NLAY, NLP1
       logical, intent(in) :: laersw, laerlw
-
+      real (kind=kind_phys), intent(in) :: con_rd
       real (kind=kind_phys), dimension(:,:), intent(in) :: prsi, prsl,  &
      &       prslk, tvly, rhlay, dz, hz
       real (kind=kind_phys), dimension(:),   intent(in) :: alon, alat,  &
@@ -4250,10 +4401,13 @@
       real (kind=kind_phys), dimension(:,:,:,:), intent(out) ::         &
      &       aerosw, aerolw
       real (kind=kind_phys), dimension(:,:)    , intent(out) :: aerodp
+      integer,          intent(out) :: errflg
+      character(len=*), intent(out) :: errmsg
 
 !  ---  locals:
       real (kind=kind_phys), dimension(nlay,nswlwbd):: tauae,ssaae,asyae
-      real (kind=kind_phys), dimension(nspc)        :: spcodp
+      real (kind=kind_phys), dimension(nlay,1):: tauae_550
+      real (kind=kind_phys), dimension(nlay,nspc)        :: spcodp
 
       real (kind=kind_phys),dimension(nlay,kcm) ::  aerms
       real (kind=kind_phys),dimension(nlay) :: dz1, rh1
@@ -4263,12 +4417,20 @@
 !
 !===>  ...  begin here
 !
+
+! Initialize CCPP error handling variables
+      errmsg = ''
+      errflg = 0
+
       lab_do_IMAXg : do i = 1, IMAX
 
 ! --- initialize tauae, ssaae, asyae
         do m = 1, NSWLWBD
           do k = 1, NLAY
            tauae(k,m) = f_zero
+           if (m==nv_aod) then
+             tauae_550(k,1) = f_zero
+           endif
            ssaae(k,m) = f_one
            asyae(k,m) = f_zero
           enddo
@@ -4276,13 +4438,15 @@
 
 ! --- set floor value for aerms (kg/m3)
         do k = 1, NLAY
-        do m = 1, kcm
-           aerms(k,m) = 1.e-15
-        enddo
+          do m = 1, kcm
+            aerms(k,m) = 1.e-15
+          enddo
         enddo
 
-        do m = 1, nspc
-           spcodp(m) = f_zero
+        do k = 1, NLAY
+          do m = 1, nspc
+            spcodp(k,m) = f_zero
+          enddo
         enddo
 
         do k = 1, NLAY
@@ -4320,11 +4484,10 @@
 
 ! --- update diagnostic aod arrays
           do k = 1, NLAY
-           aerodp(i,1) = aerodp(i,1) + tauae(k,nv_aod)
-          enddo
-
-          do m = 1, NSPC
-           aerodp(i,m+1) = spcodp(m)
+            aerodp(i,1) = aerodp(i,1) + tauae_550(k,1)
+            do m = 1, NSPC
+              aerodp(i,m+1) = aerodp(i,m+1)+spcodp(k,m)
+            enddo
           enddo
 
         endif     ! end if_larsw_block
@@ -4390,9 +4553,10 @@
 
 !  ---  locals:
       real (kind=kind_phys) :: drh0, drh1, rdrh
-      real (kind=kind_phys) :: cm, ext01, sca01, asy01, ssa01
-      real (kind=kind_phys) :: ext1, asy1, ssa1, sca1
+      real (kind=kind_phys) :: cm, ext01, ext01_550, sca01,asy01,ssa01
+      real (kind=kind_phys) :: ext1, ext1_550, asy1, ssa1,sca1,tau_550
       real (kind=kind_phys) :: sum_tau,sum_asy,sum_ssa,tau,asy,ssa
+      real (kind=kind_phys) :: sum_tau_550
       integer               :: ih1, ih2, nbin, ib, ntrc, ktrc
 
 ! --- linear interp coeffs for rh-dep species
@@ -4416,6 +4580,10 @@
         do ib = 1, nswlwbd
 
            sum_tau = f_zero
+           if (ib == nv_aod ) then
+             sum_tau_550 = f_zero
+             ext1_550 = f_zero
+           endif
            sum_ssa = f_zero
            sum_asy = f_zero
 
@@ -4429,6 +4597,9 @@
            do m = 1, kcm1
             cm =  max(aerms(k,m),0.0) * dz1(k)
             ext1 = ext1 + cm*extrhi_grt(m,ib)
+            if (ib == nv_aod) then
+              ext1_550 = ext1_550 + cm*extrhi_grt_550(m,1)
+            endif
             sca1 = sca1 + cm*scarhi_grt(m,ib)
             ssa1 = ssa1 + cm*extrhi_grt(m,ib) * ssarhi_grt(m,ib)
             asy1 = asy1 + cm*scarhi_grt(m,ib) * asyrhi_grt(m,ib)
@@ -4439,7 +4610,9 @@
 
 ! --- update aod from individual species
            if ( ib==nv_aod ) then
-             spcodp(1) = spcodp(1) + tau
+             tau_550 = ext1_550
+             spcodp(k,1) =  tau_550
+             sum_tau_550 = sum_tau_550 + tau_550
            endif
 ! --- update sum_tau, sum_ssa, sum_asy
            sum_tau = sum_tau + tau
@@ -4449,6 +4622,9 @@
 ! --- determine tau, ssa, asy for non-dust aerosols
            do ntrc = 2, nspc
             ext1 = f_zero
+            if ( ib==nv_aod ) then
+              ext1_550 = f_zero
+            endif
             asy1 = f_zero
             sca1 = f_zero
             ssa1 = f_zero
@@ -4459,6 +4635,10 @@
              cm =  max(aerms(k,m1),0.0) * dz1(k)
              ext01 = extrhd_grt(ih1,m,ib) +                             &
      &              rdrh * (extrhd_grt(ih2,m,ib)-extrhd_grt(ih1,m,ib))
+             if ( ib==nv_aod ) then
+               ext01_550 = extrhd_grt_550(ih1,m,1) +                    &
+     &         rdrh * (extrhd_grt_550(ih2,m,1)-extrhd_grt_550(ih1,m,1))
+             endif
              sca01 = scarhd_grt(ih1,m,ib) +                             &
      &              rdrh * (scarhd_grt(ih2,m,ib)-scarhd_grt(ih1,m,ib))
              ssa01 = ssarhd_grt(ih1,m,ib) +                             &
@@ -4466,6 +4646,9 @@
              asy01 = asyrhd_grt(ih1,m,ib) +                             &
      &              rdrh * (asyrhd_grt(ih2,m,ib)-asyrhd_grt(ih1,m,ib))
              ext1 = ext1 + cm*ext01
+             if ( ib==nv_aod ) then
+               ext1_550 = ext1_550 + cm*ext01_550
+             endif
              sca1 = sca1 + cm*sca01
              ssa1 = ssa1 + cm*ext01 * ssa01
              asy1 = asy1 + cm*sca01 * asy01
@@ -4475,7 +4658,9 @@
             if (sca1 > f_zero) asy=min(f_one, asy1/sca1)
 ! --- update aod from individual species
             if ( ib==nv_aod ) then
-             spcodp(ktrc) = spcodp(ktrc) + tau
+              tau_550 = ext1_550
+              spcodp(k,ktrc) = tau_550
+              sum_tau_550 = sum_tau_550 + tau_550
             endif
 ! --- update sum_tau, sum_ssa, sum_asy
             sum_tau = sum_tau + tau
@@ -4485,6 +4670,9 @@
 
 ! --- determine total tau, ssa, asy for aerosol mixture
            tauae(k,ib) = sum_tau
+           if ( ib==nv_aod ) then
+             tauae_550(k,1) = sum_tau_550
+           endif
            if (sum_tau > f_zero) ssaae(k,ib) = sum_ssa / sum_tau
            if (sum_ssa > f_zero) asyae(k,ib) = sum_asy / sum_ssa
 

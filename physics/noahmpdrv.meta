@@ -1,7 +1,7 @@
 [ccpp-table-properties]
   name = noahmpdrv
   type = scheme
-  dependencies = funcphys.f90,machine.F,sfc_diff.f,module_sf_noahmp_glacier.f90,module_sf_noahmplsm.f90,noahmp_tables.f90,set_soilveg.f
+  dependencies = funcphys.f90,machine.F,sfc_diff.f,module_sf_noahmp_glacier.F90,module_sf_noahmplsm.F90,noahmp_tables.f90,set_soilveg.f
 
 ########################################################################
 [ccpp-arg-table]
@@ -1310,6 +1310,14 @@
   standard_name = function_of_surface_roughness_length_and_green_vegetation_fraction
   long_name = function of surface roughness length and green vegetation fraction
   units = none
+  dimensions = (horizontal_loop_extent)
+  type = real
+  kind = kind_phys
+  intent = out
+[ztmax]
+  standard_name = bounded_surface_roughness_length_for_heat_over_land
+  long_name = bounded surface roughness length for heat over land
+  units = m
   dimensions = (horizontal_loop_extent)
   type = real
   kind = kind_phys

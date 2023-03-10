@@ -104,12 +104,7 @@
 !! emissivity for LW radiation.  
       module module_radiation_surface
 !
-!! \section arg_table_module_radiation_surface
-!! \htmlinclude module_radiation_surface.html
-!!
-      use physparam,         only : ialbflg, iemsflg, semis_file,       &
-     &                              kind_phys
-      use physcons,          only : con_t0c, con_ttp, con_pi, con_tice
+      use machine,           only : kind_phys
       use module_iounitdef,  only : NIRADSF
       use surface_perturbation, only : ppfbet
 !
@@ -123,13 +118,12 @@
 !    &   VTAGSFC='NCEP-Radiation_surface   v5.0  Aug 2012 '
 
 !  ---  constant parameters
-      integer, parameter, public :: NF_ALBD = 4     ! number of surface albedo components
       integer, parameter, public :: IMXEMS  = 360   ! number of longtitude points in global emis-type map
       integer, parameter, public :: JMXEMS  = 180   ! number of latitude points in global emis-type map
       real (kind=kind_phys), parameter :: f_zero = 0.0
       real (kind=kind_phys), parameter :: f_one  = 1.0
       real (kind=kind_phys), parameter :: epsln  = 1.0e-6
-      real (kind=kind_phys), parameter :: rad2dg = 180.0 / con_pi
+      real (kind=kind_phys) :: rad2dg
       integer, allocatable  ::  idxems(:,:)         ! global surface emissivity index array
       integer :: iemslw = 1                         ! global surface emissivity control flag set up in 'sfc_init'
 !
@@ -142,11 +136,10 @@
 
 !> This subroutine is the initialization program for surface radiation
 !! related quantities (albedo, emissivity, etc.)
-!!\param me       print control flag
 !>\section gen_sfc_init sfc_init General Algorithm
 !-----------------------------------
       subroutine sfc_init                                               &
-     &     ( me, errmsg, errflg )!  ---  inputs/outputs:
+     &     ( me, ialbflg, iemsflg, semis_file, con_pi, errmsg, errflg )!  ---  inputs/outputs:
 !
 !  ===================================================================  !
 !                                                                       !
@@ -160,11 +153,7 @@
 !  ====================  defination of variables  ====================  !
 !                                                                       !
 !  inputs:                                                              !
-!      me           - print control flag                                !
-!                                                                       !
-!  outputs: (none) to module variables only                             !
-!                                                                       !
-!  external module variables:                                           !
+!     me            - print control flag                                !
 !     ialbflg       - control flag for surface albedo schemes           !
 !                     =1: use modis based surface albedo                !
 !                     =2: use surface albedo from land model            !
@@ -174,13 +163,18 @@
 !                     b:=1 use varying climtology sfc emiss (veg based) !
 !                       =2 use surface emissivity from land model       !
 !                                                                       !
+!  outputs: (CCPP error handling)                                       !
+!     errmsg        - CCPP error message                                !
+!     errflg        - CCPP error flag                                   !
+!                                                                       !
 !  ====================    end of description    =====================  !
 !
       implicit none
 
 !  ---  inputs:
-      integer, intent(in) :: me
-
+      integer, intent(in) :: me, ialbflg, iemsflg
+      real(kind=kind_phys), intent(in) :: con_pi
+      character(len=26), intent(in) :: semis_file
 !  ---  outputs: ( none )
       character(len=*), intent(out) :: errmsg
       integer,          intent(out) :: errflg
@@ -196,10 +190,13 @@
       errmsg = ''
       errflg = 0
 !
+      ! Module
+      rad2dg = 180.0 / con_pi
+
       if ( me == 0 ) print *, VTAGSFC   ! print out version tag
 
 !> - Initialization of surface albedo section
-!! \n physparam::ialbflg
+!! \n GFS_typedefs::ialbflg
 !!  - = 1: using MODIS based land surface albedo for SW
 !!  - = 2: using albedo from land model
 
@@ -224,7 +221,7 @@
       endif    ! end if_ialbflg_block
 
 !> - Initialization of surface emissivity section
-!! \n physparam::iemsflg
+!! \n GFS_typedefs::iemsflg
 !!  - = 1: input SFC emissivity type map from "semis_file"
 !!  - = 2: input SFC emissivity from land model
 
@@ -299,33 +296,45 @@
 !! vis-nir, direct-diffused) according to control flag ialbflg.
 !! \n 1) climatological surface albedo scheme (\cite briegleb_1992)
 !! \n 2) MODIS retrieval based scheme from Boston univ.
-!!\param slmsk      (IMAX), sea(0),land(1),ice(2) mask on fcst model grid
-!!\param snodi      (IMAX), snow depth water equivalent in mm over ice
-!!\param sncovr     (IMAX), snow cover over land
-!!\param snoalb     (IMAX), maximum snow albedo over land (for deep snow)
-!!\param zorlf      (IMAX), surface roughness in cm
-!!\param coszf      (IMAX), cosin of solar zenith angle
-!!\param tsknf      (IMAX), ground surface temperature in K
-!!\param tairf      (IMAX), lowest model layer air temperature in K
-!!\param hprif      (IMAX), topographic sdv in m
-!!\n ---  for ialbflg=0 climtological albedo scheme  ---
-!!\param alvsf      (IMAX), 60 degree vis albedo with strong cosz dependency
-!!\param alnsf      (IMAX), 60 degree nir albedo with strong cosz dependency
-!!\param alvwf      (IMAX), 60 degree vis albedo with weak cosz dependency
-!!\param alnwf      (IMAX), 60 degree nir albedo with weak cosz dependency
-!!\n ---  for ialbflg=1 MODIS based land albedo scheme ---
-!!\param alvsf      (IMAX), visible black sky albedo at zenith 60 degree
-!!\param alnsf      (IMAX), near-ir black sky albedo at zenith 60 degree
-!!\param alvwf      (IMAX), visible white sky albedo
-!!\param alnwf      (IMAX), near-ir white sky albedo
-!!\param facsf      (IMAX), fractional coverage with strong cosz dependency
-!!\param facwf      (IMAX), fractional coverage with weak cosz dependency
-!!\param fice       (IMAX), sea-ice fraction
-!!\param tisfc      (IMAX), sea-ice surface temperature
-!!\param IMAX       array horizontal dimension
-!!\param albppert   (IMAX), a probability value in the interval [0,1]
-!!\param pertalb    (5), magnitude of perturbation of surface albedo
-!!\param sfcalb     (IMAX,NF_ALBD), mean sfc albedo
+!!\param slmsk              sea(0),land(1),ice(2) mask on fcst model grid
+!!\param lsm                flag for land surface model
+!!\param lsm_noahmp         flag for NOAH MP land surface model
+!!\param lsm_ruc            flag for RUC land surface model
+!!\param use_cice_alb       flag for using uce albedos from CICE when coupled
+!!\param snodi              snow depth water equivalent in mm over ice
+!!\param sncovr             snow cover over land
+!!\param snoalb             maximum snow albedo over land (for deep snow)
+!!\param zorlf              surface roughness in cm
+!!\param coszf              cosin of solar zenith angle
+!!\param tsknf              ground surface temperature in K
+!!\param tairf              lowest model layer air temperature in K
+!!\param hprif              topographic sdv in m
+!!\param frac_grid          flag for fractional landmask
+!!\param lakefrac           fraction of horizontal grid area occupied by lake
+!!\param alvsf              visible black sky albedo at zenith 60 degree
+!!\param alnsf              near-ir black sky albedo at zenith 60 degree
+!!\param alvwf              visible white sky albedo
+!!\param alnwf              near-ir white sky albedo
+!!\param facsf              fractional coverage with strong cosz dependency
+!!\param facwf              fractional coverage with weak cosz dependency
+!!\param fice               sea-ice fraction
+!!\param tisfc              sea-ice surface temperature
+!!\param lsmalbdvis         direct surface albedo visible band over land
+!!\param lsmalbdnir         direct surface albedo NIR band over land
+!!\param lsmalbivis         diffuse surface albedo visible band over land
+!!\param lsmalbinir         diffuse surface albedo NIR band over land
+!!\param icealbdvis         direct surface albedo visible band over ice
+!!\param icealbdnir         direct surface albedo NIR band over ice
+!!\param icealbivis         diffuse surface albedo visible band over ice
+!!\param icealbinir         diffuse surface albedo NIR band over ice
+!!\param IMAX               array horizontal dimension
+!!\param albppert           a probability value in the interval [0,1]
+!!\param pertalb            (5), magnitude of perturbation of surface albedo
+!!\param fracl              land fraction for emissivity and albedo calculation
+!!\param fraco              ocean fraction for emissivity of albedo calculation
+!!\param fraci              ice fraction for emissivity of albedo calculation
+!!\param icy                flag for ice surfce
+!!\param sfcalb             mean sfc albedo
 !!\n                    ( :, 1) -     near ir direct beam albedo
 !!\n                    ( :, 2) -     near ir diffused albedo
 !!\n                    ( :, 3) -     uv+vis direct beam albedo
@@ -339,7 +348,8 @@
      &       alvsf,alnsf,alvwf,alnwf,facsf,facwf,fice,tisfc,            &
      &       lsmalbdvis, lsmalbdnir, lsmalbivis, lsmalbinir,            &
      &       icealbdvis, icealbdnir, icealbivis, icealbinir,            &
-     &       IMAX, albPpert, pertalb, fracl, fraco, fraci, icy,         &
+     &       IMAX, NF_ALBD, albPpert, pertalb, fracl, fraco, fraci, icy,&
+     &       ialbflg, con_ttp,                                          &
      &       sfcalb                                                     & !  ---  outputs:
      &     )
 
@@ -387,6 +397,9 @@
 !     fice  (IMAX)  - sea-ice fraction                                  !
 !     tisfc (IMAX)  - sea-ice surface temperature                       !
 !     IMAX          - array horizontal dimension                        !
+!     ialbflg       - control flag for surface albedo schemes           !
+!                     =1: use modis based surface albedo                !
+!                     =2: use surface albedo from land model            !
 !                                                                       !
 !  outputs:                                                             !
 !     sfcalb(IMAX,NF_ALBD)                                              !
@@ -395,17 +408,12 @@
 !           ( :, 3) -     uv+vis direct beam albedo                     !
 !           ( :, 4) -     uv+vis diffused albedo                        !
 !                                                                       !
-!  module internal control variables:                                   !
-!     ialbflg       - =0 use the default climatology surface albedo     !
-!                     =1 use modis retrieved albedo and input snow cover!
-!                        for land areas                                 !
-!                                                                       !
 !  ====================    end of description    =====================  !
 !
       implicit none
 
 !  ---  inputs
-      integer, intent(in) :: IMAX
+      integer, intent(in) :: IMAX, NF_ALBD, ialbflg
       integer, intent(in) :: lsm, lsm_noahmp, lsm_ruc
       logical, intent(in) :: use_cice_alb, frac_grid
 
@@ -415,7 +423,7 @@
      &       alvsf, alnsf, alvwf, alnwf, facsf, facwf, fice, tisfc,     &
      &       icealbdvis, icealbdnir, icealbivis, icealbinir,            &
      &       sncovr, sncovr_ice, snoalb, albPpert           ! sfc-perts, mgehne
-      real (kind=kind_phys),  intent(in) :: pertalb         ! sfc-perts, mgehne
+      real (kind=kind_phys),  intent(in) :: pertalb, con_ttp! sfc-perts, mgehne
       real (kind=kind_phys), dimension(:), intent(in) ::                &
      &       fracl, fraco, fraci
       real (kind=kind_phys), dimension(:),intent(inout) ::              &
@@ -447,7 +455,7 @@
 !
 !===> ...  begin here
 !
-!> - Use modis based albedo for land area:
+!> - if ialbflg = 1, use MODIS based albedo for land area:
       if ( ialbflg == 1 ) then
 
         do i = 1, IMAX
@@ -536,7 +544,7 @@
             flnd  = flnd0 * fsno1 ! snow-free fraction
             fsno  = f_one - flnd  ! snow-covered fraction
 
-            !>  - use Fanglin's zenith angle treatment.
+            !  - use Fanglin's zenith angle treatment.
             if (coszf(i) > 0.0001) then
               rfcs = 1.775/(1.0+1.55*coszf(i))
             else
@@ -576,7 +584,7 @@
 
         enddo    ! end_do_i_loop
 
-!> -# use land model output for land area: Noah MP, RUC (land and ice).
+!> - if ialbflg = 2, use land model output for land area: Noah MP, RUC (land and ice).
       elseif ( ialbflg == 2 ) then
         do i = 1, IMAX
 
@@ -707,18 +715,35 @@
 !-----------------------------------
 
 !> This subroutine computes surface emissivity for LW radiation.
-!!\param xlon      (IMAX), longitude in radiance, ok for both 0->2pi
-!!                  or -pi -> +pi ranges
-!!\param xlat      (IMAX), latitude  in radiance, default to pi/2 ->
-!!                  -pi/2 range, otherwise see in-line comment
-!!\param snodl     (IMAX), snow depth water equivalent in mm land
-!!\param snodi     (IMAX), snow depth water equivalent in mm ice
-!!\param sncovr    (IMAX), snow cover over land
-!!\param zorlf     (IMAX), surface roughness in cm
-!!\param tsknf     (IMAX), ground surface temperature in K
-!!\param tairf     (IMAX), lowest model layer air temperature in K
-!!\param hprif     (IMAX), topographic standard deviation in m
-!!\param IMAX       array horizontal dimension
+!!\param lsm              flag for land surface model
+!!\param lsm_noahmp       flag for NOAH MP land surface model
+!!\param lsm_ruc          flag for RUC land surface model
+!!\param frac_grid        flag for fractional grid
+!!\param cplice           flag for controlling cplice collection
+!!\param use_flake        flag for indicating lake points using flake model
+!!\param lakefrac         fraction of horizontal grid area occupied by lake
+!!\param xlon             longitude in radiance, ok for both 0->2pi
+!!                        or -pi -> +pi ranges
+!!\param xlat             latitude  in radiance, default to pi/2 ->
+!!                        -pi/2 range, otherwise see in-line comment
+!!\param slmsk            landmask: sea/land/ice =0/1/2 
+!!\param snodl            snow depth water equivalent in mm land
+!!\param snodi            snow depth water equivalent in mm ice
+!!\param sncovr           snow cover over land
+!!\param sncovr_ice       surface snow area fraction over ice
+!!\param zorlf            surface roughness in cm
+!!\param tsknf            ground surface temperature in K
+!!\param tairf            lowest model layer air temperature in K
+!!\param hprif            topographic standard deviation in m
+!!\param semis_lnd        surface LW emissivity in fraction over land
+!!\param semis_ice        surface LW emissivity in fraction over ice
+!!\param semis_wat        surface LW emissivity in fraction over water
+!!\param IMAX             array horizontal dimension
+!!\param fracl            land fraction for emissivity and albedo calculation
+!!\param fraco            ocean fraction for emissivity of albedo calculation
+!!\param fraci            ice fraction for emissivity of albedo calculation
+!!\param icy              flag for ice surfce
+!!\param semisbase        baseline surface LW emissivity in fraction
 !!\param sfcemis  (IMAX), surface emissivity
 !>\section general_setemis setemis General Algorithm
 !-----------------------------------
