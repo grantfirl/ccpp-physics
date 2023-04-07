@@ -335,6 +335,14 @@
   type = real
   kind = kind_phys
   intent = in
+[ovhd_cldcov]
+  standard_name = cumulative_overhead_cloud_area_fraction
+  long_name = area covered by clouds from all levels above
+  units = frac
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = out
 [errmsg]
   standard_name = ccpp_error_message
   long_name = error message for error handling in CCPP

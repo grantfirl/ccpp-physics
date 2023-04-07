@@ -9,7 +9,7 @@
 !> \section arg_table_tiedtke_prog_clouds_post_run Argument Table
 !! \htmlinclude tiedtke_prog_clouds_post_run.html
 !!
-    subroutine tiedtke_prog_clouds_post_run (idim, kdim, i_macro, i_temp, do_liq_num, do_ice_num, do_mynnedmf, ldiag3d, qdiag3d, ntqv, ntcw, ntiw, ntclamt, ntlnc, ntinc, dt, qmin, tfreeze, ST, SQ, SL, SI, SA, SN, SNI, dcond_ls_l, dcond_ls_i, d_eros, qa_upd, ql_upd, qi_upd, gt0, gq0, dtend, dtidx, d_eros_l, d_eros_i, nerosc, nerosi, dqcdt, dqidt, dqadt_pbl, dqcdt_pbl, errmsg, errflg)
+    subroutine tiedtke_prog_clouds_post_run (idim, kdim, i_macro, i_temp, do_liq_num, do_ice_num, do_mynnedmf, ldiag3d, qdiag3d, ntqv, ntcw, ntiw, ntclamt, ntlnc, ntinc, dt, qmin, tfreeze, ST, SQ, SL, SI, SA, SN, SNI, dcond_ls_l, dcond_ls_i, d_eros, qa_upd, ql_upd, qi_upd, gt0, gq0, dtend, dtidx, d_eros_l, d_eros_i, nerosc, nerosi, dqcdt, dqidt, dqadt_pbl, dqcdt_pbl, ovhd_cldcov, errmsg, errflg)
 
       use machine  , only : kind_phys
       
@@ -27,13 +27,14 @@
       integer, intent(in) :: dtidx(:,:)
       real(kind=kind_phys), intent(inout) :: dtend(:,:,:) 
       
-      real(kind=kind_phys), intent(out) :: d_eros_l(:,:), d_eros_i(:,:), nerosc(:,:), nerosi(:,:), dqcdt(:,:), dqidt(:,:)
+      real(kind=kind_phys), intent(out) :: d_eros_l(:,:), d_eros_i(:,:), nerosc(:,:), nerosi(:,:), dqcdt(:,:), dqidt(:,:), ovhd_cldcov(:,:)
       
       character(len=*), intent(out) :: errmsg
       integer,          intent(out) :: errflg
       
       integer :: i, k, idtend
       
+      real(kind=kind_phys), parameter :: delta = 1.0E-6
       real(kind=kind_phys) :: dt_inv
       
       real(kind=kind_phys), dimension(idim,kdim) :: dcond_ls_tot
@@ -155,7 +156,42 @@
             endif
           endif
         end do   
-      end do   
+      end do
+      
+      !This expression “gives maximum overlap for clouds in adjacent levels with cloud fraction monotonically increasing or decreasing with height, 
+      !and random overlap for clouds either separated by clear levels of for levels of changing sign in the vertical gradient of cloud fraction” (Jakob and Klein, 2000)
+      do i=1,idim
+        ovhd_cldcov(i,kdim) = gq0(i,kdim,ntclamt)
+        do k=kdim-1,1,-1
+          ovhd_cldcov(i,k) = 1.0 - (1.0 - ovhd_cldcov(i,k+1))*&
+            (1.0 - MAX(gq0(i,k,ntclamt),gq0(i,k+1,ntclamt)))/(1.0 - MIN(gq0(i,k+1,ntclamt),1.0 - delta))          
+        end do
+      end do
+      
+      !Chosson_et_al (2014) Appendix A algorithm for precip fraction
+      ap(:,:) = 0.0
+      ap_cld(:,:) = 0.0
+      ap_clr(:,:) = 0.0
+      !calculate total precipitation mixing ratio (depends on MP scheme, but just for Thompson MP for now)
+      gq0_precip(:,:) = gq0(:,:,ntr) + gq0(:,:,nts) + gq0(:,:,ntg)
+      do i=1,idim
+        precip_found = .false.
+        do k=kdim,1,-1
+          if (gq0_precip(i,k) > 0.0) then !should this be a different threshold?
+            if (.not. precip_found) then
+              ap_cld(i,k) = gq0(i,k,ntclamt)
+              precip_found = .true.
+            else
+              del_ovhd_cldcov = ovhd_cldcov(i,k) - ovhd_cldcov(i,k+1)
+              del_ap_cld2clr = ap_cld(i,k+1) - MIN(gq0(i,k,ntclamt) - del_ovhd_cldcov,ap_cld(i,k+1))
+              del_ap_clr2cld = MAX(0.0,MIN(ap_clr(i,k+1),gq0(i,k,ntclamt) - del_ovhd_cldcov - gq0(i,k+1,ntclamt)))
+              ap_cld(i,k) = gq0(i,k+1,ntclamt) + del_ap_clr2cld - del_ap_cld2clr !first term is different than Firl(2009), which has ap_cld(i,k+1)
+              ap_clr(i,k) = ap_clr(i,k+1) - del_ap_clr2cld + del_ap_cld2clr
+            end if
+            ap(i,k) = ap_cld(i,k) + ap_clr(i,k)
+          end if
+        end do
+      end do
 
     end subroutine tiedtke_prog_clouds_post_run
     

@@ -710,22 +710,6 @@
   type = real
   kind = kind_phys
   intent = in
-[con_rd]
-  standard_name = gas_constant_of_dry_air
-  long_name = ideal gas constant for dry air
-  units = J kg-1 K-1
-  dimensions = ()
-  type = real
-  kind = kind_phys
-  intent = in
-[con_g]
-  standard_name = gravitational_acceleration
-  long_name = gravitational acceleration
-  units = m s-2
-  dimensions = ()
-  type = real
-  kind = kind_phys
-  intent = in
 [con_ttp]
   standard_name = triple_point_temperature_of_water
   long_name = triple point temperature of water

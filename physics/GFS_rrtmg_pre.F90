@@ -36,7 +36,7 @@
         epsm1, fvirt, rog, rocp, con_rd, con_g, xlat_d, xlat, xlon, coslat, sinlat,   &
         tsfc, slmsk, prsi, prsl, prslk, tgrs, sfc_wts, mg_cld, effrr_in,       &
         pert_clds, sppt_wts, sppt_amp, cnvw_in, cnvc_in, qgrs, qc_bl, qi_bl, aer_nm, dx,     &
-        icloud, iaermdl, iaerflg, con_pi, con_g, con_ttp, con_thgni, si,       & !inputs from here and above
+        icloud, iaermdl, iaerflg, con_pi, con_ttp, con_thgni, si,       & !inputs from here and above
         coszen, coszdg, effrl_inout, effri_inout, effrs_inout,                 &
         clouds1, clouds2, clouds3, clouds4, clouds5, qci_conv,                 & !in/out from here and above
         kd, kt, kb, mtopa, mbota, raddt, tsfg, tsfa, de_lgth, alb1d, delp, dz, & !output from here and below
