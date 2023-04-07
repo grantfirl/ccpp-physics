@@ -989,7 +989,7 @@ SUBROUTINE mynnedmf_wrapper_run(        &
        endif
        
        dqcdt_mynn  = dqdt_liquid_cloud
-       dqidt_mynn  = dqdt_ice_cloud
+       dqidt_mynn  = dqdt_ice
        dqndt_mynn  = dqdt_cloud_droplet_num_conc
        dqnidt_mynn = dqdt_ice_num_conc
        

@@ -3680,7 +3680,13 @@ MODULE module_mp_thompson
          rc(k) = MAX(R1, (qc1d(k) + DT*qcten(k))*rho(k))
          if (rc(k).eq.R1) L_qc(k) = .false.
          nc(k) = MAX(2., MIN((nc1d(k)+ncten(k)*DT)*rho(k), Nt_c_max))
-         if (.NOT. (is_aerosol_aware .or. merra2_aerosol_aware)) nc(k) = Nt_c
+         if (.NOT. (is_aerosol_aware .or. merra2_aerosol_aware)) then
+           if (lsml == 1) then
+             nc(k) = Nt_c_l
+           else
+             nc(k) = Nt_c_o
+           endif
+         endif
          qv(k) = MAX(1.E-10, qv1d(k) + DT*qvten(k))
          temp(k) = t1d(k) + DT*tten(k)
          rho(k) = 0.622*pres(k)/(R*temp(k)*(qv(k)+0.622))

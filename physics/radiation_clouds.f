@@ -535,7 +535,8 @@
 
 
       logical, intent(in)  :: uni_cld, lmfshal, lmfdeep2, effr_in,      &
-     &     tiedtke_prog_clouds, do_mynnedmf, lgfdlmprad, top_at_1, lcrick, lcnorm
+     &     tiedtke_prog_clouds, do_mynnedmf, lgfdlmprad, top_at_1,      &
+     &     lcrick, lcnorm
 
       real (kind=kind_phys), dimension(:,:,:), intent(in) :: ccnd,      &
      &                                                       tracer1

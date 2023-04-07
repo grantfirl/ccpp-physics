@@ -801,8 +801,8 @@ module mp_thompson
                               tiedtke_prog_clouds=tiedtke_prog_clouds, qmin=qmin, cld_frc=cld_frc3d,      &
                               d_eros_l=d_eros_l3d, d_eros_i=d_eros_i3d,                      &
                               nerosc=nerosc3d, nerosi=nerosi3d,                              &
-                              dqcdt=dqcdt3d, dqidt=dqidt3d, con_hum_area=con_hum_area3d,     
-                              &errmsg=errmsg, errflg=errflg, &
+                              dqcdt=dqcdt3d, dqidt=dqidt3d, con_hum_area=con_hum_area3d,     &  
+                              errmsg=errmsg, errflg=errflg, &
                               ! Extended diagnostics
                               ext_diag=ext_diag,                                             &
                               ! vts1=vts1, txri=txri, txrc=txrc,                             &
