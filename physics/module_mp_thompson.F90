@@ -1003,7 +1003,7 @@ MODULE module_mp_thompson
                               ids,ide, jds,jde, kds,kde,              &  ! domain dims
                               ims,ime, jms,jme, kms,kme,              &  ! memory dims
                               its,ite, jts,jte, kts,kte,              &  ! tile dims
-                              reset_dBZ, istep, nsteps,               &
+                              fullradar_diag, istep, nsteps,          &
                               tiedtke_prog_clouds, qmin,              &
                               cld_frc,                                &
                               d_eros_l, d_eros_i, nerosc, nerosi,     &
@@ -1074,7 +1074,7 @@ MODULE module_mp_thompson
       INTEGER, INTENT(IN) :: decfl
       ! To support subcycling: current step and maximum number of steps
       INTEGER, INTENT (IN) :: istep, nsteps
-      LOGICAL, INTENT (IN) :: reset_dBZ
+      LOGICAL, INTENT (IN) :: fullradar_diag 
       ! Tiedtke prognostic clouds
       LOGICAL, INTENT (IN) :: tiedtke_prog_clouds
       REAL, INTENT (IN) :: qmin
@@ -1725,7 +1725,7 @@ MODULE module_mp_thompson
            if (diagflag .and. do_radar_ref == 1) then
 !
              ! Only set melti to true at the output times
-             if (reset_dBZ) then
+             if (fullradar_diag) then
                melti=.true.
              else
                melti=.false.
