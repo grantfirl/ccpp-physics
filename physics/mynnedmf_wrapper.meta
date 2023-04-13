@@ -1523,38 +1523,6 @@
   type = real
   kind = kind_phys
   intent = in
-[dqcdt_mynn]
-  standard_name = tendency_of_cloud_liquid_water_due_to_mynn_pbl
-  long_name = tendency of cloud liquid water due to MYNN PBL scheme
-  units = kg kg-1 s-1
-  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
-  type = real
-  kind = kind_phys
-  intent = out
-[dqidt_mynn]
-  standard_name = tendency_of_cloud_ice_water_due_to_mynn_pbl
-  long_name = tendency of cloud ice water due to MYNN PBL scheme
-  units = kg kg-1 s-1
-  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
-  type = real
-  kind = kind_phys
-  intent = out 
-[dqndt_mynn]
-  standard_name = tendency_of_cloud_droplet_mass_number_concentration_due_to_mynn_pbl
-  long_name = tendency of cloud droplet mass number concentration due to MYNN PBL scheme
-  units = kg-1 s-1
-  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
-  type = real
-  kind = kind_phys
-  intent = out
-[dqnidt_mynn]
-  standard_name = tendency_of_cloud_ice_mass_number_concentration_due_to_mynn_pbl
-  long_name = tendency of cloud ice mass number concentration due to MYNN PBL scheme
-  units = kg-1 s-1
-  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
-  type = real
-  kind = kind_phys
-  intent = out
 [errmsg]
   standard_name = ccpp_error_message
   long_name = error message for error handling in CCPP

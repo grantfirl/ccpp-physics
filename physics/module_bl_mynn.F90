@@ -557,7 +557,7 @@ CONTAINS
     real(kind_phys), DIMENSION(KTS:KTE+1) :: zw
     real(kind_phys) :: cpm,sqcg,flt,fltv,flq,flqv,flqc,     &
          &pmz,phh,exnerg,zet,phi_m,                         &
-         &afk,abk,ts_decay, qc_bl2, qi_bl2,                 &
+         &afk,abk, qc_bl2, qi_bl2,                          &
          &th_sfc,ztop_plume,wsp
 
     !top-down diffusion
@@ -735,6 +735,7 @@ CONTAINS
              qc_bl1d(:)=qc_bl(i,:)
              qi_bl1d(:)=qi_bl(i,:)
           endif
+          qgrs_cldfra1d(:)=qgrs_cldfra(i,:)
 
           do k=KTS,KTE !KTF
                 dz1(k)=dz(i,k)
@@ -748,7 +749,6 @@ CONTAINS
                 sqc(k)=sqc3D(i,k) !/(1.+qv(i,k))
                 sqv(k)=sqv3D(i,k) !/(1.+qv(i,k))
                 thetav(k)=th(i,k)*(1.+p608*sqv(k))
-                qgrs_cldfra1d(k)=qgrs_cldfra(i,k)
                 !keep snow out for now - increases ceiling bias
                 sqw(k)=sqv(k)+sqc(k)+sqi(k)!+sqs(k)
                 thl(k)=th1(k) - xlvcp/ex1(k)*sqc(k) &
@@ -888,7 +888,6 @@ CONTAINS
           qc_bl1D_old  =0.0
           qi_bl1D_old  =0.0
        endif
-       qgrs_cldfra1d(kts:kte)=qgrs_cldfra(i,kts:kte)
        dz1(kts:kte)    =dz(i,kts:kte)
        u1(kts:kte)     =u(i,kts:kte)
        v1(kts:kte)     =v(i,kts:kte)
@@ -943,6 +942,7 @@ CONTAINS
        ELSE
           ozone1(kts:kte)=0.0
        ENDIF
+       qgrs_cldfra1d(:)=qgrs_cldfra(i,:)
        el(kts:kte)  =el_pbl(i,kts:kte)
        qke1(kts:kte)=qke(i,kts:kte)
        sh(kts:kte)  =sh3d(i,kts:kte)
@@ -1108,7 +1108,7 @@ CONTAINS
             &PBLH(i),HFX(i),                             &
             &Vt, Vq, th1, sgm, rmol(i),                  &
             &spp_pbl, rstoch_col,                        &
-            &tiedtke_prog_clouds,qgrs_cldfra1d)
+            &tiedtke_prog_clouds,qgrs_cldfra1d           )
 
 !>  - Add TKE source driven by cloud top cooling
 !!  Calculate the buoyancy production of TKE from cloud-top cooling when
@@ -1167,7 +1167,7 @@ CONTAINS
                &maxmf(i),ztop_plume,                     &
                &spp_pbl,rstoch_col,                      &
                &tiedtke_prog_clouds,                     &
-               &qgrs_cldfra1d,                           &
+	       &qgrs_cldfra1d,                           &
                &dqadt_pbl1d,dqcdt_pbl1d                  )
        endif
 
@@ -1253,6 +1253,7 @@ CONTAINS
                &Dqnwfa1, Dqnifa1, Dqnbca1,               &
                &Dozone1,                                 &
                &diss_heat,                               &
+               &dqcdt_pbl1d,tiedtke_prog_clouds,         &
                ! mass flux components
                &s_aw1,s_awthl1,s_awqt1,                  &
                &s_awqv1,s_awqc1,s_awu1,s_awv1,           &
@@ -1355,12 +1356,12 @@ CONTAINS
        cov(i,:)   =cov1(:)
        sh3d(i,:)  =sh(:)
        sm3d(i,:)  =sm(:)
-       
+
        if (tiedtke_prog_clouds) then
           dqadt_pbl(i,:)=dqadt_pbl1d(:)
           dqcdt_pbl(i,:)=dqcdt_pbl1d(:)
        endif
-       
+
        if (tke_budget .eq. 1) then
           !! TKE budget is now given in m**2/s**-3 (Puhales, 2020)
           !! Lower boundary condtions (using similarity relationships such as the prognostic equation for Qke)
@@ -1407,15 +1408,15 @@ CONTAINS
           !   edmf_qc_dd(i,:) =edmf_qc_dd1(:)
           !endif
        endif
-       
+
        !ouput the net mass flux for prog cloud
        if (bl_mynn_edmf > 0 .and. tiedtke_prog_clouds) THEN
           do k = kts,kte
              net_mass_flux(i,k)=rho1(k)*edmf_a1(k)*edmf_w1(k) !+ &
                              !  rho1(k)*edmf_a_dd1(k)*edmf_w_dd1(k)
-          enddo
+           enddo
        endif
-       
+
        !***  Begin debug prints
        if ( debug_code .and. (i .eq. idbg)) THEN
           if ( ABS(QFX(i))>.001)print*,&
@@ -3626,7 +3627,7 @@ CONTAINS
     &            Vt, Vq, th, sgm, rmo,     &
     &            spp_pbl,rstoch_col,       &
     &            tiedtke_prog_clouds,      &
-    &            qgrs_cldfra1d            )
+    &            qgrs_cldfra1d             )
 
 !-------------------------------------------------------------------
 
@@ -3682,8 +3683,9 @@ CONTAINS
 ! Thompson subgrid-cloud scheme.  This height will be a consideration later when determining 
 ! the "final" subgrid-cloud properties.
 ! JAYMES:  added 3 Nov 2016, adapted from G. Thompson
-  if (.not. tiedtke_prog_clouds) then
-    
+
+ if (.not. tiedtke_prog_clouds) then
+
     DO k = kte-3, kts, -1
        theta1 = th(k)
        theta2 = th(k+2)
@@ -3996,7 +3998,7 @@ CONTAINS
 
       END SELECT !end cloudPDF option
 
-    else  !use tiedtke_prog_clouds, bypass mynn stratus clouds
+   else  !use tiedtke_prog_clouds, bypass mynn stratus clouds
       !At this point, cldfra_bl and qc_bl have already been saved, so set to zero
       cldfra_bl1D = 0.0
       qc_bl1d     = 0.0
@@ -4099,6 +4101,7 @@ CONTAINS
        &Du,Dv,Dth,Dqv,Dqc,Dqi,Dqs,Dqnc,Dqni,  &
        &Dqnwfa,Dqnifa,Dqnbca,Dozone,          &
        &diss_heat,                            &
+       &dqcdt_pbl1d,tiedtke_prog_clouds,      &
        &s_aw,s_awthl,s_awqt,s_awqv,s_awqc,    &
        &s_awu,s_awv,                          &
        &s_awqnc,s_awqni,                      &
@@ -4131,7 +4134,8 @@ CONTAINS
                            bl_mynn_edmf,bl_mynn_edmf_mom,                 &
                            bl_mynn_mixscalars
     LOGICAL, INTENT(IN) :: FLAG_QI,FLAG_QNI,FLAG_QC,FLAG_QS,              &
-         &FLAG_QNC,FLAG_QNWFA,FLAG_QNIFA,FLAG_QNBCA
+         &FLAG_QNC,FLAG_QNWFA,FLAG_QNIFA,FLAG_QNBCA,                      &
+         &tiedtke_prog_clouds
 
 ! thl - liquid water potential temperature
 ! qw - total water
@@ -4153,7 +4157,7 @@ CONTAINS
     real(kind_phys), DIMENSION(kts:kte), INTENT(inout) :: thl,sqw,sqv,sqc,&
          &sqi,sqs,qnwfa,qnifa,qnbca,ozone,dfm,dfh
     real(kind_phys), DIMENSION(kts:kte), INTENT(inout) :: du,dv,dth,dqv,  &
-         &dqc,dqi,dqs,dqni,dqnc,dqnwfa,dqnifa,dqnbca,dozone
+         &dqc,dqi,dqs,dqni,dqnc,dqnwfa,dqnifa,dqnbca,dozone,dqcdt_pbl1d
     real(kind_phys), INTENT(IN) :: flt,flq,flqv,flqc,uoce,voce
     real(kind_phys), INTENT(IN) :: ust,delt,psfc,wspd
     !debugging
@@ -5083,6 +5087,15 @@ ENDIF
       ENDDO
     ENDIF
 
+    ! adjust mass-flux clouds for prog cloud:
+    if (tiedtke_prog_clouds) then
+       do k=kts,kte
+          dqc(k) = dqc(k) + dqcdt_pbl1d(k)
+          dqv(k) = dqv(k) - dqcdt_pbl1d(k)
+          dth(k) = dth(k) + xlvcp/exner(k)*dqcdt_pbl1d(k)
+       enddo
+    endif
+
     !ensure non-negative moist species
     CALL moisture_check(kte, delt, delp, exner,        &
                         sqv2, sqc2, sqi2, sqs2, thl,   &
@@ -5834,7 +5847,7 @@ ENDIF
      real(kind_phys),DIMENSION(KTS:KTE), INTENT(INOUT) ::              &
           &qc_bl1d,cldfra_bl1d,qc_bl1d_old,cldfra_bl1d_old
 
-    real(kind_phys),DIMENSION(KTS:KTE), INTENT(OUT) :: dqadt_pbl1d,dqcdt_pbl1d
+    real(kind_phys),DIMENSION(KTS:KTE), INTENT(INOUT) :: dqadt_pbl1d,dqcdt_pbl1d
     INTEGER, PARAMETER :: nup=10, debug_mf=0
 
   !------------- local variables -------------------
@@ -5896,13 +5909,13 @@ ENDIF
    real(kind_phys),DIMENSION(KTS:KTE), INTENT(INOUT) :: vt, vq, sgm
    real(kind_phys):: sigq,xl,rsl,cpm,a,qmq,mf_cf,Aup,Q1,diffqt,qsat_tk,&
            Fng,qww,alpha,beta,bb,f,pt,t,q2p,b9,satvp,rhgrid,           &
-           Ac_mf,Ac_strat,qc_mf
+           Ac_mf,Ac_strat
    real(kind_phys), PARAMETER :: cf_thresh = 0.5 ! only overwrite stratus CF less than this value
 
   ! Variables for plume interpolation/saturation check
-   real(kind_phys),DIMENSION(KTS:KTE) :: exneri,dzi
+   real(kind_phys),DIMENSION(KTS:KTE) :: exneri,dzi,qc_mf
    real(kind_phys):: THp, QTp, QCp, QCs, esat, qsl
-   real(kind_phys):: csigma,acfac,ac_wsp,ac_cld
+   real(kind_phys):: csigma,acfac,ac_wsp,ac_cld,ts_decay
 
    !plume overshoot
    INTEGER :: overshoot
@@ -5978,9 +5991,6 @@ ENDIF
   IF ( mix_chem ) THEN
      edmf_chem(kts:kte+1,1:nchem) = 0.0
   ENDIF
-  
-  dqadt_pbl1d=0.
-  dqcdt_pbl1d=0.
 
 ! Initialize the variables needed for implicit solver
   s_aw=0.
@@ -6010,6 +6020,11 @@ ENDIF
   det_sqc = 0.
   det_u = 0.
   det_v = 0.
+
+!initialize prog cloud variables
+  qc_mf   =0.
+  dqadt_pbl1d=0.0
+  dqcdt_pbl1d=0.0
 
   ! Taper off MF scheme when significant resolved-scale motions
   ! are present This function needs to be asymetric...
@@ -6737,6 +6752,7 @@ ENDIF
             else
               QCp = max(edmf_qc(k),edmf_qc(k-1))
             endif
+            qc_mf(k) = QCp   !in-updraft value
 
             !COMPUTE CLDFRA & QC_BL FROM MASS-FLUX SCHEME and recompute vt & vq
             xl = xl_blend(tk(k))                ! obtain blended heat capacity
@@ -6821,9 +6837,9 @@ ENDIF
                Ac_mf          = mf_cf
             else                             ! land
                if (QCp * Aup > 5e-5) then
-                  qc_bl1d(k) = 1.86 * (QCp * Aup) - 2.2e-5
+                  qc_bl1d(k) = 1.86 * (QCp * Aup) - 2.2e-5  !grid-mean
                else
-                  qc_bl1d(k) = 1.18 * (QCp * Aup)
+                  qc_bl1d(k) = 1.18 * (QCp * Aup)           !grid-mean
                endif
                if (mf_cf .ge. Aup) then
                   qc_bl1d(k) = qc_bl1d(k) / mf_cf
@@ -6831,6 +6847,9 @@ ENDIF
                cldfra_bl1d(k) = mf_cf
                Ac_mf          = mf_cf
             endif
+
+            !turn qc_mf into grid mean
+            qc_mf(k)=qc_mf(k)*mf_cf
 
             !Now recalculate the terms for the buoyancy flux for mass-flux clouds:
             !See mym_condensation for details on these formulations.
@@ -6858,22 +6877,54 @@ ENDIF
             vq(k) = alpha + (1.5*Aup)*beta*a*Fng  - tv0
          endif !check for (qc in plume) .and. (cldfra_bl < threshold)
       enddo !k-loop
-      
-      if (tiedtke_prog_clouds) then
-         !compute (mass-flux only) tendencies
-         do k=kts+1,kte-2
-            !dqadt_pbl1d(k)=(cldfra_bl1d(k)-cldfra_bl1d_old(k))/dt
-            dqadt_pbl1d(k)=(cldfra_bl1d(k)-qgrs_cldfra1d(k))/dt
-            dqcdt_pbl1d(k)=(qc_bl1d(k)-qc_bl1d_old(k))/dt   !should use qc instead of qc_bl1d_old?
-            !impose constraint to not let cldfra > 1 or < 0
-            dqadt_pbl1d(k)=min(dqadt_pbl1d(k), (1.0-qgrs_cldfra1d(k))/dt)
-            dqadt_pbl1d(k)=max(dqadt_pbl1d(k), (0.0-qgrs_cldfra1d(k))/dt)
-         enddo
-      endif
-    ENDIF  !end nup2 > 0
-    
-    
-    
+
+!      if (tiedtke_prog_clouds) then
+!         !compute (mass-flux only) tendencies
+!         do k=kts,kte-2
+!            !----cloud water tendency:
+!            !use the mass fluxes of cloud water:
+!            dqcdt_pbl1d(k)=0.
+!            !use the pdf:
+!            !dqcdt_pbl1d(k)=(qc_mf(k)-qc(k))/dt
+!
+!            !----cloud fraction tendency - when tiedtke_prog_clouds=T, cldfra_bl1d is solely from mass flux
+!            dqadt_pbl1d(k)=(cldfra_bl1d(k)-qgrs_cldfra1d(k))/dt
+!            !impose constraint to not let cldfra > 1 or < 0
+!            dqadt_pbl1d(k)=min(dqadt_pbl1d(k), (1.0-qgrs_cldfra1d(k))/dt)
+!            dqadt_pbl1d(k)=max(dqadt_pbl1d(k), (0.0-qgrs_cldfra1d(k))/dt)
+!         enddo
+!      endif
+
+    endif !end nup2 check
+!    else !mass-flux scheme is not active
+
+       if (tiedtke_prog_clouds) then
+          do k=kts+1,kte-2
+             !print*,"cldfra=",cldfra_bl1d(k)," cldfra_old=",cldfra_bl1d_old(k)
+             !if (0.5*(edmf_qc(k)+edmf_qc(k-1))>0.0 .and. (cldfra_bl1d(k) < cf_thresh))then
+             if (k .le. ktop .and. (cldfra_bl1d(k) < cf_thresh)) then
+                dqadt_pbl1d(k)=(cldfra_bl1d(k)-qgrs_cldfra1d(k))/dt
+                !impose constraint to not let cldfra > 1 or < 0
+                dqadt_pbl1d(k)=min(dqadt_pbl1d(k), (1.0-qgrs_cldfra1d(k))/dt)
+                dqadt_pbl1d(k)=max(dqadt_pbl1d(k), (0.0-qgrs_cldfra1d(k))/dt)
+             elseif (cldfra_bl1d_old(k)>0.0 .and. (cldfra_bl1d_old(k).le.(qgrs_cldfra1d(k)+0.1)) ) then
+                !----cloud fraction tendency when mass flux is inactive in layer, but lingering
+                !    shallow-cumulus (only) cloud fractions exists.
+                !    Decay timescale is set to the minimum of the eddy turn-over timescale,
+                !    or for windy conditions, it is the advective timescale. The minimum of the two.
+                ts_decay      =min( 1800., 2.*dx/MAX(SQRT(u(k)**2 + v(k)**2),1.0) )
+                cldfra_bl1d(k)=max(cldfra_bl1d_old(k) - 0.25*dt/ts_decay, 0.0)
+                print*,"cldfra=",cldfra_bl1d(k)," cldfra_old=",cldfra_bl1d_old(k)
+                dqadt_pbl1d(k)=(-0.25*dt/ts_decay)/dt
+                !impose constraint to not let cldfra > 1 or < 0
+                dqadt_pbl1d(k)=min(dqadt_pbl1d(k), (1.0-qgrs_cldfra1d(k))/dt)
+                dqadt_pbl1d(k)=max(dqadt_pbl1d(k), (0.0-qgrs_cldfra1d(k))/dt)
+             endif
+          enddo
+       endif
+
+!    endif !end nup2 check
+
     !modify output (negative: dry plume, positive: moist plume)
     if (ktop > 0) then
       maxqc = maxval(edmf_qc(1:ktop)) 

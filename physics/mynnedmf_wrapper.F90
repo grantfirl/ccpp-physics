@@ -163,8 +163,7 @@ SUBROUTINE mynnedmf_wrapper_run(        &
      &  nchem, ndvel, vdep, smoke_dbg,                     &
      &  imp_physics_nssl, nssl_ccn_on,                     &
      &  ltaerosol, mraerosol, spp_wts_pbl, spp_pbl,        &
-     &  lprnt, huge, dqcdt_mynn, dqidt_mynn, dqndt_mynn,   &
-     &  dqnidt_mynn, errmsg, errflg                        )
+     &  lprnt, huge, errmsg, errflg                        )
 
 ! should be moved to inside the mynn:
      use machine,        only: kind_phys
@@ -252,8 +251,6 @@ SUBROUTINE mynnedmf_wrapper_run(        &
      &        dqdt_cloud_droplet_num_conc, dqdt_ice_num_conc,            &
      &        dqdt_ozone, dqdt_water_aer_num_conc, dqdt_ice_aer_num_conc,&
      &        dqadt_pbl, dqcdt_pbl
-      real(kind_phys), dimension(:,:), intent(out) ::               &
-     &        dqcdt_mynn, dqidt_mynn, dqndt_mynn, dqnidt_mynn
       real(kind_phys), dimension(:,:), intent(inout) ::dqdt_cccn
       real(kind_phys), dimension(:,:), intent(inout) ::             &
      &        qke, qke_adv, EL_PBL, Sh3D, Sm3D,                          &
@@ -353,11 +350,6 @@ SUBROUTINE mynnedmf_wrapper_run(        &
             save_qke_adv=qke_adv
          endif
       endif
-      
-      dqcdt_mynn  = 0.
-      dqidt_mynn  = 0.
-      dqndt_mynn  = 0.
-      dqnidt_mynn = 0.
 
       ! DH* TODO: Use flag_restart to distinguish which fields need
       ! to be initialized and which are read from restart files
@@ -987,12 +979,7 @@ SUBROUTINE mynnedmf_wrapper_run(        &
              call dtend_helper(100+ntiw,RQIBLTEN)
            endif
        endif
-       
-       dqcdt_mynn  = dqdt_liquid_cloud
-       dqidt_mynn  = dqdt_ice
-       dqndt_mynn  = dqdt_cloud_droplet_num_conc
-       dqnidt_mynn = dqdt_ice_num_conc
-       
+ 
        if (lprnt) then
           print*
           print*,"===Finished with mynn_bl_driver; output:"
