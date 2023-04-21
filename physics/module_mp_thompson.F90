@@ -3668,10 +3668,19 @@ MODULE module_mp_thompson
        orho = 1./rho(k)
        if (tiedtke_prog_clouds) then
        !if (.false.) then   
-         prw_vtk(k) = dqcdt1d(k) + d_eros_l1d(k)
-         rate_max = -rc(k)*odts
-         prw_vtk(k) = MAX(DBLE(rate_max), prw_vtk(k))
-         
+         if ((dqcdt1d(k) + d_eros_l1d(k) > eps) .or. &
+            (L_qc(k) .and. (dqcdt1d(k) + d_eros_l1d(k) < -eps))) then
+            prw_vtk(k) = dqcdt1d(k) + d_eros_l1d(k)
+            xrc = rc(k) + prw_vtk(k)*dt*rho(k)
+            if (xrc > R1) then
+              if (prw_vtk(k) < -eps) then
+                prw_vtk(k) = MAX(DBLE(-rc(k)*0.99*orho*odt), prw_vtk(k))
+              end if
+            else
+              prw_vtk(k) = -rc(k)*orho*odt
+            end if
+         end if
+                 
          qvten(k) = qvten(k) - prw_vtk(k)
          qcten(k) = qcten(k) + prw_vtk(k)
          !ncten(k) = ncten(k) + nerosc1d(k)
