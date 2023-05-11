@@ -2428,8 +2428,8 @@ MODULE module_mp_thompson
       !scheme produces some clouds
       if (tiedtke_prog_clouds) then
         do k=kts, kte
-          if (dqidt1d(k) + d_eros_i1d(k) > 0.0) .or. &
-             (dqcdt1d(k) + d_eros_l1d(k) > 0.0) no_micro = .false.
+          if ((dqidt1d(k) + d_eros_i1d(k) > 0.0) .or. &
+             (dqcdt1d(k) + d_eros_l1d(k) > 0.0)) no_micro = .false.
         end do
       end if
 
@@ -3204,7 +3204,7 @@ MODULE module_mp_thompson
 !! sum of sublimation terms such that vapor does not reproduce ice
 !! supersat again.
          sump = pri_inu(k) + pri_ide(k) + prs_ide(k) &
-              + prs_sde(k) + prg_gde(k) + pri_iha(k) &
+              + prs_sde(k) + prg_gde(k) + pri_iha(k)
          rate_max = (qv(k)-qvsi(k))*rho(k)*odts*0.999
          if ( (sump.gt. eps .and. sump.gt. rate_max) .or. &
               (sump.lt. -eps .and. sump.lt. rate_max) ) then
