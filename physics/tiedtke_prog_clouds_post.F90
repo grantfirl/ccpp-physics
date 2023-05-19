@@ -9,7 +9,11 @@
 !> \section arg_table_tiedtke_prog_clouds_post_run Argument Table
 !! \htmlinclude tiedtke_prog_clouds_post_run.html
 !!
-    subroutine tiedtke_prog_clouds_post_run (idim, kdim, i_macro, i_temp, do_liq_num, do_ice_num, do_mynnedmf, ldiag3d, qdiag3d, ntqv, ntcw, ntiw, ntrw, ntsw, ntgl, ntclamt, ntlnc, ntinc, dt, qmin, tfreeze, ST, SQ, SL, SI, SA, SN, SNI, dcond_ls_l, dcond_ls_i, d_eros, qa_upd, ql_upd, qi_upd, gt0, gq0, dtend, dtidx, d_eros_l, d_eros_i, nerosc, nerosi, dqcdt, dqidt, dqadt_pbl, dqcdt_pbl, ovhd_cldcov, errmsg, errflg)
+    subroutine tiedtke_prog_clouds_post_run (idim, kdim, i_macro, i_temp, do_liq_num, do_ice_num, do_mynnedmf, &
+      ldiag3d, qdiag3d, ntqv, ntcw, ntiw, ntrw, ntsw, ntgl, ntclamt, ntlnc, ntinc, dt, qmin, tfreeze, &
+      ST, SQ, SL, SI, SA, SN, SNI, dcond_ls_l, dcond_ls_i, d_eros, qa_upd, ql_upd, qi_upd, gt0, gq0, &
+      dtend, dtidx, d_eros_l, d_eros_i, nerosc, nerosi, dqcdt, dqidt, dqadt_pbl, dqcdt_pbl, ovhd_cldcov, &
+      ap, ap_cld, ap_clr, errmsg, errflg)
 
       use machine  , only : kind_phys
       
@@ -27,7 +31,7 @@
       integer, intent(in) :: dtidx(:,:)
       real(kind=kind_phys), intent(inout) :: dtend(:,:,:) 
       
-      real(kind=kind_phys), intent(out) :: d_eros_l(:,:), d_eros_i(:,:), nerosc(:,:), nerosi(:,:), dqcdt(:,:), dqidt(:,:), ovhd_cldcov(:,:)
+      real(kind=kind_phys), intent(out) :: d_eros_l(:,:), d_eros_i(:,:), nerosc(:,:), nerosi(:,:), dqcdt(:,:), dqidt(:,:), ovhd_cldcov(:,:), ap(:,:), ap_cld(:,:), ap_clr(:,:)
       
       character(len=*), intent(out) :: errmsg
       integer,          intent(out) :: errflg
@@ -40,7 +44,7 @@
       real(kind=kind_phys), dimension(idim,kdim) :: dcond_ls_tot
       
       logical :: precip_found
-      real(kind=kind_phys), dimension(idim,kdim) :: ap, ap_cld, ap_clr, gq0_precip
+      real(kind=kind_phys), dimension(idim,kdim) :: gq0_precip
       real(kind=kind_phys) :: del_ovhd_cldcov, del_ap_cld2clr, del_ap_clr2cld
       
       dt_inv = 1.0/dt
