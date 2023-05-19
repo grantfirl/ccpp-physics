@@ -3741,9 +3741,9 @@ MODULE module_mp_thompson
               do nn = niin-1, niin+1
                  n = nn
                  if ( (xni/10.**nn).ge.1.0 .and. &
-                      (xni/10.**nn).lt.10.0) goto 149
+                      (xni/10.**nn).lt.10.0) goto 249
               enddo
- 149          continue
+ 249          continue
               idx_IN = INT(xni/10.**n) + 10*(n-niin2) - (n-niin2)
               idx_IN = MAX(1, MIN(idx_IN, ntb_IN))
              else
