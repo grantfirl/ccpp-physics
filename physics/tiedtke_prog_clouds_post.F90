@@ -77,8 +77,6 @@
       !write(*,*) 'ST', ST, gt0
       !write(*,*) 'SQ', SQ, gq0(:,:,ntqv)
       
-      
-      
       if (ldiag3d) then
         idtend = dtidx(i_temp,i_macro)
         if(idtend>=1) then
@@ -126,7 +124,7 @@
       !GJF: In AM4, the following code is executed prior to calling microphysics (specifically MG) in ls_cloud_microphysics
       do k=1,kdim
         do i=1,idim
-          dcond_ls_tot(i,k) = dcond_ls_l(i,k) + dcond_ls_i(i,k) 
+          dcond_ls_tot(i,k) = dcond_ls_l(i,k) + dcond_ls_i(i,k)
           D_eros_i(i,k) = -qi_upd(i,k)*D_eros(i,k)*dt_inv
           D_eros_l(i,k) = -ql_upd(i,k)*D_eros(i,k)*dt_inv
           if (ql_upd(i,k) >= qmin .and. do_liq_num) then
@@ -143,7 +141,7 @@
           else
             nerosi(i,k) = 0.
           endif
-          !write(*,*) k, nerosc(i,k), nerosi(i,k)
+        
           if (dcond_ls_tot(i,k) > 0.) then
             if (gt0(i,k) <= (tfreeze - 40.) ) then
               dqcdt (i,k) = 0.
@@ -160,7 +158,7 @@
               dqidt(i,k) = dqidt(i,k)*dt_inv
             else
               dqidt(i,k) = 0.
-              dqcdt(i,k) = MAX(dcond_ls_tot(i,k),-ql_upd(i,k))*dt_inv
+              dqcdt(i,k) = MAX(dcond_ls_tot(i,k)*dt_inv,-ql_upd(i,k)*dt_inv)
             endif
           endif
         end do   

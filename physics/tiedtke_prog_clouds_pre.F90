@@ -63,7 +63,7 @@
       real(kind=kind_phys) :: rh_wtd_conv_area(idim,kdim), convective_area(idim,kdim)
       real(kind=kind_phys) :: qrf(idim,kdim), env_qv(idim,kdim), env_fraction(idim,kdim), humidity_ratio(idim,kdim)
       
-      logical :: ql_too_small(idim,kdim), qi_too_small(idim,kdim)
+      logical :: ql_too_small(idim,kdim), qi_too_small(idim,kdim), ql_neg(idim,kdim), qi_neg(idim,kdim)
       
       ! Initialize CCPP error handling variables
       errmsg = ''
@@ -160,6 +160,10 @@
         end where
       endif
       
+      !GJF: The AM4 algorithms expect non-negative cloud water. 
+      ql_neg = ql_in < 0.
+      qi_neg = qi_in < 0.
+      
       !-------------------------------------------------------------------------
 !    define the conditions under which liquid and ice filling must be done,
 !    for both the pdf and non-pdf cases.
@@ -204,8 +208,9 @@
 !    call subroutine adjust_condensate to conservatively fill ql if needed.
 !------------------------------------------------------------------------
       !write(*,*) 'ql_too_small',ql_too_small,ql_in,qa_in
-      call adjust_condensate (ql_too_small, sl, sq, st, ql_in, hlv, cp, ql_upd)
-      
+      !write(*,*) 'sl',sl
+      call adjust_condensate (ql_too_small, ql_neg, sl, sq, st, ql_in, hlv, cp, ql_upd)
+      !write(*,*) "tiedtke prog clouds pre (liq)",ST
 !------------------------------------------------------------------------
 !    adjust cloud droplet numbers as needed when those fields are being 
 !    predicted. if droplet number is not being predicted, values were 
@@ -218,8 +223,8 @@
 !------------------------------------------------------------------------
 !    call subroutine adjust_condensate to conservatively fill qi if needed.
 !------------------------------------------------------------------------
-      call adjust_condensate (qi_too_small, SI, SQ, ST, qi_in, HLS, cp, qi_upd)    
-      
+      call adjust_condensate (qi_too_small, qi_neg, SI, SQ, ST, qi_in, HLS, cp, qi_upd)    
+      !write(*,*) "tiedtke prog clouds pre (ice)",ST
       !------------------------------------------------------------------------
 !    adjust ice particle numbers as needed when those fields
 !    are being predicted. 
@@ -238,10 +243,12 @@
         drop1 = qn_upd*airdens*1.0E-6
       endif
       
+      
+      
     end subroutine tiedtke_prog_clouds_pre_run
     
     subroutine adjust_condensate (   &
-                mask, delta_cond, delta_q, delta_T, cond_in, lh, cp, cond_out)
+                mask_small, mask_neg, delta_cond, delta_q, delta_T, cond_in, lh, cp, cond_out)
       use machine  , only : kind_phys
 
 !------------------------------------------------------------------------
@@ -250,7 +257,7 @@
 !    tendency terms and output condensate fields are adjusted. 
 !------------------------------------------------------------------------
 
-      logical, dimension(:,:),  intent(in)    :: mask
+      logical, dimension(:,:),  intent(in)    :: mask_small, mask_neg
       real(kind=kind_phys), dimension(:,:),     intent(in)    :: cond_in
       real(kind=kind_phys), dimension(:,:),     intent(inout) :: delta_cond, delta_q, delta_T
       real(kind=kind_phys), dimension(:,:),     intent(out)   :: cond_out
@@ -262,13 +269,17 @@
       integer :: idim, kdim    
       integer :: i, k
 
-      idim = size(mask,1)
-      kdim = size(mask,2)
+      idim = size(mask_small,1)
+      kdim = size(mask_small,2)
 
 !---------------------------------------------------------------------
       do k=1,kdim
         do i=1,idim
-          if (mask(i,k)) then
+          if (mask_neg(i,k)) then
+            delta_cond(i,k) = delta_cond(i,k) -   cond_in(i,k)
+            delta_q(i,k) = delta_q(i,k) - cond_in(i,k)
+            delta_T(i,k) = delta_T(i,k) + lh*cond_in(i,k)/cp
+          else if (mask_small(i,k)) then
             delta_cond(i,k) = delta_cond(i,k) -   cond_in(i,k)
             delta_q(i,k) = delta_q(i,k) + cond_in(i,k)
             delta_T(i,k) = delta_T(i,k) - lh*cond_in(i,k)/cp
@@ -304,6 +315,7 @@
       !---------------------------------------------------------------------
             do k=1,kdim
               do i=1,idim
+                !GJF: need to adjust particles for negative mask too
                 if (mask(i,k)) then
                   delta_particles(i,k) = delta_particles(i,k) -  &
                                                    particles_in(i,k)

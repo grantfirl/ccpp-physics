@@ -2282,7 +2282,7 @@ MODULE module_mp_thompson
          smoe(k) = 0.
          smof(k) = 0.
       enddo
-
+      
 !+---+-----------------------------------------------------------------+
 !> - Put column of data into local arrays.
 !+---+-----------------------------------------------------------------+
@@ -2295,37 +2295,41 @@ MODULE module_mp_thompson
          nifa(k) = MAX(naIN1*0.01*rho(k), MIN(9999.E6*rho(k), nifa1d(k)*rho(k)))
          mvd_r(k) = D0r
          mvd_c(k) = D0c
-
-         if (qc1d(k) .gt. R1) then
+         
+         !if (qc1d(k) .gt. R1) then
+         if (qc1d(k) .gt. R1 .or. (tiedtke_prog_clouds .and. (dqcdt1d(k) + d_eros_l1d(k) > 0.0))) then
             no_micro = .false.
-            rc(k) = qc1d(k)*rho(k)
-            nc(k) = MAX(2., MIN(nc1d(k)*rho(k), Nt_c_max))
-            L_qc(k) = .true.
-            if (nc(k).gt.10000.E6) then
-             nu_c = 2
-            elseif (nc(k).lt.100.) then
-             nu_c = 15
-            else
-             nu_c = NINT(1000.E6/nc(k)) + 2
-             nu_c = MAX(2, MIN(nu_c+NINT(rand2), 15))
-            endif
-            lamc = (nc(k)*am_r*ccg(2,nu_c)*ocg1(nu_c)/rc(k))**obmr
-            xDc = (bm_r + nu_c + 1.) / lamc
-            if (xDc.lt. D0c) then
-             lamc = cce(2,nu_c)/D0c
-            elseif (xDc.gt. D0r*2.) then
-             lamc = cce(2,nu_c)/(D0r*2.)
-            endif
-            nc(k) = MIN( DBLE(Nt_c_max), ccg(1,nu_c)*ocg2(nu_c)*rc(k)   &
-                  / am_r*lamc**bm_r)
-            if (.NOT. (is_aerosol_aware .or. merra2_aerosol_aware)) then
-               if (lsml == 1) then
-                 nc(k) = Nt_c_l
-               else
-                 nc(k) = Nt_c_o
-               endif
+            if (qc1d(k) .gt. R1) then
+              rc(k) = qc1d(k)*rho(k)
+              nc(k) = MAX(2., MIN(nc1d(k)*rho(k), Nt_c_max))
+              L_qc(k) = .true.
+              if (nc(k).gt.10000.E6) then
+               nu_c = 2
+              elseif (nc(k).lt.100.) then
+               nu_c = 15
+              else
+               nu_c = NINT(1000.E6/nc(k)) + 2
+               nu_c = MAX(2, MIN(nu_c+NINT(rand2), 15))
+              endif
+              lamc = (nc(k)*am_r*ccg(2,nu_c)*ocg1(nu_c)/rc(k))**obmr
+              xDc = (bm_r + nu_c + 1.) / lamc
+              if (xDc.lt. D0c) then
+               lamc = cce(2,nu_c)/D0c
+              elseif (xDc.gt. D0r*2.) then
+               lamc = cce(2,nu_c)/(D0r*2.)
+              endif
+              nc(k) = MIN( DBLE(Nt_c_max), ccg(1,nu_c)*ocg2(nu_c)*rc(k)   &
+                    / am_r*lamc**bm_r)
+              if (.NOT. (is_aerosol_aware .or. merra2_aerosol_aware)) then
+                 if (lsml == 1) then
+                   nc(k) = Nt_c_l
+                 else
+                   nc(k) = Nt_c_o
+                 endif
+              endif
             endif
             
+            !if (.false.) then
             if (tiedtke_prog_clouds) then
               if (cld_frc1d(k) > frc_thresh) then
                 qc_ic(k) = qc1d(k)/cld_frc1d(k)
@@ -2340,6 +2344,7 @@ MODULE module_mp_thompson
                  nu_c_ic = NINT(1000.E6/ncr_ic(k)) + 2
                  nu_c_ic = MAX(2, MIN(nu_c_ic+NINT(rand2), 15))
                 endif
+                !write(*,*) 'rc_ic',k,rc_ic(k), qc1d(k), cld_frc1d(k)
                 lamc = (ncr_ic(k)*am_r*ccg(2,nu_c_ic)*ocg1(nu_c_ic)/rc_ic(k))**obmr
                 xDc = (bm_r + nu_c_ic + 1.) / lamc
                 if (xDc.lt. D0c) then
@@ -2369,6 +2374,7 @@ MODULE module_mp_thompson
             rc(k) = R1
             nc(k) = 2.
             L_qc(k) = .false.
+            !if (.false.) then
             if (tiedtke_prog_clouds) then
               qc_ic(k) = 0.0
               rc_ic(k) = R1
@@ -2376,26 +2382,31 @@ MODULE module_mp_thompson
               ncr_ic(k) = 2.
             endif
          endif
-
-         if (qi1d(k) .gt. R1) then
+         
+         !if (qi1d(k) .gt. R1) then
+         if (qi1d(k) .gt. R1 .or. (tiedtke_prog_clouds .and. (dqidt1d(k) + d_eros_i1d(k) > 0.0))) then
             no_micro = .false.
-            ri(k) = qi1d(k)*rho(k)
-            ni(k) = MAX(R2, ni1d(k)*rho(k))
-            if (ni(k).le. R2) then
+            if (qi1d(k) .gt. R1) then
+              ri(k) = qi1d(k)*rho(k)
+              ni(k) = MAX(R2, ni1d(k)*rho(k))
+              if (ni(k).le. R2) then
+                 lami = cie(2)/5.E-6
+                 ni(k) = MIN(4999.D3, cig(1)*oig2*ri(k)/am_i*lami**bm_i)
+              endif
+              L_qi(k) = .true.
+              lami = (am_i*cig(2)*oig1*ni(k)/ri(k))**obmi
+              ilami = 1./lami
+              xDi = (bm_i + mu_i + 1.) * ilami
+              if (xDi.lt. 5.E-6) then
                lami = cie(2)/5.E-6
                ni(k) = MIN(4999.D3, cig(1)*oig2*ri(k)/am_i*lami**bm_i)
+              elseif (xDi.gt. 300.E-6) then
+               lami = cie(2)/300.E-6
+               ni(k) = cig(1)*oig2*ri(k)/am_i*lami**bm_i
+              endif
             endif
-            L_qi(k) = .true.
-            lami = (am_i*cig(2)*oig1*ni(k)/ri(k))**obmi
-            ilami = 1./lami
-            xDi = (bm_i + mu_i + 1.) * ilami
-            if (xDi.lt. 5.E-6) then
-             lami = cie(2)/5.E-6
-             ni(k) = MIN(4999.D3, cig(1)*oig2*ri(k)/am_i*lami**bm_i)
-            elseif (xDi.gt. 300.E-6) then
-             lami = cie(2)/300.E-6
-             ni(k) = cig(1)*oig2*ri(k)/am_i*lami**bm_i
-            endif
+            
+            !if (.false.) then
             if (tiedtke_prog_clouds) then
               if (cld_frc1d(k) > frc_thresh) then
                 qi_ic(k) = qi1d(k)/cld_frc1d(k)
@@ -2429,6 +2440,7 @@ MODULE module_mp_thompson
             ri(k) = R1
             ni(k) = R2
             L_qi(k) = .false.
+            !if (.false.) then
             if (tiedtke_prog_clouds) then
               qi_ic(k) = 0.0
               ni_ic(k) = 0.0
@@ -2458,6 +2470,7 @@ MODULE module_mp_thompson
                lamr = (3.0 + mu_r + 0.672) / mvd_r(k)
                nr(k) = crg(2)*org3*rr(k)*lamr**bm_r / am_r
             endif
+            !if (.false.) then
             if (tiedtke_prog_clouds) then
               if (ap1d(k) > frc_thresh) then
                 qr_iap(k) = qr1d(k)/ap1d(k)
@@ -2494,6 +2507,7 @@ MODULE module_mp_thompson
             rr(k) = R1
             nr(k) = R2
             L_qr(k) = .false.
+            !if (.false.) then
             if (tiedtke_prog_clouds) then
               qr_iap(k) = 0.0
               nr_iap(k) = 0.0
@@ -2506,6 +2520,7 @@ MODULE module_mp_thompson
             no_micro = .false.
             rs(k) = qs1d(k)*rho(k)
             L_qs(k) = .true.
+            !if (.false.) then
             if (tiedtke_prog_clouds) then
               if (cld_frc1d(k) > frc_thresh) then
                 qs_ic(k) = qs1d(k)/cld_frc1d(k)
@@ -2519,6 +2534,7 @@ MODULE module_mp_thompson
             qs1d(k) = 0.0
             rs(k) = R1
             L_qs(k) = .false.
+            !if (.false.) then
             if (tiedtke_prog_clouds) then
               qs_ic(k) = 0.0
               rs_ic(k) = R1
@@ -2529,6 +2545,7 @@ MODULE module_mp_thompson
             no_micro = .false.
             rg(k) = qg1d(k)*rho(k)
             L_qg(k) = .true.
+            !if (.false.) then
             if (tiedtke_prog_clouds) then
               if (ap1d(k) > frc_thresh) then
                 qg_iap(k) = qg1d(k)/ap1d(k)
@@ -2542,6 +2559,7 @@ MODULE module_mp_thompson
             qg1d(k) = 0.0
             rg(k) = R1
             L_qg(k) = .false.
+            !if (.false.) then
             if (tiedtke_prog_clouds) then
               qg_iap(k) = 0.0
               rg_iap(k) = R1
@@ -2564,6 +2582,7 @@ MODULE module_mp_thompson
 !! Flatau et al. 1992; enthalpy (latent heat) of vaporization from
 !! Bohren & Albrecht 1998; others from Pruppacher & Klett 1978.
 !+---+-----------------------------------------------------------------+
+      
       do k = kts, kte
          tempc = temp(k) - 273.15
          rhof(k) = SQRT(RHO_NOT/rho(k))
@@ -2593,6 +2612,7 @@ MODULE module_mp_thompson
          lvap(k) = lvap0 + (2106.0 - 4218.0)*tempc
          tcond(k) = (5.69 + 0.0168*tempc)*1.0E-5 * 418.936
          
+         !if (.false.) then
          if (tiedtke_prog_clouds) then
            !GJF: this method of determining qv_clr/cld uses Thompson's code for weather vapor deposition
            ! or cloud droplet nucleation occurs; this is assuming grid-scale saturation; if not grid-scale saturation,
@@ -2632,19 +2652,23 @@ MODULE module_mp_thompson
       
       !need to execute the scheme if no hydrometeors exist, but Tiedtke 
       !scheme produces some clouds
+      !if (.false.) then
       if (tiedtke_prog_clouds) then
         do k=kts, kte
           if ((dqidt1d(k) + d_eros_i1d(k) > 0.0) .or. &
              (dqcdt1d(k) + d_eros_l1d(k) > 0.0)) no_micro = .false.
         end do
       end if
-
+      
 !+---+-----------------------------------------------------------------+
 !> - If no existing hydrometeor species and no chance to initiate ice or
 !! condense cloud water, just exit quickly!
 !+---+-----------------------------------------------------------------+
 
-      if (no_micro) return
+      if (no_micro) then
+        write(*,*) "### NO MICRO ###"
+        return
+      endif
       
       !GJF: use local values of r_s, r_g, etc. - define local values as in Chosson et al. 2014
       !snow, ice, cloud are in-cloud
@@ -2657,6 +2681,7 @@ MODULE module_mp_thompson
       do k = kts, kte
          if (.not. L_qs(k)) CYCLE
          tc0 = MIN(-0.1, temp(k)-273.15)
+         !if (.false.) then
          if (tiedtke_prog_clouds) then
            smob(k) = rs_ic(k)*oams
          else
@@ -2746,6 +2771,7 @@ MODULE module_mp_thompson
 !> - Calculate y-intercept, slope values for graupel.
 !+---+-----------------------------------------------------------------+
       do k = kte, kts, -1
+         !if (.false.) then
          if (tiedtke_prog_clouds) then
            ygra1 = alog10(max(1.E-9, rg_iap(k)))
          else
@@ -2754,6 +2780,7 @@ MODULE module_mp_thompson
          zans1 = 3.4 + 2./7.*(ygra1+8.) + rand1
          N0_exp = 10.**(zans1)
          N0_exp = MAX(DBLE(gonv_min), MIN(N0_exp, DBLE(gonv_max)))
+         !if (.false.) then
          if (tiedtke_prog_clouds) then
            lam_exp = (N0_exp*am_g*cgg(1)/rg_iap(k))**oge1
          else
@@ -2770,6 +2797,7 @@ MODULE module_mp_thompson
 !> - Calculate y-intercept, slope values for rain.
 !+---+-----------------------------------------------------------------+
       do k = kte, kts, -1
+         !if (.false.) then
          if (tiedtke_prog_clouds) then
            lamr = (am_r*crg(3)*org2*nrr_iap(k)/rr_iap(k))**obmr
            ilamr(k) = 1./lamr
@@ -2786,6 +2814,7 @@ MODULE module_mp_thompson
 !+---+-----------------------------------------------------------------+
 !> - Compute warm-rain process terms (except evap done later).
 !+---+-----------------------------------------------------------------+
+      !if (.false.) then
       if (tiedtke_prog_clouds) then
         do k = kts, kte
           if (L_qr(k) .and. mvd_r(k).gt. D0r) then
@@ -2935,6 +2964,7 @@ MODULE module_mp_thompson
 !+---+-----------------------------------------------------------------+
       if (.not. iiwarm) then
       
+        !if (.false.) then
         if (tiedtke_prog_clouds) then
           do k=kts, kte
             vts_boost(k) = 1.0
@@ -3917,7 +3947,7 @@ MODULE module_mp_thompson
                prs_ide(k) = (1.0D0-tpi_ide(idx_i,idx_i1))*pri_ide(k)
                pri_ide(k) = tpi_ide(idx_i,idx_i1)*pri_ide(k)
               endif
-              
+              !write(*,*) 'pri_ide',k,pri_ide(k),ssati(k),ni(k),ri(k)
 
 !>  - Some cloud ice needs to move into the snow category.  Use lookup
 !! table that resulted from explicit bin representation of distrib.
@@ -4038,6 +4068,7 @@ MODULE module_mp_thompson
 !+---+-----------------------------------------------------------------+
 !> - Ensure we do not deplete more hydrometeor species than exists.
 !+---+-----------------------------------------------------------------+
+
       do k = kts, kte
 
 !>  - If ice supersaturated, ensure sum of depos growth terms does not
@@ -4141,6 +4172,7 @@ MODULE module_mp_thompson
 !> - Calculate tendencies of all species but constrain the number of ice
 !! to reasonable values.
 !+---+-----------------------------------------------------------------+
+      
       do k = kts, kte
          orho = 1./rho(k)
          lfus2 = lsub - lvap(k)
@@ -4162,6 +4194,7 @@ MODULE module_mp_thompson
          qvten(k) = qvten(k) + (-pri_inu(k) - pri_iha(k) - pri_ide(k)   &
                   - prs_ide(k) - prs_sde(k) - prg_gde(k)) &
                   * orho
+         !if (.false.) then
          if (tiedtke_prog_clouds) then
              !only handling ice part of tiedtke clouds here
              qvten(k) = qvten(k) - pri_vtk(k)*orho         
@@ -4220,6 +4253,7 @@ MODULE module_mp_thompson
                   - pni_iau(k) - pni_sci(k) - pni_rci(k)) &
                   * orho                  
          
+         !if (.false.) then
          if (tiedtke_prog_clouds) then
            !only handling ice part of tiedtke clouds here (liquid is below during cond/evap step)
             qiten(k) = qiten(k) + pri_vtk(k)*orho
@@ -4311,6 +4345,10 @@ MODULE module_mp_thompson
                                      + prg_rcs(k) + prs_rcs(k) &
                                      + prr_rci(k) + prg_rcg(k)) &
                        )*orho * (1-IFDRY)
+            ! write(*,*) 'tten terms',k,tten(k),pri_inu(k),pri_ide(k),prs_ide(k),&
+            !   prs_sde(k),prg_gde(k),pri_iha(k)
+            ! write(*,*) k,pri_wfz(k), pri_rfz(k),prg_rfz(k),prs_scw(k),prg_scw(k),&
+            !   prg_gcw(k),prg_rcs(k) , prs_rcs(k), prr_rci(k), prg_rcg(k)
          else
           tten(k) = tten(k) &
                     + ( lfus*ocp(k)*(-prr_sml(k) - prr_gml(k) &
@@ -4318,6 +4356,7 @@ MODULE module_mp_thompson
                       + lsub*ocp(k)*(prs_sde(k) + prg_gde(k)) &
                        )*orho * (1-IFDRY)
          endif
+         !if (.false.) then
          if (tiedtke_prog_clouds) then
             tten(k) = tten(k) + lsub*ocp(k)*pri_vtk(k)*orho*(1-IFDRY)
             !if (pri_vtk(k) /= 0.0_kind_phys) then
@@ -4330,6 +4369,7 @@ MODULE module_mp_thompson
 !+---+-----------------------------------------------------------------+
 !> - Update variables for TAU+1 before condensation & sedimention.
 !+---+-----------------------------------------------------------------+
+      
       do k = kts, kte
          temp(k) = t1d(k) + DT*tten(k)
          otemp = 1./temp(k)
@@ -4338,9 +4378,12 @@ MODULE module_mp_thompson
          rho(k) = 0.622*pres(k)/(R*temp(k)*(qv(k)+0.622))
          rhof(k) = SQRT(RHO_NOT/rho(k))
          rhof2(k) = SQRT(rhof(k))
+         
          qvs(k) = rslf(pres(k), temp(k))
          ssatw(k) = qv(k)/qvs(k) - 1.
+         
          if (abs(ssatw(k)).lt. eps) ssatw(k) = 0.0
+         
          diffu(k) = 2.11E-5*(temp(k)/273.15)**1.94 * (101325./pres(k))
          if (tempc .ge. 0.0) then
             visco(k) = (1.718+0.0049*tempc)*1.0E-5
@@ -4352,8 +4395,9 @@ MODULE module_mp_thompson
          tcond(k) = (5.69 + 0.0168*tempc)*1.0E-5 * 418.936
          ocp(k) = 1./(Cp*(1.+0.887*qv(k)))
          lvt2(k)=lvap(k)*lvap(k)*ocp(k)*oRv*otemp*otemp
-
+         
          nwfa(k) = MAX(11.1E6*rho(k), (nwfa1d(k) + nwfaten(k)*DT)*rho(k))
+         !if (.false.) then
          if (tiedtke_prog_clouds) then
            !GJF: should cloud fraction be updated somehow before re-calculating?
            !GJF: need to recalculate localized values
@@ -4377,7 +4421,7 @@ MODULE module_mp_thompson
            if (abs(ssatw_clr(k)).lt. eps) ssatw_clr(k) = 0.0
          endif
       enddo
-
+      
       do k = kts, kte
          if ((qc1d(k) + qcten(k)*DT) .gt. R1) then
             rc(k) = (qc1d(k) + qcten(k)*DT)*rho(k)
@@ -4391,6 +4435,7 @@ MODULE module_mp_thompson
             endif
             L_qc(k) = .true.
             !GJF: recalculate in-cloud values
+            !if (.false.) then
             if (tiedtke_prog_clouds) then
               if (cld_frc1d(k) > frc_thresh) then
                 qc_ic(k) = (qc1d(k) + qcten(k)*DT)/cld_frc1d(k)
@@ -4415,6 +4460,7 @@ MODULE module_mp_thompson
             rc(k) = R1
             nc(k) = 2.
             L_qc(k) = .false.
+            !if (.false.) then
             if (tiedtke_prog_clouds) then
               qc_ic(k) = 0.0
               rc_ic(k) = R1
@@ -4427,6 +4473,7 @@ MODULE module_mp_thompson
             ri(k) = (qi1d(k) + qiten(k)*DT)*rho(k)
             ni(k) = MAX(R2, (ni1d(k) + niten(k)*DT)*rho(k))
             L_qi(k) = .true.
+            !if (.false.) then
             if (tiedtke_prog_clouds) then
               if (cld_frc1d(k) > frc_thresh) then
                 qi_ic(k) = (qi1d(k) + qiten(k)*DT)/cld_frc1d(k)
@@ -4444,6 +4491,7 @@ MODULE module_mp_thompson
             ri(k) = R1
             ni(k) = R2
             L_qi(k) = .false.
+            !if (.false.) then
             if (tiedtke_prog_clouds) then
               qi_ic(k) = 0.0
               ni_ic(k) = 0.0
@@ -4467,6 +4515,7 @@ MODULE module_mp_thompson
                lamr = (3.0 + mu_r + 0.672) / mvd_r(k)
                nr(k) = crg(2)*org3*rr(k)*lamr**bm_r / am_r
             endif
+            !if (.false.) then
             if (tiedtke_prog_clouds) then
               if (ap1d(k) > frc_thresh) then
                 qr_iap(k) = (qr1d(k) + qrten(k)*DT)/ap1d(k)
@@ -4496,6 +4545,7 @@ MODULE module_mp_thompson
             rr(k) = R1
             nr(k) = R2
             L_qr(k) = .false.
+            !if (.false.) then
             if (tiedtke_prog_clouds) then
               qr_iap(k) = 0.0
               nr_iap(k) = 0.0
@@ -4507,6 +4557,7 @@ MODULE module_mp_thompson
          if ((qs1d(k) + qsten(k)*DT) .gt. R1) then
             rs(k) = (qs1d(k) + qsten(k)*DT)*rho(k)
             L_qs(k) = .true.
+            !if (.false.) then
             if (tiedtke_prog_clouds) then
               if (cld_frc1d(k) > frc_thresh) then
                 qs_ic(k) = (qs1d(k) + qsten(k)*DT)/cld_frc1d(k)
@@ -4519,6 +4570,7 @@ MODULE module_mp_thompson
          else
             rs(k) = R1
             L_qs(k) = .false.
+            !if (.false.) then
             if (tiedtke_prog_clouds) then
               qs_ic(k) = 0.0
               rs_ic(k) = R1
@@ -4528,6 +4580,7 @@ MODULE module_mp_thompson
          if ((qg1d(k) + qgten(k)*DT) .gt. R1) then
             rg(k) = (qg1d(k) + qgten(k)*DT)*rho(k)
             L_qg(k) = .true.
+            !if (.false.) then
             if (tiedtke_prog_clouds) then
               if (ap1d(k) > frc_thresh) then
                 qg_iap(k) = (qg1d(k) + qgten(k)*DT)/ap1d(k)
@@ -4540,6 +4593,7 @@ MODULE module_mp_thompson
          else
             rg(k) = R1
             L_qg(k) = .false.
+            !if (.false.) then
             if (tiedtke_prog_clouds) then
               qg_iap(k) = 0.0
               rg_iap(k) = R1
@@ -4561,6 +4615,7 @@ MODULE module_mp_thompson
       do k = kts, kte
          if (.not. L_qs(k)) CYCLE
          tc0 = MIN(-0.1, temp(k)-273.15)
+         !if (.false.) then
          if (tiedtke_prog_clouds) then
            smob(k) = rs_ic(k)*oams
          else
@@ -4617,6 +4672,7 @@ MODULE module_mp_thompson
 !> - Calculate y-intercept, slope values for graupel.
 !+---+-----------------------------------------------------------------+
       do k = kte, kts, -1
+         !if (.false.) then
          if (tiedtke_prog_clouds) then
            ygra1 = alog10(max(1.E-9, rg_iap(k)))
          else
@@ -4625,6 +4681,7 @@ MODULE module_mp_thompson
          zans1 = 3.4 + 2./7.*(ygra1+8.) + rand1
          N0_exp = 10.**(zans1)
          N0_exp = MAX(DBLE(gonv_min), MIN(N0_exp, DBLE(gonv_max)))
+         !if (.false.) then
          if (tiedtke_prog_clouds) then
            lam_exp = (N0_exp*am_g*cgg(1)/rg_iap(k))**oge1
          else
@@ -4641,14 +4698,15 @@ MODULE module_mp_thompson
 !> - Calculate y-intercept, slope values for rain.
 !+---+-----------------------------------------------------------------+
       do k = kte, kts, -1
+         !if (.false.) then
          if (tiedtke_prog_clouds) then
            lamr = (am_r*crg(3)*org2*nrr_iap(k)/rr_iap(k))**obmr
-           write(*,*) k, lamr
          else
            lamr = (am_r*crg(3)*org2*nr(k)/rr(k))**obmr
          endif
          ilamr(k) = 1./lamr
          mvd_r(k) = (3.0 + mu_r + 0.672) / lamr
+         !if (.false.) then
          if (tiedtke_prog_clouds) then
            N0_r(k) = nrr_iap(k)*org2*lamr**cre(2)
          else
@@ -4665,18 +4723,21 @@ MODULE module_mp_thompson
 !! from lookup table.
 !+---+-----------------------------------------------------------------+
       
+      !if (.false.) then
       if (tiedtke_prog_clouds) then
         do k = kts, kte
          orho = 1./rho(k)
-         tk_pot_cond = DT*(dqcdt1d(k) + d_eros_l1d(k))
+         tk_pot_cond = DT*(cld_frc1d(k)*(dqcdt1d(k) + d_eros_l1d(k)))
          if ( (tk_pot_cond .gt. eps) .or. (tk_pot_cond .lt. -eps .and. L_qc(k)) ) then
+          !write(*,*) 'Tiedtke liquid cloud created or destroyed'
+          !write(*,*) k, tk_pot_cond, dqcdt1d(k), d_eros_l1d(k)
           xrc = rc_ic(k) + tk_pot_cond*rho(k)
           !GJF: these terms (prw_vtk, pnc_vtk) already assume partial cloudiness, so no need to multiply by cloud fraction
           if (xrc.gt. R1) then
-            prw_vtk(k) = dqcdt1d(k) + d_eros_l1d(k)
+            prw_vtk(k) = cld_frc1d(k)*(dqcdt1d(k) + d_eros_l1d(k))
             if (tk_pot_cond .gt. eps) then
               !condensation
-              pnc_vtk(k) = nerosc1d(k)
+              pnc_vtk(k) = cld_frc1d(k)*nerosc1d(k)
               !use prw_vtk as-is
             elseif (tk_pot_cond .lt. -eps) then
               !evaporation
@@ -4710,7 +4771,7 @@ MODULE module_mp_thompson
           ssatw(k) = qv(k)/qvs(k) - 1.
           
           !GJF: recalculate qv_clr, ssatw_clr for rain evaporation purposes
-          if (tiedtke_prog_clouds) then
+          
             !GJF: need to recalculate localized values
             if (ssatw(k).gt. eps) then !grid-scale saturation for ice or liquid cloud generation as defined below
                !assume cloud fraction = 1 and qv_cld = qc_clr = qv
@@ -4731,7 +4792,7 @@ MODULE module_mp_thompson
             ssatw_clr(k) = qv_clr(k)/qvs(k) - 1.
             if (abs(ssatw_clr(k)).lt. eps) ssatw_clr(k) = 0.0
           endif
-         endif
+         
         enddo
       else
         do k = kts, kte
@@ -4847,6 +4908,7 @@ MODULE module_mp_thompson
 !> - If still subsaturated, allow rain to evaporate, following
 !! Srivastava & Coen (1992).
 !+---+-----------------------------------------------------------------+
+      !if (.false.) then
       if (tiedtke_prog_clouds) then
         do k = kts, kte
            if ( (ssatw_clr(k).lt. -eps) .and. L_qr(k)) then
