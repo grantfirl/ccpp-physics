@@ -204,12 +204,14 @@
         endif
       endif
       
+      
 !------------------------------------------------------------------------
 !    call subroutine adjust_condensate to conservatively fill ql if needed.
 !------------------------------------------------------------------------
       !write(*,*) 'ql_too_small',ql_too_small,ql_in,qa_in
       !write(*,*) 'sl',sl
       call adjust_condensate (ql_too_small, ql_neg, sl, sq, st, ql_in, hlv, cp, ql_upd)
+      !ql_upd = ql_in
       !write(*,*) "tiedtke prog clouds pre (liq)",ST
 !------------------------------------------------------------------------
 !    adjust cloud droplet numbers as needed when those fields are being 
@@ -217,13 +219,16 @@
 !    set at allocation.  
 !------------------------------------------------------------------------
       if (do_liq_num) then
-        call adjust_particle_number (ql_too_small, sn, qn_in, qn_upd)
+       call adjust_particle_number (ql_too_small, sn, qn_in, qn_upd)
       endif
+      !qn_upd = qn_in
       
 !------------------------------------------------------------------------
 !    call subroutine adjust_condensate to conservatively fill qi if needed.
 !------------------------------------------------------------------------
       call adjust_condensate (qi_too_small, qi_neg, SI, SQ, ST, qi_in, HLS, cp, qi_upd)    
+      !qi_upd = qi_in
+      
       !write(*,*) "tiedtke prog clouds pre (ice)",ST
       !------------------------------------------------------------------------
 !    adjust ice particle numbers as needed when those fields
@@ -232,6 +237,7 @@
       if (do_ice_num) then
         call adjust_particle_number (qi_too_small, SNi, qni_in, qni_upd)
       endif
+      !qni_upd = qni_in
       
       !GJF: need to calculate radturbten or use the already calculated process_split_cumulative_tendency_of_air_temperature; the latter also includes dT_dt due to GWD, which is not mentioned in the Tiedtke
       radturbten = dtdt_rad_turb_gwd

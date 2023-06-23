@@ -173,13 +173,6 @@
   dimensions = ()
   type = logical
   intent = in
-[tiedtke_prog_clouds]
-  standard_name = do_tiedtke_prognostic_clouds
-  long_name = flag for tiedtke prognostic cloud scheme
-  units = flag
-  dimensions = ()
-  type = logical
-  intent = in
 [lssav]
   standard_name = flag_for_diagnostics
   long_name = logical flag for storing diagnostics
@@ -367,14 +360,6 @@
   type = real
   kind = kind_phys
   intent = inout
-[qgrs_cldfra]
-  standard_name = cloud_area_fraction_in_atmosphere_layer
-  long_name = cloud area fraction in atmosphere layer
-  units = frac
-  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
-  type = real
-  kind = kind_phys
-  intent = in
 [prsl]
   standard_name = air_pressure
   long_name = mean layer pressure
@@ -899,14 +884,6 @@
   type = real
   kind = kind_phys
   intent = inout
-[net_mass_flux]
-  standard_name = net_convective_mass_flux
-  long_name = net convective mass flux
-  units = kg m-2 s-1
-  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
-  type = real
-  kind = kind_phys
-  intent = inout
 [edmf_a]
   standard_name = emdf_updraft_area
   long_name = updraft area from mass flux scheme
@@ -1109,22 +1086,6 @@
   standard_name = tendency_of_cloud_condensation_nuclei_number_concentration_due_to_model_physics
   long_name = number concentration of cloud condensation nuclei tendency due to model physics
   units = kg-1 s-1
-  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
-  type = real
-  kind = kind_phys
-  intent = inout
-[dqadt_pbl]
-  standard_name = tendency_of_cloud_fraction_due_to_pbl_scheme
-  long_name = cloud fraction tendency due to pbl scheme
-  units = s-1
-  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
-  type = real
-  kind = kind_phys
-  intent = inout
-[dqcdt_pbl]
-  standard_name = tendency_of_cloud_liquid_water_due_to_pbl_scheme
-  long_name = cloud liquid water tendency due to pbl scheme
-  units = kg kg-1 s-1
   dimensions = (horizontal_loop_extent,vertical_layer_dimension)
   type = real
   kind = kind_phys
