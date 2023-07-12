@@ -3583,7 +3583,7 @@ MODULE module_mp_thompson
 !+---+-----------------------------------------------------------------+ !  DROPLET NUCLEATION
            if (clap .gt. eps) then
             if (is_aerosol_aware .or. merra2_aerosol_aware) then
-               xnc = MAX(2., activ_ncloud(temp(k), w1d(k)+rand3, nwfa(k)))
+               xnc = MAX(2., activ_ncloud(temp(k), w1d(k)+rand3, nwfa(k), lsml))
             else
                if(lsml == 1) then
                  xnc = Nt_c_l
@@ -5356,10 +5356,11 @@ MODULE module_mp_thompson
 ! TO_DO ITEM:  For radiation cooling producing fog, in which case the
 !.. updraft velocity could easily be negative, we could use the temp
 !.. and its tendency to diagnose a pretend postive updraft velocity.
-      real function activ_ncloud(Tt, Ww, NCCN)
+      real function activ_ncloud(Tt, Ww, NCCN, lsm_in)
 
       implicit none
       REAL, INTENT(IN):: Tt, Ww, NCCN
+      INTEGER, INTENT(IN):: lsm_in
       REAL:: n_local, w_local
       INTEGER:: i, j, k, l, m, n
       REAL:: A, B, C, D, t, u, x1, x2, y1, y2, nx, wy, fraction
@@ -5409,6 +5410,11 @@ MODULE module_mp_thompson
 !.. sea salts.
       l = 3
       m = 2
+      
+      if (lsm_in.ne.1) then
+         l = 4
+         m = 4
+      endif
 
       A = tnccn_act(i-1,j-1,k,l,m)
       B = tnccn_act(i,j-1,k,l,m)

@@ -2309,7 +2309,7 @@ END SUBROUTINE SFCLAY1D_mynn
           IF ( IZ0TLND2 .EQ. 1 ) THEN
              CZIL = 10.0 ** ( -0.40 * ( Z_0 / 0.07 ) )
           ELSE
-             CZIL = 0.085 !0.075 !0.10
+             CZIL = 0.1 !0.085 !0.075 !0.10
           END IF
 
           Zt = Z_0*EXP(-KARMAN*CZIL*SQRT(restar))
