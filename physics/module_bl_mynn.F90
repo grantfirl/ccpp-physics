@@ -2628,9 +2628,9 @@ CONTAINS
 # define kte HARDCODE_VERTICAL
 #endif
 
-    integer, intent(in)                :: bl_mynn_mixlength,tke_budget
+    integer, intent(in)               :: bl_mynn_mixlength,tke_budget
     real(kind_phys), intent(in)       :: closure
-    real(kind_phys), dimension(kts:kte), intent(in)   :: dz
+    real(kind_phys), dimension(kts:kte),   intent(in) :: dz
     real(kind_phys), dimension(kts:kte+1), intent(in) :: zw
     real(kind_phys), intent(in)       :: rmo,flt,fltv,flq,                 &
          &Psig_bl,Psig_shcu,xland,dx,zi
@@ -3045,7 +3045,8 @@ CONTAINS
        ! q-variance (pdq), and covariance (pdc)
        pdk(k) = elq*( sm(k)*gm(k)                &
             &        +sh(k)*gh(k)+gamv ) +       &
-            &   TKEprodTD(k)
+!fix?            &   TKEprodTD(k)
+            &    0.5*TKEprodTD(k)        ! xmchen
        pdt(k) = elh*( sh(k)*dtl(k)+gamt )*dtl(k)
        pdq(k) = elh*( sh(k)*dqw(k)+gamq )*dqw(k)
        pdc(k) = elh*( sh(k)*dtl(k)+gamt )        &
@@ -3089,9 +3090,10 @@ CONTAINS
        !qBUOY1D(k) = elq*(sh(k)*(-dTdz*grav/thl(k)) + gamv) !! ORIGINAL CODE
        
        !! Buoyncy term takes the TKEprodTD(k) production now
-       qBUOY1D(k) = elq*(sh(k)*gh(k)+gamv)+TKEprodTD(k) !staggered
+!fix?  qBUOY1D(k) = elq*(sh(k)*gh(k)+gamv)+TKEprodTD(k) !staggered
+       qBUOY1D(k) = elq*(sh(k)*gh(k)+gamv)+0.5*TKEprodTD(k) ! xmchen
 
-       !!!Dissipation Term (now it evaluated on mym_predict)
+       !!!Dissipation Term (now it evaluated in mym_predict)
        !qDISS1D(k) = (q3sq**(3./2.))/(b1*MAX(el(k),1.)) !! ORIGINAL CODE
        
        !! >> EOB
@@ -3116,8 +3118,6 @@ CONTAINS
        qcd(k) = ( qcd(k+1)-qcd(k) )/( dzk )
     END DO
 !
-
-
     if (spp_pbl==1) then
        DO k = kts,kte
           dfm(k)= dfm(k) + dfm(k)* rstoch_col(k) * 1.5 * MAX(exp(-MAX(zw(k)-8000.,0.0)/2000.),0.001)
@@ -3184,7 +3184,7 @@ CONTAINS
        &            delt,                                               &
        &            dz,                                                 &
        &            ust, flt, flq, pmz, phh,                            &
-       &            el, dfq, rho,                                       &
+       &            el,  dfq, rho,                                      &
        &            pdk, pdt, pdq, pdc,                                 &
        &            qke, tsq, qsq, cov,                                 &
        &            s_aw,s_awqke,bl_mynn_edmf_tke,                      &
@@ -3266,7 +3266,7 @@ CONTAINS
        kmdz(k) = MAX(kmdz(k),  0.5* s_aw(k))
        kmdz(k) = MAX(kmdz(k), -0.5*(s_aw(k)-s_aw(k+1)))
     ENDDO
-!JOE-end conservation mods
+    !end conservation mods
 
     pdk1 = 2.0*ust**3*pmz/( vkz )
     phm  = 2.0/ust   *phh/( vkz )
@@ -3274,8 +3274,8 @@ CONTAINS
     pdq1 = phm*flq**2
     pdc1 = phm*flt*flq
 !
-!   **  pdk(i,j,1)+pdk(i,j,2) corresponds to pdk1.  **
-    pdk(kts) = pdk1 -pdk(kts+1)
+!   **  pdk(1)+pdk(2) corresponds to pdk1.  **
+    pdk(kts) = pdk1 - pdk(kts+1)
 
 !!    pdt(kts) = pdt1 -pdt(kts+1)
 !!    pdq(kts) = pdq1 -pdq(kts+1)
@@ -3370,7 +3370,7 @@ CONTAINS
         ENDDO
         k=kte
         qWT1D(k)=dzinv(k)*(-kqdz(k)*(tke_up(k)-tke_up(k-1)) &
-            &  + 0.5*rhoinv(k)*(-s_aw(k)*tke_up(k)-s_aw(k)*tke_up(k-1)+s_awqke(k))*onoff) !unstaggared
+            &  + 0.5*rhoinv(k)*(-s_aw(k)*tke_up(k)-s_aw(k)*tke_up(k-1)+s_awqke(k))*onoff) !unstaggered
         !!  >> EOBvt
         qDISS1D=bp*tke_up !! TKE dissipation rate !unstaggered
     END IF
@@ -3836,9 +3836,11 @@ CONTAINS
            !sgm(k) = max( sgm(k), qsat_tk*0.035 )
            !introduce vertical grid spacing dependence on min sgm
            wt = max(400. - max(dz(k)-100.,0.0), 0.0)/400. !=1 for dz < 100 m, =0 for dz > 500 m
-           mindz  = 0.035*wt + 0.050*(1.0-wt)
+!test           mindz  = 0.035*wt + 0.050*(1.0-wt)
+           mindz  = 0.030*wt + 0.050*(1.0-wt)
            sgm(k) = sgm(k) + sgm(k)*0.3*(1.0-wt)
            sgm(k) = max( sgm(k), qsat_tk*mindz )
+
            q1(k)  = qmq  / sgm(k)  ! Q1, the normalized saturation
 
            !Add condition for falling/settling into low-RH layers, so at least
@@ -3940,7 +3942,8 @@ CONTAINS
 
            cfmax = min(cldfra_bl1D(k), 0.6)
            !Further limit the cf going into vt & vq near the surface
-           zsl   = min(max(50., 0.1*pblh2), 200.)
+!test           zsl   = min(max(50., 0.1*pblh2), 200.)
+           zsl   = min(max(25., 0.1*pblh2), 100.)
            wt    = min(zagl/zsl, 1.0) !=0 at z=0 m, =1 above ekman layer
            cfmax = cfmax*wt
 
@@ -3965,7 +3968,16 @@ CONTAINS
            fac_damp = min(zagl * 0.0025, 1.0)
            !cld_factor = 1.0 + fac_damp*MAX(0.0, ( RH(k) - 0.75 ) / 0.26 )**1.9 !HRRRv4
            !cld_factor = 1.0 + fac_damp*min((max(0.0, ( RH(k) - 0.92 )) / 0.25 )**2, 0.3)
-           cld_factor = 1.0 + fac_damp*min((max(0.0, ( RH(k) - 0.92 )) / 0.145)**2, 0.35)
+!           cld_factor = 1.0 + fac_damp*min((max(0.0, ( RH(k) - 0.92 )) / 0.145)**2, 0.35)
+!test       cld_factor = 1.0 + fac_damp*min((max(0.0, ( RH(k) - 0.92 )) / 0.145)**2, 0.35)
+!Due to recent changes in Thomp-Aero,
+!do not amplify CF estimate over the marine PBL
+           if ((xland-1.5).GE.0) then   ! water
+              wt    = max(0.0, min((zagl-(pblh2+300.))/1000., 1.0)) !=0 at z=0 m, =1 above ekman layer
+              cld_factor = 1.0 + wt*min((max(0.0, ( RH(k) - 0.92 )) / 0.145)**2, 0.35)
+           else                         ! land
+              cld_factor = 1.0 + fac_damp*min((max(0.0, ( RH(k) - 0.92 )) / 0.145)**2, 0.35)
+           endif
            cldfra_bl1D(K) = min( 1., cld_factor*cldfra_bl1D(K) )
         enddo
 
@@ -5996,9 +6008,11 @@ ENDIF
   ! Criteria (5) - only a function of flt (not fltv)
     if ((landsea-1.5).LT.0) then  !land
       !width_flx = MAX(MIN(1000.*(0.6*tanh((flt - 0.050)/0.03) + .5),1000.), 0.)
-      width_flx = MAX(MIN(1000.*(0.6*tanh((flt - 0.040)/0.03) + .5),1000.), 0.) 
+!test f(ftlv)     width_flx = MAX(MIN(1000.*(0.6*tanh((flt - 0.040)/0.03) + .5),1000.), 0.) 
+      width_flx = MAX(MIN(1000.*(0.6*tanh((fltv - 0.040)/0.04) + .5),1000.), 0.)
     else                          !water
-      width_flx = MAX(MIN(1000.*(0.6*tanh((flt - 0.003)/0.01) + .5),1000.), 0.)
+!test f(fltv)     width_flx = MAX(MIN(1000.*(0.6*tanh((flt - 0.003)/0.01) + .5),1000.), 0.)
+      width_flx = MAX(MIN(1000.*(0.6*tanh((fltv - 0.007)/0.02) + .5),1000.), 0.)
     endif
     maxwidth = MIN(maxwidth, width_flx)
     minwidth = lmin
@@ -6139,9 +6153,10 @@ if ( fltv2 > 0.002 .AND. (maxwidth > minwidth) .AND. superadiabatic) then
     envm_sqc(kts:kte)=QC(kts:kte)
     envm_u(kts:kte)=U(kts:kte)
     envm_v(kts:kte)=V(kts:kte)
-    do k=kts,kte
+    do k=kts,kte-1
        rhoz(k)  = (rho(k)*dz(k+1)+rho(k+1)*dz(k))/(dz(k+1)+dz(k))
     enddo
+    rhoz(kte) = rho(kte)
 
     !dxsa is scale-adaptive factor governing the pressure-gradient term of the momentum transport
     dxsa = 1. - MIN(MAX((12000.0-dx)/(12000.0-3000.0), 0.), 1.)
@@ -6599,9 +6614,9 @@ IF (nup2 > 0) THEN
    !Here, k=1 is the top of the first model layer. These values do not 
    !need to be defined at k=kte (unused level).
    DO K=KTS,KTE-1
-       exneri(k) = (exner(k)*DZ(k+1)+exner(k+1)*DZ(k))/(DZ(k+1)+DZ(k))
+       exneri(k) = (exner(k)*dz(k+1)+exner(k+1)*dz(k))/(dz(k+1)+dz(k))
        edmf_th(k)= edmf_thl(k) + xlvcp/exneri(k)*edmf_qc(K)
-       dzi(k)    = 0.5*(DZ(k)+DZ(k+1))
+       dzi(k)    = 0.5*(dz(k)+dz(k+1))
    ENDDO
 
 !JOE: ADD CLDFRA_bl1d, qc_bl1d. Note that they have already been defined in

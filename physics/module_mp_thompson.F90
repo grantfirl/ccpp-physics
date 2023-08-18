@@ -1416,6 +1416,7 @@ MODULE module_mp_thompson
                qcten1(k) = 0.
             endif initialize_extended_diagnostics
          enddo
+         lsml = lsm(i,j)
          if (is_aerosol_aware .or. merra2_aerosol_aware) then
             do k = kts, kte
                nc1d(k) = nc(i,k,j)
@@ -1423,7 +1424,6 @@ MODULE module_mp_thompson
                nifa1d(k) = nifa(i,k,j)
             enddo
          else
-            lsml = lsm(i,j)
             do k = kts, kte
                if(lsml == 1) then
                  nc1d(k) = Nt_c_l/rho(k)
@@ -5411,9 +5411,14 @@ MODULE module_mp_thompson
       l = 3
       m = 2
       
-      if (lsm_in.ne.1) then
+      if (lsm_in.lt.1) then
          l = 4
-         m = 4
+         m = 1
+      endif
+
+      if (lsm_in.gt.1) then
+         l = 4
+         m = 1
       endif
 
       A = tnccn_act(i-1,j-1,k,l,m)
