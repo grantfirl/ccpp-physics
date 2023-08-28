@@ -5948,7 +5948,7 @@ ENDIF
 
      !Search for cloud base
      qc_sgs = max(qc(k), qc_bl1d(k))
-     if (qc_sgs> 1E-5 .and. cloud_base == 9000.0) then
+     if (qc_sgs> 1E-5 .and. (cldfra_bl1d(k) .ge. 0.5) .and. cloud_base == 9000.0) then
        cloud_base = 0.5*(ZW(k)+ZW(k+1))
      endif
   enddo
@@ -6001,17 +6001,21 @@ ENDIF
   !Criteria (2)
     maxwidth = min(maxwidth, 1.1*PBLH) 
   ! Criteria (3)
-    maxwidth = MIN(maxwidth, 0.5*cloud_base)
+    if ((landsea-1.5) .lt. 0) then  !land
+       maxwidth = MIN(maxwidth, 0.5*cloud_base)
+    else                            !water
+       maxwidth = MIN(maxwidth, 0.9*cloud_base)
+    endif
   ! Criteria (4)
     wspd_pbl=SQRT(MAX(u(kts)**2 + v(kts)**2, 0.01))
     !Note: area fraction (acfac) is modified below
   ! Criteria (5) - only a function of flt (not fltv)
     if ((landsea-1.5).LT.0) then  !land
       !width_flx = MAX(MIN(1000.*(0.6*tanh((flt - 0.050)/0.03) + .5),1000.), 0.)
-!test f(ftlv)     width_flx = MAX(MIN(1000.*(0.6*tanh((flt - 0.040)/0.03) + .5),1000.), 0.) 
+      !width_flx = MAX(MIN(1000.*(0.6*tanh((flt - 0.040)/0.03) + .5),1000.), 0.) 
       width_flx = MAX(MIN(1000.*(0.6*tanh((fltv - 0.040)/0.04) + .5),1000.), 0.)
     else                          !water
-!test f(fltv)     width_flx = MAX(MIN(1000.*(0.6*tanh((flt - 0.003)/0.01) + .5),1000.), 0.)
+      !width_flx = MAX(MIN(1000.*(0.6*tanh((flt - 0.003)/0.01) + .5),1000.), 0.)
       width_flx = MAX(MIN(1000.*(0.6*tanh((fltv - 0.007)/0.02) + .5),1000.), 0.)
     endif
     maxwidth = MIN(maxwidth, width_flx)
