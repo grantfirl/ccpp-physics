@@ -1416,6 +1416,7 @@ MODULE module_mp_thompson
                qcten1(k) = 0.
             endif initialize_extended_diagnostics
          enddo
+         lsml = lsm(i,j)
          if (is_aerosol_aware .or. merra2_aerosol_aware) then
             do k = kts, kte
                nc1d(k) = nc(i,k,j)
@@ -1423,7 +1424,6 @@ MODULE module_mp_thompson
                nifa1d(k) = nifa(i,k,j)
             enddo
          else
-            lsml = lsm(i,j)
             do k = kts, kte
                if(lsml == 1) then
                  nc1d(k) = Nt_c_l/rho(k)
@@ -3583,7 +3583,7 @@ MODULE module_mp_thompson
 !+---+-----------------------------------------------------------------+ !  DROPLET NUCLEATION
            if (clap .gt. eps) then
             if (is_aerosol_aware .or. merra2_aerosol_aware) then
-               xnc = MAX(2., activ_ncloud(temp(k), w1d(k)+rand3, nwfa(k)))
+               xnc = MAX(2., activ_ncloud(temp(k), w1d(k)+rand3, nwfa(k), lsml))
             else
                if(lsml == 1) then
                  xnc = Nt_c_l
@@ -5356,10 +5356,11 @@ MODULE module_mp_thompson
 ! TO_DO ITEM:  For radiation cooling producing fog, in which case the
 !.. updraft velocity could easily be negative, we could use the temp
 !.. and its tendency to diagnose a pretend postive updraft velocity.
-      real function activ_ncloud(Tt, Ww, NCCN)
+      real function activ_ncloud(Tt, Ww, NCCN, lsm_in)
 
       implicit none
       REAL, INTENT(IN):: Tt, Ww, NCCN
+      INTEGER, INTENT(IN):: lsm_in
       REAL:: n_local, w_local
       INTEGER:: i, j, k, l, m, n
       REAL:: A, B, C, D, t, u, x1, x2, y1, y2, nx, wy, fraction
@@ -5409,6 +5410,16 @@ MODULE module_mp_thompson
 !.. sea salts.
       l = 3
       m = 2
+      
+      if (lsm_in.lt.1) then
+         l = 4
+         m = 1
+      endif
+
+      if (lsm_in.gt.1) then
+         l = 4
+         m = 1
+      endif
 
       A = tnccn_act(i-1,j-1,k,l,m)
       B = tnccn_act(i,j-1,k,l,m)
