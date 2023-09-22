@@ -3276,6 +3276,7 @@ CONTAINS
 !
 !   **  pdk(1)+pdk(2) corresponds to pdk1.  **
     pdk(kts) = pdk1 - pdk(kts+1)
+    pdk(kts+1) = max(pdk1,pdk(kts+1))
 
 !!    pdt(kts) = pdt1 -pdt(kts+1)
 !!    pdq(kts) = pdq1 -pdq(kts+1)
@@ -3622,9 +3623,12 @@ CONTAINS
 
     real(kind_phys):: qsl,esat,qsat,dqsl,cld0,q1k,qlk,eq1,qll,           &
          &q2p,pt,rac,qt,t,xl,rsl,cpm,Fng,qww,alpha,beta,bb,              &
-         &ls,wt,mindz,cld_factor,fac_damp,liq_frac,ql_ice,ql_water,      &
+         &ls,wt,qpct,cld_factor,fac_damp,liq_frac,ql_ice,ql_water,       &
          &qmq,qsat_tk,q1_rh,rh_hack,dzm1,zsl
-    real(kind_phys), parameter :: rhcrit=0.83 !for hom pdf min sigma
+    real(kind_phys), parameter :: qpct_sfc=0.02
+    real(kind_phys), parameter :: qpct_pbl=0.03
+    real(kind_phys), parameter :: qpct_trp=0.04
+    real(kind_phys), parameter :: rhcrit  =0.83 !for hom pdf min sigma
     integer :: i,j,k
 
     real(kind_phys):: erf
@@ -3831,15 +3835,18 @@ CONTAINS
            r3sq   = max( qsq(k), 0.0 )
            !Calculate sigma using higher-order moments:
            sgm(k) = SQRT( r3sq )
-           !Set limits on sigma relative to saturation water vapor
+           !Set constraints on sigma relative to saturation water vapor
            sgm(k) = min( sgm(k), qsat_tk*0.666 )
            !sgm(k) = max( sgm(k), qsat_tk*0.035 )
+
            !introduce vertical grid spacing dependence on min sgm
-           wt = max(400. - max(dz(k)-100.,0.0), 0.0)/400. !=1 for dz < 100 m, =0 for dz > 500 m
-!test           mindz  = 0.035*wt + 0.050*(1.0-wt)
-           mindz  = 0.030*wt + 0.050*(1.0-wt)
-           sgm(k) = sgm(k) + sgm(k)*0.3*(1.0-wt)
-           sgm(k) = max( sgm(k), qsat_tk*mindz )
+           wt     = max(500. - max(dz(k)-100.,0.0), 0.0)/500. !=1 for dz < 100 m, =0 for dz > 600 m
+           sgm(k) = sgm(k) + sgm(k)*0.2*(1.0-wt) !inflate sgm for coarse dz
+
+           !allow min sgm to vary with dz and z.
+           qpct   = qpct_pbl*wt + qpct_trp*(1.0-wt)
+           qpct   = min(qpct, max(qpct_sfc, qpct_pbl*zagl/500.) )
+           sgm(k) = max( sgm(k), qsat_tk*qpct )
 
            q1(k)  = qmq  / sgm(k)  ! Q1, the normalized saturation
 
@@ -3942,7 +3949,6 @@ CONTAINS
 
            cfmax = min(cldfra_bl1D(k), 0.6)
            !Further limit the cf going into vt & vq near the surface
-!test           zsl   = min(max(50., 0.1*pblh2), 200.)
            zsl   = min(max(25., 0.1*pblh2), 100.)
            wt    = min(zagl/zsl, 1.0) !=0 at z=0 m, =1 above ekman layer
            cfmax = cfmax*wt
@@ -3968,16 +3974,7 @@ CONTAINS
            fac_damp = min(zagl * 0.0025, 1.0)
            !cld_factor = 1.0 + fac_damp*MAX(0.0, ( RH(k) - 0.75 ) / 0.26 )**1.9 !HRRRv4
            !cld_factor = 1.0 + fac_damp*min((max(0.0, ( RH(k) - 0.92 )) / 0.25 )**2, 0.3)
-!           cld_factor = 1.0 + fac_damp*min((max(0.0, ( RH(k) - 0.92 )) / 0.145)**2, 0.35)
-!test       cld_factor = 1.0 + fac_damp*min((max(0.0, ( RH(k) - 0.92 )) / 0.145)**2, 0.35)
-!Due to recent changes in Thomp-Aero,
-!do not amplify CF estimate over the marine PBL
-           if ((xland-1.5).GE.0) then   ! water
-              wt    = max(0.0, min((zagl-(pblh2+300.))/1000., 1.0)) !=0 at z=0 m, =1 above ekman layer
-              cld_factor = 1.0 + wt*min((max(0.0, ( RH(k) - 0.92 )) / 0.145)**2, 0.35)
-           else                         ! land
-              cld_factor = 1.0 + fac_damp*min((max(0.0, ( RH(k) - 0.92 )) / 0.145)**2, 0.35)
-           endif
+           cld_factor = 1.0 + fac_damp*min((max(0.0, ( RH(k) - 0.92 )) / 0.145)**2, 0.35)
            cldfra_bl1D(K) = min( 1., cld_factor*cldfra_bl1D(K) )
         enddo
 
@@ -5824,7 +5821,7 @@ ENDIF
   ! Variables for plume interpolation/saturation check
    real(kind_phys),dimension(kts:kte) :: exneri,dzi,rhoz
    real(kind_phys):: THp, QTp, QCp, QCs, esat, qsl
-   real(kind_phys):: csigma,acfac,ac_wsp,ac_cld
+   real(kind_phys):: csigma,acfac,ac_wsp
 
    !plume overshoot
    integer :: overshoot
@@ -6050,7 +6047,7 @@ if ( fltv2 > 0.002 .AND. (maxwidth > minwidth) .AND. superadiabatic) then
 
     ! Make updraft area (UPA) a function of the buoyancy flux
     if ((landsea-1.5).LT.0) then  !land
-        acfac = .5*tanh((fltv2 - 0.02)/0.05) + .5
+       acfac = .5*tanh((fltv2 - 0.02)/0.05) + .5
     else                          !water
        acfac = .5*tanh((fltv2 - 0.01)/0.03) + .5
     endif
@@ -6059,9 +6056,7 @@ if ( fltv2 > 0.002 .AND. (maxwidth > minwidth) .AND. superadiabatic) then
     !Note: this effect may be better represented by an increase in
     !entrainment rate for high wind consitions (more ambient turbulence).
     ac_wsp = 1.0 - min(max(wspd_pbl - 15.0, 0.0), 10.0)/10.0
-    !reduce area fraction beneath cloud bases < 1200 m AGL
-    ac_cld = min(cloud_base/1200., 1.0)
-    acfac  = acfac * min(ac_wsp, ac_cld)
+    acfac  = acfac * ac_wsp
 
     ! Find the portion of the total fraction (Atot) of each plume size:
     An2 = 0.
@@ -6102,6 +6097,8 @@ if ( fltv2 > 0.002 .AND. (maxwidth > minwidth) .AND. superadiabatic) then
          exc_fac = 0.58
        endif
     endif
+    !decrease excess for large wind speeds
+    exc_fac = exc_fac * ac_wsp
 
     !Note: sigmaW is typically about 0.5*wstar
     sigmaW =csigma*wstar*(z0/pblh)**(onethird)*(1 - 0.8*z0/pblh)
@@ -6446,8 +6443,8 @@ IF (nup2 > 0) THEN
    if (scalar_opt > 0) then
       do k=kts,kte
          do I=1,nup
-            s_awqnc(k+1)= s_awqnc(K+1) + rhoz(k)*UPA(K,i)*UPW(K,i)*UPQNC(K,i)*Psig_w
-            s_awqni(k+1)= s_awqni(K+1) + rhoz(k)*UPA(K,i)*UPW(K,i)*UPQNI(K,i)*Psig_w
+            s_awqnc(k+1)  = s_awqnc(K+1)   + rhoz(k)*UPA(K,i)*UPW(K,i)*UPQNC(K,i)*Psig_w
+            s_awqni(k+1)  = s_awqni(K+1)   + rhoz(k)*UPA(K,i)*UPW(K,i)*UPQNI(K,i)*Psig_w
             s_awqnwfa(k+1)= s_awqnwfa(K+1) + rhoz(k)*UPA(K,i)*UPW(K,i)*UPQNWFA(K,i)*Psig_w
             s_awqnifa(k+1)= s_awqnifa(K+1) + rhoz(k)*UPA(K,i)*UPW(K,i)*UPQNIFA(K,i)*Psig_w
             s_awqnbca(k+1)= s_awqnbca(K+1) + rhoz(k)*UPA(K,i)*UPW(K,i)*UPQNBCA(K,i)*Psig_w
@@ -6471,16 +6468,16 @@ IF (nup2 > 0) THEN
    !Print*,"flt/dz=",flt/dz(kts)," flx1=",flx1," s_aw(kts+1)=",s_aw(kts+1)
    IF (flx1 > fluxportion*flt/dz(kts) .AND. flx1>0.0) THEN
        adjustment= fluxportion*flt/dz(kts)/flx1
-       s_aw   = s_aw*adjustment
-       s_awthl= s_awthl*adjustment
-       s_awqt = s_awqt*adjustment
-       s_awqc = s_awqc*adjustment
-       s_awqv = s_awqv*adjustment
-       s_awqnc= s_awqnc*adjustment
-       s_awqni= s_awqni*adjustment
-       s_awqnwfa= s_awqnwfa*adjustment
-       s_awqnifa= s_awqnifa*adjustment
-       s_awqnbca= s_awqnbca*adjustment
+       s_aw      = s_aw*adjustment
+       s_awthl   = s_awthl*adjustment
+       s_awqt    = s_awqt*adjustment
+       s_awqc    = s_awqc*adjustment
+       s_awqv    = s_awqv*adjustment
+       s_awqnc   = s_awqnc*adjustment
+       s_awqni   = s_awqni*adjustment
+       s_awqnwfa = s_awqnwfa*adjustment
+       s_awqnifa = s_awqnifa*adjustment
+       s_awqnbca = s_awqnbca*adjustment
        IF (momentum_opt > 0) THEN
           s_awu  = s_awu*adjustment
           s_awv  = s_awv*adjustment
@@ -6702,8 +6699,8 @@ IF (nup2 > 0) THEN
                !mf_cf = min(max(0.5 + 0.36 * atan(1.20*(Q1+0.4)),0.01),0.6)
                !Original CB
                mf_cf = min(max(0.5 + 0.36 * atan(1.55*Q1),0.01),0.6)
-               mf_cf = max(mf_cf, 1.75 * Aup)
-               mf_cf = min(mf_cf, 5.0  * Aup)
+               mf_cf = max(mf_cf, 1.8 * Aup)
+               mf_cf = min(mf_cf, 5.0 * Aup)
             endif
 
             !IF ( debug_code ) THEN
