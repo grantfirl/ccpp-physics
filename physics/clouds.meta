@@ -119,6 +119,7 @@
   dimensions = (horizontal_loop_extent,vertical_layer_dimension)
   type = real
   kind = kind_phys
+  intent = inout
 [qa]
   standard_name = cloud_area_fraction_in_atmosphere_layer_of_new_state
   long_name = cloud area fraction in atmosphere layer updated by physics
