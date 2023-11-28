@@ -71,7 +71,8 @@
       real(kind=kind_phys), intent(in) :: psp(:), delp(:,:),            &
      &   prslp(:,:), garea(:), hpbl(:), dot(:,:), phil(:,:),            &
      &   prevsq(:,:),q(:,:)
-      real(kind=kind_phys), pointer    :: qmicro(:,:),tmf(:,:)
+      real(kind=kind_phys), intent(in), allocatable :: qmicro(:,:),     &
+     &   tmf(:,:)
 
       real(kind=kind_phys), intent(in) :: sigmain(:,:)
 !

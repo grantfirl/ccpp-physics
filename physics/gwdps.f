@@ -316,10 +316,10 @@
       real(kind=kind_phys), intent(inout) :: DUSFC(:), DVSFC(:),        &
      &                     RDXZB(:)
       real(kind=kind_phys), intent(inout) :: dtaux2d_ms(:,:)
-      real(kind=kind_phys), pointer       ::                            &
+      real(kind=kind_phys), intent(inout), allocatable ::               &
      &                     dtauy2d_ms(:,:), dtaux2d_bl(:,:),            &
      &                     dtauy2d_bl(:,:)
-      real(kind=kind_phys), pointer       :: dusfc_ms(:), dvsfc_ms(:),  &
+      real(kind=kind_phys), intent(inout), allocatable :: dusfc_ms(:), dvsfc_ms(:),  &
      &                     dusfc_bl(:), dvsfc_bl(:)
       integer, intent(in) :: nmtvr
       logical, intent(in) :: lprnt

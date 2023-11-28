@@ -91,9 +91,9 @@
         real(kind=kind_phys), dimension(:),   intent(in)  :: rain_cpl
         real(kind=kind_phys), dimension(:),   intent(in)  :: snow_cpl
         integer,                              intent(in)  :: lndp_type, n_var_lndp
-        character(len=3),     dimension(:),   pointer     :: lndp_var_list
-        real(kind=kind_phys), dimension(:),   pointer     :: lndp_prt_list
-        real(kind=kind_phys), dimension(:,:), pointer     :: sfc_wts
+        character(len=3),     dimension(:),   intent(in), allocatable :: lndp_var_list
+        real(kind=kind_phys), dimension(:),   intent(in), allocatable :: lndp_prt_list
+        real(kind=kind_phys), dimension(:,:), intent(in), allocatable :: sfc_wts
         real(kind=kind_phys), dimension(:),   intent(out) :: z01d
         real(kind=kind_phys), dimension(:),   intent(out) :: zt1d
         real(kind=kind_phys), dimension(:),   intent(out) :: bexp1d
@@ -102,7 +102,7 @@
         real(kind=kind_phys),                 intent(out) :: lndp_vgf
 
         logical,                              intent(in)    :: cplflx
-        real(kind=kind_phys), dimension(:),   pointer       :: slimskin_cpl
+        real(kind=kind_phys), dimension(:),   intent(in), allocatable :: slimskin_cpl
         logical,              dimension(:),   intent(inout) :: flag_cice
         integer,              dimension(:),   intent(out)   :: islmsk_cice
 

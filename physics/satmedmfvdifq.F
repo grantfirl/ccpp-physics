@@ -107,7 +107,7 @@
       real(kind=kind_phys), intent(in) :: rlmx, elmx
       real(kind=kind_phys), intent(inout) :: dv(:,:),     du(:,:),      &
      &                     tdt(:,:),    rtg(:,:,:)
-      real(kind=kind_phys), pointer       :: tmf(:,:)
+      real(kind=kind_phys), intent(inout), allocatable :: tmf(:,:)
       real(kind=kind_phys), intent(in) ::                               &
      &                     u1(:,:),     v1(:,:),                        &
      &                     t1(:,:),     q1(:,:,:),                      &
@@ -123,7 +123,8 @@
      &                     prsi(:,:), del(:,:),                         &
      &                     prsl(:,:),   prslk(:,:),                     &
      &                     phii(:,:), phil(:,:)
-      real(kind=kind_phys), pointer      , dimension(:,:,:) :: dtend
+      real(kind=kind_phys), intent(inout) , dimension(:,:,:),           &
+     &  allocatable :: dtend
       integer, intent(in) :: dtidx(:,:), index_of_temperature,          &
      &       index_of_x_wind, index_of_y_wind, index_of_process_pbl
       real(kind=kind_phys), intent(out) ::                              &

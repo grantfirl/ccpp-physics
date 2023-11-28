@@ -29,13 +29,13 @@ contains
       real(kind=kind_phys), intent(out) ::                              &
      &  oc(:), oa4(:,:), clx(:,:),                                      &
      &  theta(:), sigma(:), gamma(:), elvmax(:)
-      real(kind=kind_phys), pointer     ::                              &
+      real(kind=kind_phys), intent(out), allocatable ::                              &
      &  varss(:), ocss(:), oa4ss(:,:), clxss(:,:)
 
       logical, intent(in) :: lssav, ldiag3d, flag_for_gwd_generic_tend
       real(kind=kind_phys), intent(in) :: dtdt(:,:), dudt(:,:), dvdt(:,:)
       ! dtend only allocated only if ldiag3d is .true.
-      real(kind=kind_phys), pointer       :: dtend(:,:,:)
+      real(kind=kind_phys), intent(inout), allocatable :: dtend(:,:,:)
       integer, intent(in) :: dtidx(:,:), index_of_temperature,          &
      &  index_of_x_wind, index_of_y_wind, index_of_process_orographic_gwd
       real(kind=kind_phys), intent(in) :: dtf

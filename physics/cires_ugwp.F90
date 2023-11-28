@@ -230,12 +230,12 @@ contains
     real(kind=kind_phys),    intent(out), dimension(:)      :: tau_mtb, tau_ogw, tau_tofd, tau_ngw
     real(kind=kind_phys),    intent(out), dimension(:, :):: gw_dudt, gw_dvdt, gw_dtdt, gw_kdis
     real(kind=kind_phys),    intent(out), dimension(:, :):: dudt_mtb, dudt_ogw, dudt_tms
-    real(kind=kind_phys),    pointer    , dimension(:)    :: dusfc_ms, dvsfc_ms, dusfc_bl, dvsfc_bl
-    real(kind=kind_phys),    pointer    , dimension(:, :) :: dtauy2d_ms
-    real(kind=kind_phys),    pointer    , dimension(:, :) :: dtaux2d_bl, dtauy2d_bl
+    real(kind=kind_phys),    intent(out), dimension(:)   , allocatable :: dusfc_ms, dvsfc_ms, dusfc_bl, dvsfc_bl
+    real(kind=kind_phys),    intent(out), dimension(:, :), allocatable :: dtauy2d_ms
+    real(kind=kind_phys),    intent(out), dimension(:, :), allocatable :: dtaux2d_bl, dtauy2d_bl
 
     ! dtend is only allocated if ldiag=.true.
-    real(kind=kind_phys), optional, pointer                  :: dtend(:,:,:)
+    real(kind=kind_phys), intent(inout), optional, allocatable :: dtend(:,:,:)
     integer, intent(in)                                      :: dtidx(:,:), &
          index_of_x_wind, index_of_y_wind, index_of_temperature,         &
          index_of_process_orographic_gwd, index_of_process_nonorographic_gwd
@@ -243,9 +243,9 @@ contains
     logical,                 intent(in)                         :: ldiag3d, lssav
 
     ! These arrays only allocated if ldiag_ugwp = .true.
-    real(kind=kind_phys),    pointer      , dimension(:,:) :: du3dt_mtb, du3dt_ogw, du3dt_tms
+    real(kind=kind_phys),    intent(inout), dimension(:,:), alloctable :: du3dt_mtb, du3dt_ogw, du3dt_tms
 
-    real(kind=kind_phys),    intent(inout), dimension(:, :):: dudt, dvdt, dtdt
+    real(kind=kind_phys),    intent(inout), dimension(:,:) :: dudt, dvdt, dtdt
 
     real(kind=kind_phys),    intent(in) :: con_g, con_pi, con_cp, con_rd, con_rv, con_fvirt, con_omega
 

@@ -81,9 +81,9 @@
                                                            hprime, tsfg, tsfa, tisfc,   &
                                                            coszen, alvsf, alnsf, alvwf, &
                                                            alnwf, facsf, facwf, snoalb
-      real(kind=kind_phys), dimension(:),   pointer     :: lndp_prt_list
-      character(len=3)    , dimension(:),   pointer     :: lndp_var_list
-      real(kind=kind_phys), dimension(:),   pointer     :: albdvis_ice, albdnir_ice,    &
+      real(kind=kind_phys), dimension(:),   intent(in), allocatable :: lndp_prt_list
+      character(len=3)    , dimension(:),   intent(in), allocatable :: lndp_var_list
+      real(kind=kind_phys), dimension(:),   intent(in), allocatable :: albdvis_ice, albdnir_ice,    &
                                                            albivis_ice, albinir_ice
 
       real(kind=kind_phys), dimension(:),   intent(inout) :: albdvis_lnd, albdnir_lnd,  &
