@@ -213,7 +213,7 @@ contains
          ozpl           ! Ozone forcing data
     real(kind_phys), intent(inout), dimension(:,:) :: &
          oz             ! Ozone concentration updated by physics
-    real(kind_phys), intent(inout), dimension(:,:), pointer, optional :: &
+    real(kind_phys), intent(inout), dimension(:,:), optional :: &
          do3_dt_prd,  & ! Physics tendency: production and loss effect
          do3_dt_ozmx, & ! Physics tendency: ozone mixing ratio effect
          do3_dt_temp, & ! Physics tendency: temperature effect
@@ -297,10 +297,10 @@ contains
        enddo
 
        ! Diagnostics (optional)
-       if (associated(do3_dt_prd))  do3_dt_prd(:,iLev)  = (prod(:,1)-prod(:,2)*prod(:,6))*dt
-       if (associated(do3_dt_ozmx)) do3_dt_ozmx(:,iLev) = (oz(:,iLev) - ozib(:))
-       if (associated(do3_dt_temp)) do3_dt_temp(:,iLev) = prod(:,3)*(t(:,iLev)-prod(:,5))*dt
-       if (associated(do3_dt_ohoz)) do3_dt_ohoz(:,iLev) = prod(:,4) * (colo3(:,iLev)-coloz(:,iLev))*dt
+       if (size(do3_dt_prd)  > 0)  do3_dt_prd(:,iLev)  = (prod(:,1)-prod(:,2)*prod(:,6))*dt
+       if (size(do3_dt_ozmx) > 0) do3_dt_ozmx(:,iLev) = (oz(:,iLev) - ozib(:))
+       if (size(do3_dt_temp) > 0) do3_dt_temp(:,iLev) = prod(:,3)*(t(:,iLev)-prod(:,5))*dt
+       if (size(do3_dt_ohoz) > 0) do3_dt_ohoz(:,iLev) = prod(:,4) * (colo3(:,iLev)-coloz(:,iLev))*dt
     enddo
 
     return
@@ -324,7 +324,7 @@ contains
          ozpl           ! Ozone forcing data
     real(kind_phys), intent(inout), dimension(:,:) :: &
          oz             ! Ozone concentration updated by physics
-    real(kind_phys), intent(inout), dimension(:,:), pointer, optional :: &
+    real(kind_phys), intent(inout), dimension(:,:), optional :: &
          do3_dt_prd,  & ! Physics tendency: production and loss effect
          do3_dt_ozmx, & ! Physics tendency: ozone mixing ratio effect
          do3_dt_temp, & ! Physics tendency: temperature effect
@@ -419,10 +419,10 @@ contains
           enddo
        endif
        ! Diagnostics (optional)
-       if (associated(do3_dt_prd))  do3_dt_prd(:,iLev)  = prod(:,1)*dt
-       if (associated(do3_dt_ozmx)) do3_dt_ozmx(:,iLev) = (oz(:,iLev) - ozib(:))
-       if (associated(do3_dt_temp)) do3_dt_temp(:,iLev) = prod(:,3) * t(:,iLev) * dt
-       if (associated(do3_dt_ohoz)) do3_dt_ohoz(:,iLev) = prod(:,4) * colo3(:,iLev) * dt
+       if (size(do3_dt_prd) > 0)  do3_dt_prd(:,iLev)  = prod(:,1)*dt
+       if (size(do3_dt_ozmx)> 0) do3_dt_ozmx(:,iLev) = (oz(:,iLev) - ozib(:))
+       if (size(do3_dt_temp)> 0) do3_dt_temp(:,iLev) = prod(:,3) * t(:,iLev) * dt
+       if (size(do3_dt_ohoz)> 0) do3_dt_ohoz(:,iLev) = prod(:,4) * colo3(:,iLev) * dt
 
     enddo
 
