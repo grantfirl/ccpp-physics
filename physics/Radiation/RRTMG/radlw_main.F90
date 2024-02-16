@@ -381,18 +381,209 @@
 
 !  ---  public accessable subprograms
 
-      public rrtmg_lw_run, rlwinit
+      public rrtmg_lw_init, rrtmg_lw_run
 
 
 ! ================
       contains
 ! ================
+      
+      
+!> \brief This subroutine performs calculations necessary for the initialization
+!! of the longwave model, which includes non-varying model variables, conversion
+!! factors, and look-up tables  
+!!
+!! Lookup tables are computed for use in the lw
+!! radiative transfer, and input absorption coefficient data for each
+!! spectral band are reduced from 256 g-point intervals to 140.
+!!\param me        print control for parallel process
+!!\section rlwinit_gen rlwinit General Algorithm      
+!! \section arg_table_rrtmg_lw_init Argument Table
+!! \htmlinclude rrtmg_lw_init.html
+!!
+      subroutine rrtmg_lw_init(me, rad_hr_units, inc_minor_gas,         &
+           isubclw, iovr, iovr_rand, iovr_maxrand, iovr_max, iovr_dcorr,&
+           iovr_exp, iovr_exprand, errflg, errmsg )
+!  ===================  program usage description  ===================  !
+!                                                                       !
+! purpose:  initialize non-varying module variables, conversion factors,!
+! and look-up tables.                                                   !
+!                                                                       !
+! subprograms called:  none                                             !
+!                                                                       !
+!  ====================  defination of variables  ====================  !
+!                                                                       !
+!  inputs:                                                              !
+!   me            - print control for parallel process                  !
+!   rad_hr_units  - 1 for heating rates in units K/day. 2 for K/s       !
+!   inc_minor_gas - flag to turn on/off minor gases in rrtmg            !
+!   isubclw - sub-column cloud approximation control flag               !
+!           =0: no sub-col cld treatment, use grid-mean cld quantities  !
+!           =1: mcica sub-col, prescribed seeds to get random numbers   !
+!           =2: mcica sub-col, providing array icseed for random numbers!
+!   iovr  - clouds vertical overlapping control flag                    !
+!           =iovr_rand                                                  !
+!           =iovr_maxrand                                               !
+!           =iovr_max                                                   !
+!           =iovr_dcorr                                                 !
+!           =iovr_exp                                                   !
+!           =iovr_exprand                                               !
+!   iovr_rand    - choice of cloud-overlap: random                      !
+!   iovr_maxrand - choice of cloud-overlap: maximum random              !
+!   iovr_max     - choice of cloud-overlap: maximum                     !
+!   iovr_dcorr   - choice of cloud-overlap: decorrelation length        !
+!   iovr_exp     - choice of cloud-overlap: exponential                 !
+!   iovr_exprand - choice of cloud-overlap: exponential random          !
+!                                                                       !
+!  outputs:                                                             !
+!   errflg  - error flag                                                !
+!   errmsg  - error message                                             !
+!                                                                       !
+!  *******************************************************************  !
+!  original code description                                            !
+!                                                                       !
+!  original version:       michael j. iacono; july, 1998                !
+!  first revision for ncar ccm:               september, 1998           !
+!  second revision for rrtm_v3.0:             september, 2002           !
+!                                                                       !
+!  this subroutine performs calculations necessary for the initialization
+!  of the longwave model.  lookup tables are computed for use in the lw !
+!  radiative transfer, and input absorption coefficient data for each   !
+!  spectral band are reduced from 256 g-point intervals to 140.         !
+!                                                                       !
+!  *******************************************************************  !
+!                                                                       !
+! definitions:                                                          !
+!   arrays for 10000-point look-up tables:                              !
+!   tau_tbl - clear-sky optical depth (used in cloudy radiative transfer!
+!   exp_tbl - exponential lookup table for tansmittance                 !
+!   tfn_tbl - tau transition function; i.e. the transition of the Planck!
+!             function from that for the mean layer temperature to that !
+!             for the layer boundary temperature as a function of optical
+!             depth. the "linear in tau" method is used to make the table
+!                                                                       !
+!  *******************************************************************  !
+!                                                                       !
+!  ======================  end of description block  =================  !
+!  ---  inputs:
+        integer, intent(in) :: me, rad_hr_units, isubclw, iovr,  &
+           iovr_rand, iovr_maxrand, iovr_max, iovr_dcorr, iovr_exp,     &
+           iovr_exprand
+        logical, intent(in) :: inc_minor_gas
 
+!  ---  outputs:
+        character(len=*), intent(out) :: errmsg
+        integer,          intent(out) :: errflg
+        
+!  ---  locals:
+        real (kind=kind_phys), parameter :: expeps = 1.e-20
+
+        real (kind=kind_phys) :: tfn, pival, explimit
+
+        integer               :: i
+
+        ! Initialize error-handling
+        errflg = 0
+        errmsg = ''
+
+        if ((iovr .ne. iovr_rand) .and. (iovr .ne. iovr_maxrand) .and.    &
+            (iovr .ne. iovr_max)  .and. (iovr .ne. iovr_dcorr)   .and.    &
+            (iovr .ne. iovr_exp)  .and. (iovr .ne. iovr_exprand)) then
+           errflg = 1
+           errmsg = 'ERROR(rrtmg_lw_init): Error in specification of cloud overlap flag'
+        endif
+
+        if (me == 0) then
+          print *,' - Using AER Longwave Radiation, Version: ', VTAGLW
+
+          if (inc_minor_gas) then
+            print *,'   --- Include rare gases N2O, CH4, O2, CFCs ',      &
+       &            'absorptions in LW'
+          else
+            print *,'   --- Rare gases effect is NOT included in LW'
+          endif
+
+          if ( isubclw == 0 ) then
+            print *,'   --- Using standard grid average clouds, no ',     &
+       &            'sub-column clouds approximation applied'
+          elseif ( isubclw == 1 ) then
+            print *,'   --- Using MCICA sub-colum clouds approximation ', &
+       &            'with a prescribed sequence of permutaion seeds'
+          elseif ( isubclw == 2 ) then
+            print *,'   --- Using MCICA sub-colum clouds approximation ', &
+       &            'with provided input array of permutation seeds'
+          endif
+        endif
+
+!> -# Setup default surface emissivity for each band.
+
+        semiss0(:) = f_one
+
+!> -# Setup constant factors for flux and heating rate
+!! the 1.0e-2 is to convert pressure from mb to \f$N/m^2\f$.
+
+        pival = 2.0 * asin(f_one)
+        fluxfac = pival * 2.0d4
+  !     fluxfac = 62831.85307179586                   ! = 2 * pi * 1.0e4
+
+        if (rad_hr_units == 1) then
+  !       heatfac = 8.4391
+  !       heatfac = con_g * 86400. * 1.0e-2 / con_cp  !   (in k/day)
+          heatfac = con_g * 864.0 / con_cp            !   (in k/day)
+        else
+          heatfac = con_g * 1.0e-2 / con_cp           !   (in k/second)
+        endif
+
+!> -# Compute lookup tables for transmittance, tau transition
+!! function, and clear sky tau (for the cloudy sky radiative
+!! transfer).  tau is computed as a function of the tau
+!! transition function, transmittance is calculated as a
+!! function of tau, and the tau transition function is
+!! calculated using the linear in tau formulation at values of
+!! tau above 0.01.  tf is approximated as tau/6 for tau < 0.01.
+!! all tables are computed at intervals of 0.001.  the inverse
+!! of the constant used in the pade approximation to the tau
+!! transition function is set to b.
+
+        tau_tbl(0) = f_zero
+        exp_tbl(0) = f_one
+        tfn_tbl(0) = f_zero
+
+        tau_tbl(ntbl) = 1.e10
+        exp_tbl(ntbl) = expeps
+        tfn_tbl(ntbl) = f_one
+
+        explimit = aint( -log(tiny(exp_tbl(0))) )
+
+        do i = 1, ntbl-1
+  !org    tfn = float(i) / float(ntbl)
+  !org    tau_tbl(i) = bpade * tfn / (f_one - tfn)
+          tfn = real(i, kind_phys) / real(ntbl-i, kind_phys)
+          tau_tbl(i) = bpade * tfn
+          if (tau_tbl(i) >= explimit) then
+            exp_tbl(i) = expeps
+          else
+            exp_tbl(i) = exp( -tau_tbl(i) )
+          endif
+
+          if (tau_tbl(i) < 0.06) then
+            tfn_tbl(i) = tau_tbl(i) / 6.0
+          else
+            tfn_tbl(i) = f_one - 2.0*( (f_one / tau_tbl(i))               &
+       &               - ( exp_tbl(i) / (f_one - exp_tbl(i)) ) )
+          endif
+        enddo
+        
+        
+      subroutine rrtmg_lw_init
 
 !> \defgroup module_radlw_main GFS RRTMG-LW Main Module
 !>  This module includes NCEP's modifications of the RRTMG-LW radiation
 !! code from AER.
 !> @{
+
+    
+
 !! The RRTMG-LW package includes three files:
 !! - radlw_param.f, which contains:
 !!  - module_radlw_parameters: band parameters set up
@@ -1310,198 +1501,7 @@
 !-----------------------------------
 
 !> \ingroup module_radlw_main
-!> \brief This subroutine performs calculations necessary for the initialization
-!! of the longwave model, which includes non-varying model variables, conversion
-!! factors, and look-up tables  
-!!
-!! Lookup tables are computed for use in the lw
-!! radiative transfer, and input absorption coefficient data for each
-!! spectral band are reduced from 256 g-point intervals to 140.
-!!\param me        print control for parallel process
-!!\section rlwinit_gen rlwinit General Algorithm
-      subroutine rlwinit( me, rad_hr_units, inc_minor_gas, ilwcliq,     &
-           isubclw, iovr, iovr_rand, iovr_maxrand, iovr_max, iovr_dcorr,&
-           iovr_exp, iovr_exprand, errflg, errmsg )
 
-!  ===================  program usage description  ===================  !
-!                                                                       !
-! purpose:  initialize non-varying module variables, conversion factors,!
-! and look-up tables.                                                   !
-!                                                                       !
-! subprograms called:  none                                             !
-!                                                                       !
-!  ====================  defination of variables  ====================  !
-!                                                                       !
-!  inputs:                                                              !
-!   me            - print control for parallel process                  !
-!   rad_hr_units  - 1 for heating rates in units K/day. 2 for K/s       !
-!   inc_minor_gas - flag to turn on/off minor gases in rrtmg            !
-!   ilwcliq - liquid cloud optical properties contrl flag               !
-!           =0: input cloud opt depth from diagnostic scheme            !
-!           >0: input cwp,rew, and other cloud content parameters       !
-!   isubclw - sub-column cloud approximation control flag               !
-!           =0: no sub-col cld treatment, use grid-mean cld quantities  !
-!           =1: mcica sub-col, prescribed seeds to get random numbers   !
-!           =2: mcica sub-col, providing array icseed for random numbers!
-!   iovr  - clouds vertical overlapping control flag                    !
-!           =iovr_rand                                                  !
-!           =iovr_maxrand                                               !
-!           =iovr_max                                                   !
-!           =iovr_dcorr                                                 !
-!           =iovr_exp                                                   !
-!           =iovr_exprand                                               !
-!   iovr_rand    - choice of cloud-overlap: random                      !
-!   iovr_maxrand - choice of cloud-overlap: maximum random              !
-!   iovr_max     - choice of cloud-overlap: maximum                     !
-!   iovr_dcorr   - choice of cloud-overlap: decorrelation length        !
-!   iovr_exp     - choice of cloud-overlap: exponential                 !
-!   iovr_exprand - choice of cloud-overlap: exponential random          !
-!                                                                       !
-!  outputs:                                                             !
-!   errflg  - error flag                                                !
-!   errmsg  - error message                                             !
-!                                                                       !
-!  *******************************************************************  !
-!  original code description                                            !
-!                                                                       !
-!  original version:       michael j. iacono; july, 1998                !
-!  first revision for ncar ccm:               september, 1998           !
-!  second revision for rrtm_v3.0:             september, 2002           !
-!                                                                       !
-!  this subroutine performs calculations necessary for the initialization
-!  of the longwave model.  lookup tables are computed for use in the lw !
-!  radiative transfer, and input absorption coefficient data for each   !
-!  spectral band are reduced from 256 g-point intervals to 140.         !
-!                                                                       !
-!  *******************************************************************  !
-!                                                                       !
-! definitions:                                                          !
-!   arrays for 10000-point look-up tables:                              !
-!   tau_tbl - clear-sky optical depth (used in cloudy radiative transfer!
-!   exp_tbl - exponential lookup table for tansmittance                 !
-!   tfn_tbl - tau transition function; i.e. the transition of the Planck!
-!             function from that for the mean layer temperature to that !
-!             for the layer boundary temperature as a function of optical
-!             depth. the "linear in tau" method is used to make the table
-!                                                                       !
-!  *******************************************************************  !
-!                                                                       !
-!  ======================  end of description block  =================  !
-
-!  ---  inputs:
-      integer, intent(in) :: me, rad_hr_units, ilwcliq, isubclw, iovr,  &
-           iovr_rand, iovr_maxrand, iovr_max, iovr_dcorr, iovr_exp,     &
-           iovr_exprand
-      logical, intent(in) :: inc_minor_gas
-
-!  ---  outputs:
-      character(len=*), intent(out) :: errmsg
-      integer,          intent(out) :: errflg
-
-!  ---  locals:
-      real (kind=kind_phys), parameter :: expeps = 1.e-20
-
-      real (kind=kind_phys) :: tfn, pival, explimit
-
-      integer               :: i
-
-!
-!===> ... begin here
-!
-      ! Initialize error-handling
-      errflg = 0
-      errmsg = ''
-
-      if ((iovr .ne. iovr_rand) .and. (iovr .ne. iovr_maxrand) .and.    &
-          (iovr .ne. iovr_max)  .and. (iovr .ne. iovr_dcorr)   .and.    &
-          (iovr .ne. iovr_exp)  .and. (iovr .ne. iovr_exprand)) then
-         errflg = 1
-         errmsg = 'ERROR(rlwinit): Error in specification of cloud overlap flag'
-      endif
-
-      if (me == 0) then
-        print *,' - Using AER Longwave Radiation, Version: ', VTAGLW
-
-        if (inc_minor_gas) then
-          print *,'   --- Include rare gases N2O, CH4, O2, CFCs ',      &
-     &            'absorptions in LW'
-        else
-          print *,'   --- Rare gases effect is NOT included in LW'
-        endif
-
-        if ( isubclw == 0 ) then
-          print *,'   --- Using standard grid average clouds, no ',     &
-     &            'sub-column clouds approximation applied'
-        elseif ( isubclw == 1 ) then
-          print *,'   --- Using MCICA sub-colum clouds approximation ', &
-     &            'with a prescribed sequence of permutaion seeds'
-        elseif ( isubclw == 2 ) then
-          print *,'   --- Using MCICA sub-colum clouds approximation ', &
-     &            'with provided input array of permutation seeds'
-        endif
-      endif
-
-!> -# Setup default surface emissivity for each band.
-
-      semiss0(:) = f_one
-
-!> -# Setup constant factors for flux and heating rate
-!! the 1.0e-2 is to convert pressure from mb to \f$N/m^2\f$.
-
-      pival = 2.0 * asin(f_one)
-      fluxfac = pival * 2.0d4
-!     fluxfac = 62831.85307179586                   ! = 2 * pi * 1.0e4
-
-      if (rad_hr_units == 1) then
-!       heatfac = 8.4391
-!       heatfac = con_g * 86400. * 1.0e-2 / con_cp  !   (in k/day)
-        heatfac = con_g * 864.0 / con_cp            !   (in k/day)
-      else
-        heatfac = con_g * 1.0e-2 / con_cp           !   (in k/second)
-      endif
-
-!> -# Compute lookup tables for transmittance, tau transition
-!! function, and clear sky tau (for the cloudy sky radiative
-!! transfer).  tau is computed as a function of the tau
-!! transition function, transmittance is calculated as a
-!! function of tau, and the tau transition function is
-!! calculated using the linear in tau formulation at values of
-!! tau above 0.01.  tf is approximated as tau/6 for tau < 0.01.
-!! all tables are computed at intervals of 0.001.  the inverse
-!! of the constant used in the pade approximation to the tau
-!! transition function is set to b.
-
-      tau_tbl(0) = f_zero
-      exp_tbl(0) = f_one
-      tfn_tbl(0) = f_zero
-
-      tau_tbl(ntbl) = 1.e10
-      exp_tbl(ntbl) = expeps
-      tfn_tbl(ntbl) = f_one
-
-      explimit = aint( -log(tiny(exp_tbl(0))) )
-
-      do i = 1, ntbl-1
-!org    tfn = float(i) / float(ntbl)
-!org    tau_tbl(i) = bpade * tfn / (f_one - tfn)
-        tfn = real(i, kind_phys) / real(ntbl-i, kind_phys)
-        tau_tbl(i) = bpade * tfn
-        if (tau_tbl(i) >= explimit) then
-          exp_tbl(i) = expeps
-        else
-          exp_tbl(i) = exp( -tau_tbl(i) )
-        endif
-
-        if (tau_tbl(i) < 0.06) then
-          tfn_tbl(i) = tau_tbl(i) / 6.0
-        else
-          tfn_tbl(i) = f_one - 2.0*( (f_one / tau_tbl(i))               &
-     &               - ( exp_tbl(i) / (f_one - exp_tbl(i)) ) )
-        endif
-      enddo
-
-!...................................
-      end subroutine rlwinit
 !-----------------------------------
 
 

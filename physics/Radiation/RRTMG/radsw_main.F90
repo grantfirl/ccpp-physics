@@ -400,7 +400,7 @@
 
 !  ---  public accessable subprograms
 
-      public rrtmg_sw_run, rswinit
+      public rrtmg_sw_init, rrtmg_sw_run
 
 ! =================
       contains
@@ -410,6 +410,163 @@
 !> This module includes NCEP's modifications of the RRTMG-SW radiation
 !! code from AER.
 !> @{
+
+!>\ingroup module_radsw_main
+!> This subroutine initializes non-varying module variables, conversion
+!! factors, and look-up tables.
+
+!> \section arg_table_rrtmg_sw_init Argument Table
+!! \htmlinclude rrtmg_sw_init.html
+!!
+!-----------------------------------
+      subroutine rrtmg_sw_init( me, rad_hr_units, inc_minor_gas,        &
+           isubcsw, iovr, iovr_rand, iovr_maxrand, iovr_max, iovr_dcorr,&
+           iovr_exp, iovr_exprand, iswmode, errflg, errmsg )
+
+!  ===================  program usage description  ===================  !
+!                                                                       !
+! purpose:  initialize non-varying module variables, conversion factors,!
+! and look-up tables.                                                   !
+!                                                                       !
+! subprograms called:  none                                             !
+!                                                                       !
+!  ====================  defination of variables  ====================  !
+!                                                                       !
+!  inputs:                                                              !
+!   me           - print control for parallel process                   !
+!   rad_hr_units -                                                      !
+!   isubcsw - sub-column cloud approximation control flag               !
+!           =0: no sub-col cld treatment, use grid-mean cld quantities  !
+!           =1: mcica sub-col, prescribed seeds to get random numbers   !
+!           =2: mcica sub-col, providing array icseed for random numbers!
+!   iovr  - clouds vertical overlapping control flag                    !
+!           =iovr_rand                                                  !
+!           =iovr_maxrand                                               !
+!           =iovr_max                                                   !
+!           =iovr_dcorr                                                 !
+!           =iovr_exp                                                   !
+!           =iovr_exprand                                               !
+!   iovr_rand    - choice of cloud-overlap: random                      !
+!   iovr_maxrand - choice of cloud-overlap: maximum random              !
+!   iovr_max     - choice of cloud-overlap: maximum                     !
+!   iovr_dcorr   - choice of cloud-overlap: decorrelation length        !
+!   iovr_exp     - choice of cloud-overlap: exponential                 !
+!   iovr_exprand - choice of cloud-overlap: exponential random          !
+!   iswmode - control flag for 2-stream transfer scheme                 !
+!           =1; delta-eddington    (joseph et al., 1976)                !
+!           =2: pifm               (zdunkowski et al., 1980)            !
+!           =3: discrete ordinates (liou, 1973)                         !
+!                                                                       !
+!  outputs:                                                             !
+!   errflg - error flag                                                 !
+!   errmsg - error message                                              !
+!  *******************************************************************  !
+!                                                                       !
+! definitions:                                                          !
+!     arrays for 10000-point look-up tables:                            !
+!     tau_tbl  clear-sky optical depth                                  !
+!     exp_tbl  exponential lookup table for transmittance               !
+!                                                                       !
+!  *******************************************************************  !
+!                                                                       !
+!  ======================  end of description block  =================  !
+
+!  ---  inputs:
+      integer, intent(in) :: me, rad_hr_units, isubcsw, iovr,  &
+           iswmode, iovr_rand, iovr_maxrand, iovr_max, iovr_dcorr,      &
+           iovr_exp, iovr_exprand
+      logical, intent(in) :: inc_minor_gas
+!  ---  outputs:
+      character(len=*), intent(out) :: errmsg
+      integer,          intent(out) :: errflg
+
+!  ---  locals:
+      real (kind=kind_phys), parameter :: expeps = 1.e-20
+
+      integer :: i
+
+      real (kind=kind_phys) :: tfn, tau
+
+!
+!===> ... begin here
+!
+      ! Initialize error-handling
+      errflg = 0
+      errmsg = ''
+
+      if ((iovr .ne. iovr_rand) .and. (iovr .ne. iovr_maxrand) .and.    &
+          (iovr .ne. iovr_max)  .and. (iovr .ne. iovr_dcorr)   .and.    &
+          (iovr .ne. iovr_exp)  .and. (iovr .ne. iovr_exprand)) then
+         errflg = 1
+         errmsg = 'ERROR(rswinit): Error in specification of cloud overlap flag'
+      endif
+
+      if (me == 0) then
+        print *,' - Using AER Shortwave Radiation, Version: ',VTAGSW
+
+        if (iswmode == 1) then
+          print *,'   --- Delta-eddington 2-stream transfer scheme'
+        else if (iswmode == 2) then
+          print *,'   --- PIFM 2-stream transfer scheme'
+        else if (iswmode == 3) then
+          print *,'   --- Discrete ordinates 2-stream transfer scheme'
+        endif
+
+        if (.not. inc_minor_gas) then
+          print *,'   --- Rare gases absorption is NOT included in SW'
+        else
+          print *,'   --- Include rare gases N2O, CH4, O2, absorptions',&
+     &            ' in SW'
+        endif
+
+        if ( isubcsw == 0 ) then
+          print *,'   --- Using standard grid average clouds, no ',     &
+     &            'sub-column clouds approximation applied'
+        elseif ( isubcsw == 1 ) then
+          print *,'   --- Using MCICA sub-colum clouds approximation ', &
+     &            'with a prescribed sequence of permutation seeds'
+        elseif ( isubcsw == 2 ) then
+          print *,'   --- Using MCICA sub-colum clouds approximation ', &
+     &            'with provided input array of permutation seeds'
+        endif
+      endif
+
+!> - Setup constant factors for heating rate
+!! the 1.0e-2 is to convert pressure from mb to \f$N/m^2\f$ .
+
+      if (rad_hr_units == 1) then
+!       heatfac = 8.4391
+!       heatfac = con_g * 86400. * 1.0e-2 / con_cp  !   (in k/day)
+        heatfac = con_g * 864.0 / con_cp            !   (in k/day)
+      else
+        heatfac = con_g * 1.0e-2 / con_cp           !   (in k/second)
+      endif
+
+!> - Define exponential lookup tables for transmittance. 
+!          tau is  computed as a function of the \a tau transition function, and
+!           transmittance is calculated as a function of tau.  all tables
+!           are computed at intervals of 0.0001.  the inverse of the
+!           constant used in the Pade approximation to the tau transition
+!           function is set to bpade.
+
+      exp_tbl(0) = 1.0
+      exp_tbl(NTBMX) = expeps
+
+      do i = 1, NTBMX-1
+        tfn = float(i) / float(NTBMX-i)
+        tau = bpade * tfn
+        exp_tbl(i) = exp( -tau )
+#ifdef SINGLE_PREC
+        ! from WRF version, prevents zero at single prec
+        if (exp_tbl(i) .le. expeps) exp_tbl(i) = expeps
+#endif
+      enddo
+
+      return
+!...................................
+      end subroutine rrtmg_sw_init
+!-----------------------------------
+
 !!
 !! The SW radiation model in the current NOAA Environmental Modeling
 !! System (NEMS) was adapted from the RRTM radiation model developed by
@@ -1377,163 +1534,6 @@
       return
 !...................................
       end subroutine rrtmg_sw_run
-!-----------------------------------
-
-!>\ingroup module_radsw_main
-!> This subroutine initializes non-varying module variables, conversion
-!! factors, and look-up tables.
-!!\param me             print control for parallel process
-!>\section rswinit_gen rswinit General Algorithm
-!-----------------------------------
-      subroutine rswinit( me, rad_hr_units, inc_minor_gas, iswcliq,     &
-           isubcsw, iovr, iovr_rand, iovr_maxrand, iovr_max, iovr_dcorr,&
-           iovr_exp, iovr_exprand, iswmode, errflg, errmsg )
-
-!  ===================  program usage description  ===================  !
-!                                                                       !
-! purpose:  initialize non-varying module variables, conversion factors,!
-! and look-up tables.                                                   !
-!                                                                       !
-! subprograms called:  none                                             !
-!                                                                       !
-!  ====================  defination of variables  ====================  !
-!                                                                       !
-!  inputs:                                                              !
-!   me           - print control for parallel process                   !
-!   rad_hr_units -                                                      !
-!   iswcliq - liquid cloud optical properties contrl flag               !
-!           =0: input cloud opt depth from diagnostic scheme            !
-!           >0: input cwp,rew, and other cloud content parameters       !
-!   isubcsw - sub-column cloud approximation control flag               !
-!           =0: no sub-col cld treatment, use grid-mean cld quantities  !
-!           =1: mcica sub-col, prescribed seeds to get random numbers   !
-!           =2: mcica sub-col, providing array icseed for random numbers!
-!   iovr  - clouds vertical overlapping control flag                    !
-!           =iovr_rand                                                  !
-!           =iovr_maxrand                                               !
-!           =iovr_max                                                   !
-!           =iovr_dcorr                                                 !
-!           =iovr_exp                                                   !
-!           =iovr_exprand                                               !
-!   iovr_rand    - choice of cloud-overlap: random                      !
-!   iovr_maxrand - choice of cloud-overlap: maximum random              !
-!   iovr_max     - choice of cloud-overlap: maximum                     !
-!   iovr_dcorr   - choice of cloud-overlap: decorrelation length        !
-!   iovr_exp     - choice of cloud-overlap: exponential                 !
-!   iovr_exprand - choice of cloud-overlap: exponential random          !
-!   iswmode - control flag for 2-stream transfer scheme                 !
-!           =1; delta-eddington    (joseph et al., 1976)                !
-!           =2: pifm               (zdunkowski et al., 1980)            !
-!           =3: discrete ordinates (liou, 1973)                         !
-!                                                                       !
-!  outputs:                                                             !
-!   errflg - error flag                                                 !
-!   errmsg - error message                                              !
-!  *******************************************************************  !
-!                                                                       !
-! definitions:                                                          !
-!     arrays for 10000-point look-up tables:                            !
-!     tau_tbl  clear-sky optical depth                                  !
-!     exp_tbl  exponential lookup table for transmittance               !
-!                                                                       !
-!  *******************************************************************  !
-!                                                                       !
-!  ======================  end of description block  =================  !
-
-!  ---  inputs:
-      integer, intent(in) :: me, rad_hr_units, iswcliq, isubcsw, iovr,  &
-           iswmode, iovr_rand, iovr_maxrand, iovr_max, iovr_dcorr,      &
-           iovr_exp, iovr_exprand
-      logical, intent(in) :: inc_minor_gas
-!  ---  outputs:
-      character(len=*), intent(out) :: errmsg
-      integer,          intent(out) :: errflg
-
-!  ---  locals:
-      real (kind=kind_phys), parameter :: expeps = 1.e-20
-
-      integer :: i
-
-      real (kind=kind_phys) :: tfn, tau
-
-!
-!===> ... begin here
-!
-      ! Initialize error-handling
-      errflg = 0
-      errmsg = ''
-
-      if ((iovr .ne. iovr_rand) .and. (iovr .ne. iovr_maxrand) .and.    &
-          (iovr .ne. iovr_max)  .and. (iovr .ne. iovr_dcorr)   .and.    &
-          (iovr .ne. iovr_exp)  .and. (iovr .ne. iovr_exprand)) then
-         errflg = 1
-         errmsg = 'ERROR(rswinit): Error in specification of cloud overlap flag'
-      endif
-
-      if (me == 0) then
-        print *,' - Using AER Shortwave Radiation, Version: ',VTAGSW
-
-        if (iswmode == 1) then
-          print *,'   --- Delta-eddington 2-stream transfer scheme'
-        else if (iswmode == 2) then
-          print *,'   --- PIFM 2-stream transfer scheme'
-        else if (iswmode == 3) then
-          print *,'   --- Discrete ordinates 2-stream transfer scheme'
-        endif
-
-        if (.not. inc_minor_gas) then
-          print *,'   --- Rare gases absorption is NOT included in SW'
-        else
-          print *,'   --- Include rare gases N2O, CH4, O2, absorptions',&
-     &            ' in SW'
-        endif
-
-        if ( isubcsw == 0 ) then
-          print *,'   --- Using standard grid average clouds, no ',     &
-     &            'sub-column clouds approximation applied'
-        elseif ( isubcsw == 1 ) then
-          print *,'   --- Using MCICA sub-colum clouds approximation ', &
-     &            'with a prescribed sequence of permutation seeds'
-        elseif ( isubcsw == 2 ) then
-          print *,'   --- Using MCICA sub-colum clouds approximation ', &
-     &            'with provided input array of permutation seeds'
-        endif
-      endif
-
-!> - Setup constant factors for heating rate
-!! the 1.0e-2 is to convert pressure from mb to \f$N/m^2\f$ .
-
-      if (rad_hr_units == 1) then
-!       heatfac = 8.4391
-!       heatfac = con_g * 86400. * 1.0e-2 / con_cp  !   (in k/day)
-        heatfac = con_g * 864.0 / con_cp            !   (in k/day)
-      else
-        heatfac = con_g * 1.0e-2 / con_cp           !   (in k/second)
-      endif
-
-!> - Define exponential lookup tables for transmittance. 
-!          tau is  computed as a function of the \a tau transition function, and
-!           transmittance is calculated as a function of tau.  all tables
-!           are computed at intervals of 0.0001.  the inverse of the
-!           constant used in the Pade approximation to the tau transition
-!           function is set to bpade.
-
-      exp_tbl(0) = 1.0
-      exp_tbl(NTBMX) = expeps
-
-      do i = 1, NTBMX-1
-        tfn = float(i) / float(NTBMX-i)
-        tau = bpade * tfn
-        exp_tbl(i) = exp( -tau )
-#ifdef SINGLE_PREC
-        ! from WRF version, prevents zero at single prec
-        if (exp_tbl(i) .le. expeps) exp_tbl(i) = expeps
-#endif
-      enddo
-
-      return
-!...................................
-      end subroutine rswinit
 !-----------------------------------
 
 !>\ingroup module_radsw_main
