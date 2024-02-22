@@ -1,4 +1,4 @@
-!>\file UFS_rad_time_vary.fv3.F90
+!>\file UFS_rad_time_vary.F90
 !!  Contains code related to GFS radiation suite setup (radiation part of time_vary_step)
    module UFS_rad_time_vary
 
@@ -26,7 +26,7 @@
 !> \section arg_table_UFS_rad_time_vary_timestep_init Argument Table
 !! \htmlinclude UFS_rad_time_vary_timestep_init.html
 !!
-      subroutine UFS_rad_time_vary_timestep_init (me, idate, jdate, ictm, isol, iaermdl, ico2, ntoz, deltsw, deltim, con_pi, aeros_file, co2dat_file, co2glb_file, ozphys, lrseeds, rseeds,                     &
+      subroutine UFS_rad_time_vary_timestep_init (me, idate, jdate, ictm, isol, iaermdl, ico2, ntoz, deltsw, deltim, con_pi, aeros_file, co2dat_file, co2gbl_file, ozphys, lrseeds, rseeds,                     &
               lslwr, lsswr, isubc_lw, isubc_sw, icsdsw, icsdlw, cnx, cny, isc, jsc,    &
               imap, jmap, sec, kdt, imp_physics, imp_physics_zhao_carr, ipsd0, ipsdlim,&
               ps_2delt, ps_1delt, t_2delt, t_1delt, qv_2delt, qv_1delt, t, qv, ps,     &

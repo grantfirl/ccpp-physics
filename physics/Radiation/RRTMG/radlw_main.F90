@@ -575,7 +575,7 @@
         enddo
         
         
-      subroutine rrtmg_lw_init
+      end subroutine rrtmg_lw_init
 
 !> \defgroup module_radlw_main GFS RRTMG-LW Main Module
 !>  This module includes NCEP's modifications of the RRTMG-LW radiation

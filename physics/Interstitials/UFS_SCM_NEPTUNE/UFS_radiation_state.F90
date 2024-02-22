@@ -3,8 +3,6 @@
 
     module UFS_radiation_state
       
-      implicit none
-      
       use machine, only:  kind_phys
       use module_radiation_astronomy, only : sol_init
       use module_radiation_aerosols,  only : aer_init
@@ -12,7 +10,9 @@
       use GFS_typedefs,  only: GFS_control_type
       use CCPP_typedefs, only: GFS_interstitial_type
       
-      public UFS_radiation_state_init, UFS_radiation_timestep_init, UFS_radiation_state_run
+      implicit none
+      
+      public UFS_radiation_state_init, UFS_radiation_state_timestep_init, UFS_radiation_state_run
       
       private
 
@@ -113,7 +113,7 @@
 !> \section arg_table_UFS_radiation_state_timestep_init Argument Table
 !! \htmlinclude UFS_radiation_state_timestep_init.html
 !!    
-      subroutine UFS_radiation_state_timestep_init()
+      subroutine UFS_radiation_state_timestep_init(Interstitial, Model, errmsg, errflg)
         
         implicit none
 
@@ -943,7 +943,7 @@
                  if (qgrs(i,k,ntiw) > 1E-7 .OR. qgrs(i,k,ntcw) > 1E-7 ) then
 
                    es     = min( prsl(i,k),  fpvs( tgrs(i,k) ) )  ! fpvs and prsl in pa
-                   qs     = max( QMIN, eps * es / (prsl(i,k) + epsm1*es) )
+                   qs     = max( QMIN, con_eps * es / (prsl(i,k) + epsm1*es) )
                    rhgrid = max( 0., min( 1., qgrs(i,k,ntqv)/qs ) )
                    !rhgrid = max( 0.0, min( 1.0, max(QMIN, qgrs(i,k,ntqv))/qs ) )  !GJF: sgscloud_radpre doesn't have max(QMIN,...)
                    
@@ -998,12 +998,12 @@
 
                      !Alternatively, use Chaboureau-Bechtold (CB) convective component
                      !Based on both CB2002 and CB2005.
-                     xl  = xlv*liq_frac + xls*(1.-liqfrac)  ! blended heat capacity
+                     xl  = xlv*liq_frac + xls*(1.-liq_frac)  ! blended heat capacity
                      tlk = tgrs(i,k) - xlvcp/prslk(i,k)*qgrs(i,k,ntcw) &
                          &          - xlscp/prslk(i,k)*qgrs(i,k,ntiw)! liquid temp
                      ! get saturation water vapor mixing ratio at tl and p
                      es  = min( prsl(i,k), fpvs( tlk ) )   ! fpvs and prsl in pa
-                     qs  = max( QMIN, eps*es / (prsl(i,k) + epsm1*es) )
+                     qs  = max( QMIN, con_eps*es / (prsl(i,k) + epsm1*es) )
                      rsl = xl*qs / (r_v*tlk**2)   ! slope of C-C curve at t = tl 
                                                     ! CB02, Eqn. 4
                      qt  = qgrs(i,k,ntcw) + qgrs(i,k,ntiw) + qgrs(i,k,ntqv) !total water
@@ -1036,7 +1036,7 @@
                      !print *,'GF with Xu-Randall cloud fraction'
                      ! Xu-Randall (1996) cloud fraction
                      es     = min( prsl(i,k),  fpvs( tgrs(i,k) ) )  ! fpvs and prsl in pa
-                     qs     = max( QMIN, eps * es / (prsl(i,k) + epsm1*es) )
+                     qs     = max( QMIN, con_eps * es / (prsl(i,k) + epsm1*es) )
                      rhgrid = max( 0., min( 1., qgrs(i,k,ntqv)/qs ) )
                      !rhgrid = max( 0.0, min( 1.0, max(QMIN, qgrs(i,k,ntqv))/qs ) )  !GJF: sgscloud_radpre doesn't have max(QMIN,...)
                      
@@ -1091,15 +1091,15 @@
                       !Alternatively, use Chaboureau-Bechtold (CB) convective component
                       !Based on both CB2002 and CB2005.
                       xl  = xlv*liq_frac + xls*(1.-liq_frac)  ! blended heat capacity
-                      tlk = t3d(i,k) - xlvcp/prslk(i,k)*qgrs(i,k,ntcw) &
+                      tlk = tgrs(i,k) - xlvcp/prslk(i,k)*qgrs(i,k,ntcw) &
                           &          - xlscp/prslk(i,k)*qgrs(i,k,ntiw)! liquid temp
                       ! get saturation water vapor mixing ratio at tl and p
                       es  = min( prsl(i,k), fpvs( tlk ) )   ! fpvs and prsl in pa
-                      qs = max( QMIN, eps*es / (prsl(i,k) + epsm1*es) )
+                      qs = max( QMIN, con_eps*es / (prsl(i,k) + epsm1*es) )
                       rsl = xl*qs / (r_v*tlk**2)   ! slope of C-C curve at t = tl
                                                      ! CB02, Eqn. 4
                       qt  = qgrs(i,k,ntcw) + qgrs(i,k,ntiw) + qgrs(i,k,ntqv) !total water
-                      cpm = cp + qt*cpv              ! CB02, sec. 2, para. 1
+                      cpm = con_cp + qt*cpv              ! CB02, sec. 2, para. 1
                       a   = 1./(1. + xl*rsl/cpm)     ! CB02 variable "a"
                       !Now calculate convective component of the cloud fraction:
                       if (a > 0.0) then
@@ -1128,7 +1128,7 @@
                       !print *,'SAS with Xu-Randall cloud fraction'
                       ! Xu-Randall (1996) cloud fraction
                       es     = min( prsl(i,k),  fpvs( tgrs(i,k) ) )  ! fpvs and prsl in pa
-                      qs     = max( QMIN, eps * es / (prsl(i,k) + epsm1*es) )
+                      qs     = max( QMIN, con_eps * es / (prsl(i,k) + epsm1*es) )
                       rhgrid = max( 0., min( 1., qgrs(i,k,ntqv)/qs ) )
                       !rhgrid = max( 0.0, min( 1.0, max(QMIN, qgrs(i,k,ntqv))/qs ) )  !GJF: sgscloud_radpre doesn't have max(QMIN,...)
                       
