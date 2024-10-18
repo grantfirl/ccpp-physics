@@ -53,8 +53,8 @@
      &     eps,epsm1,fv,grav,hvap,rd,rv,                                &
      &     t0c,delt,ntk,ntr,delp,first_time_step,restart,               & 
      &     tmf,qmicro,progsigma,                                        &
-     &     prslp,psp,phil,qtr,prevsq,q,q1,t1,u1,v1,fscav,               &
-     &     rn,kbot,ktop,kcnv,islimsk,garea,                             &
+     &     prslp,psp,phil,qtr,prevsq,q,q1,t1,u1,v1, dT_dt, dU_dt,       &
+     &     dV_dt,fscav,rn,kbot,ktop,kcnv,islimsk,garea,                 &
      &     dot,ncloud,hpbl,ud_mf,dt_mf,cnvw,cnvc,                       &
      &     clam,c0s,c1,evef,pgcon,asolfac,hwrf_samfshal,                & 
      &     sigmain,sigmaout,betadcu,betamcu,betascu,errmsg,errflg)
@@ -79,9 +79,16 @@
 !
       real(kind=kind_phys), dimension(:), intent(in) :: fscav
       integer, intent(inout)  :: kcnv(:)
-      ! DH* TODO - check dimensions of qtr, ntr+2 correct?  *DH
+
       real(kind=kind_phys), intent(inout) ::   qtr(:,:,:),              &
      &   q1(:,:), t1(:,:), u1(:,:), v1(:,:)
+
+      real(kind=kind_phys), intent(out) :: dT_dt(:,:), dU_dt(:,:),      &
+     & dV_dt(:,:)
+      real(kind=kind_phys)  :: save_t1(im,km), save_u1(im,km),          &
+     & save_v1(im,km)
+
+
 !
       integer, intent(out) :: kbot(:), ktop(:)
       real(kind=kind_phys), intent(out) :: rn(:),                       &
@@ -247,6 +254,14 @@ c  cloud water
       real(kind=kind_phys) tf, tcr, tcrf
       parameter (tf=233.16, tcr=263.16, tcrf=1.0/(tcr-tf))
 
+
+      dT_dt = 0.
+      dU_dt = 0.
+      dV_dt = 0.
+
+      save_t1 = t1
+      save_u1 = u1
+      save_v1 = v1
 
 c-----------------------------------------------------------------------
 !
@@ -2513,6 +2528,14 @@ c
 !
       endif
       endif
+
+      dT_dt = (t1 - save_t1)/delt
+      dU_dt = (u1 - save_u1)/delt
+      dV_dt = (v1 - save_v1)/delt
+
+      t1 = save_t1
+      u1 = save_u1
+      v1 = save_v1
 !!
       return
       end subroutine samfshalcnv_run
