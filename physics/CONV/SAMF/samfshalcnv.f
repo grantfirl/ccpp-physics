@@ -81,12 +81,14 @@
       integer, intent(inout)  :: kcnv(:)
 
       real(kind=kind_phys), intent(inout) ::   qtr(:,:,:),              &
-     &   q1(:,:), t1(:,:), u1(:,:), v1(:,:)
+     &   q1(:,:)
 
+      real(kind=kind_phys), intent(in) :: t1(:,:), u1(:,:), v1(:,:)
+      real(kind=kind_phys)             :: new_t1(im,km), new_u1(im,km), &
+     &  new_v1(im,km)
+      
       real(kind=kind_phys), intent(out) :: dT_dt(:,:), dU_dt(:,:),      &
      & dV_dt(:,:)
-      real(kind=kind_phys)  :: save_t1(im,km), save_u1(im,km),          &
-     & save_v1(im,km)
 
 
 !
@@ -259,9 +261,9 @@ c  cloud water
       dU_dt = 0.
       dV_dt = 0.
 
-      save_t1 = t1
-      save_u1 = u1
-      save_v1 = v1
+      new_t1 = t1
+      new_u1 = u1
+      new_v1 = v1
 
 c-----------------------------------------------------------------------
 !
@@ -2098,13 +2100,13 @@ c
           if (cnvflg(i)) then
             if(k > kb(i) .and. k <= ktcon(i)) then
               dellat = (dellah(i,k) - hvap * dellaq(i,k)) / cp
-              t1(i,k) = t1(i,k) + dellat * xmb(i) * dt2
+              new_t1(i,k) = t1(i,k) + dellat * xmb(i) * dt2
               q1(i,k) = q1(i,k) + dellaq(i,k) * xmb(i) * dt2
 !             tem = 1./rcs(i)
 !             u1(i,k) = u1(i,k) + dellau(i,k) * xmb(i) * dt2 * tem
 !             v1(i,k) = v1(i,k) + dellav(i,k) * xmb(i) * dt2 * tem
-              u1(i,k) = u1(i,k) + dellau(i,k) * xmb(i) * dt2
-              v1(i,k) = v1(i,k) + dellav(i,k) * xmb(i) * dt2
+              new_u1(i,k) = u1(i,k) + dellau(i,k) * xmb(i) * dt2
+              new_v1(i,k) = v1(i,k) + dellav(i,k) * xmb(i) * dt2
               dp = 1000. * del(i,k)
               tem = xmb(i) * dp / grav
               delhbar(i) = delhbar(i) + tem * dellah(i,k)
@@ -2302,7 +2304,7 @@ c
         do i = 1, im
           if (cnvflg(i)) then
             if(k > kb(i) .and. k <= ktcon(i)) then
-              qeso(i,k) = 0.01 * fpvs(t1(i,k))      ! fpvs is in pa
+              qeso(i,k) = 0.01 * fpvs(new_t1(i,k))      ! fpvs is in pa
               qeso(i,k) = eps * qeso(i,k)/(pfld(i,k) + epsm1*qeso(i,k))
               val     =             1.e-8
               qeso(i,k) = max(qeso(i,k), val )
@@ -2349,7 +2351,7 @@ c
 !             if(islimsk(i) == 1) evef=edt(i) * evfactl
 !             if(islimsk(i) == 1) evef=.07
               qcond(i) = shevf * evef * (q1(i,k) - qeso(i,k))
-     &                 / (1. + el2orc * qeso(i,k) / t1(i,k)**2)
+     &                 / (1. + el2orc * qeso(i,k) / new_t1(i,k)**2)
               dp = 1000. * del(i,k)
               factor = dp / grav
               if(rn(i) > 0. .and. qcond(i) < 0.) then
@@ -2372,7 +2374,7 @@ c
                   rn(i) = rn(i) - tem1
                 endif
                 q1(i,k) = q1(i,k) + qevap(i)
-                t1(i,k) = t1(i,k) - elocp * qevap(i)
+                new_t1(i,k) = new_t1(i,k) - elocp * qevap(i)
                 deltv(i) = - elocp*qevap(i)/dt2
                 delq(i) =  + qevap(i)/dt2
                 delqev(i) = delqev(i) + tem * qevap(i)
@@ -2452,7 +2454,7 @@ c
 !           if (k > kb(i) .and. k <= ktcon(i)) then
             if (k >= kbcon(i) .and. k <= ktcon(i)) then
               tem  = dellal(i,k) * xmb(i) * dt2
-              tem1 = max(0.0, min(1.0, (tcr-t1(i,k))*tcrf))
+              tem1 = max(0.0, min(1.0, (tcr-new_t1(i,k))*tcrf))
               if (qtr(i,k,2) > -999.0) then
                 qtr(i,k,1) = qtr(i,k,1) + tem * tem1            ! ice
                 qtr(i,k,2) = qtr(i,k,2) + tem *(1.0-tem1)       ! water
@@ -2513,7 +2515,7 @@ c
           if(cnvflg(i)) then
             if(k > kb(i) .and. k < ktop(i)) then
               tem = 0.5 * (eta(i,k-1) + eta(i,k)) * xmb(i)
-              tem1 = pfld(i,k) * 100. / (rd * t1(i,k))
+              tem1 = pfld(i,k) * 100. / (rd * new_t1(i,k))
               if(progsigma)then
                 tem2 = sigmab(i)
               else
@@ -2529,13 +2531,10 @@ c
       endif
       endif
 
-      dT_dt = (t1 - save_t1)/delt
-      dU_dt = (u1 - save_u1)/delt
-      dV_dt = (v1 - save_v1)/delt
+      dT_dt = (new_t1 - t1)/delt
+      dU_dt = (new_u1 - u1)/delt
+      dV_dt = (new_v1 - v1)/delt
 
-      t1 = save_t1
-      u1 = save_u1
-      v1 = save_v1
 !!
       return
       end subroutine samfshalcnv_run

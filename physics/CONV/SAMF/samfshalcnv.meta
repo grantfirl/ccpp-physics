@@ -306,7 +306,7 @@
   dimensions = (horizontal_loop_extent,vertical_layer_dimension)
   type = real
   kind = kind_phys
-  intent = inout
+  intent = in
 [u1]
   standard_name = x_wind_of_new_state
   long_name = updated x-direction wind
@@ -314,7 +314,7 @@
   dimensions = (horizontal_loop_extent,vertical_layer_dimension)
   type = real
   kind = kind_phys
-  intent = inout
+  intent = in
 [v1]
   standard_name = y_wind_of_new_state
   long_name = updated y-direction wind
@@ -322,7 +322,7 @@
   dimensions = (horizontal_loop_extent,vertical_layer_dimension)
   type = real
   kind = kind_phys
-  intent = inout
+  intent = in
 [fscav]
   standard_name = chemical_tracer_scavenging_fractions
   long_name = array of aerosol scavenging coefficients
