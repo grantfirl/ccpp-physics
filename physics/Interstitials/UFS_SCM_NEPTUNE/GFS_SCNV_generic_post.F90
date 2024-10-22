@@ -92,17 +92,17 @@
         if (ldiag3d) then
           idtend = dtidx(index_of_temperature, index_of_process_scnv)
           if(idtend>=1) then
-             dtend(:,:,idtend) = dtend(:,:,idtend) + (dT_dt/delt) * frain
+             dtend(:,:,idtend) = dtend(:,:,idtend) + (dT_dt*delt) * frain
           endif
 
           idtend = dtidx(index_of_x_wind, index_of_process_scnv)
           if(idtend>=1) then
-             dtend(:,:,idtend) = dtend(:,:,idtend) + (dU_dt/delt) * frain
+             dtend(:,:,idtend) = dtend(:,:,idtend) + (dU_dt*delt) * frain
           endif
 
           idtend = dtidx(index_of_y_wind, index_of_process_scnv)
           if(idtend>=1) then
-             dtend(:,:,idtend) = dtend(:,:,idtend) + (dV_dt/delt) * frain
+             dtend(:,:,idtend) = dtend(:,:,idtend) + (dV_dt*delt) * frain
           endif
 
           if (cscnv .or. satmedmf .or. trans_trac .or. ras) then
