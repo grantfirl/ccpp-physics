@@ -110,6 +110,14 @@
   type = real
   kind = kind_phys
   intent = out
+[dq_dt]
+  standard_name = instantaneous_tendency_of_specific_humidity
+  long_name = instantaneous tendency of specific humidity
+  units = kg kg-1 s-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = out
 [itc]
   standard_name = index_of_first_chemical_tracer_for_convection
   long_name = index of first chemical tracer transported/scavenged by convection
@@ -298,7 +306,7 @@
   dimensions = (horizontal_loop_extent,vertical_layer_dimension)
   type = real
   kind = kind_phys
-  intent = inout
+  intent = in
 [t1]
   standard_name = air_temperature_of_new_state
   long_name = updated temperature
