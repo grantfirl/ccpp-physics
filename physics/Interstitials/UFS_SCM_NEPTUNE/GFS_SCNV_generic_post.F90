@@ -9,8 +9,7 @@
 !! \htmlinclude GFS_SCNV_generic_post_run.html
 !!
       subroutine GFS_SCNV_generic_post_run (im, levs, nn, lssav, ldiag3d, qdiag3d, &
-        frain, gu0, gv0, gt0, gq0, dT_dt, dU_dt, dV_dt, delt,                      &
-        save_q,          &
+        frain, gu0, gv0, gt0, gq0, gqtr0, dT_dt,dU_dt,dV_dt, dq_dt, delt,save_qtr, &
         clw, shcnvcw, rain1, npdf3d, num_p3d, ncnvcld3d, cnvc, cnvw, nsamftrac,    &
         rainc, cnvprcp, cnvprcpb, cnvw_phy_f3d, cnvc_phy_f3d,                      &
         dtend, dtidx, index_of_temperature, index_of_x_wind, index_of_y_wind,      &
@@ -27,8 +26,8 @@
       integer, intent(in) :: ntcw,ntiw,ntclamt,ntrw,ntsw,ntrnc,ntsnc,ntgl,ntgnc,ntsigma,ntrac
       logical, intent(in) :: lssav, ldiag3d, qdiag3d, flag_for_scnv_generic_tend
       real(kind=kind_phys),                     intent(in) :: frain
-      real(kind=kind_phys), dimension(:,:), intent(inout) :: gu0, gv0, gt0
-      real(kind=kind_phys), dimension(:,:,:),   intent(in) :: save_q, gq0
+      real(kind=kind_phys), dimension(:,:), intent(inout) :: gu0, gv0, gt0, gq0
+      real(kind=kind_phys), dimension(:,:,:),   intent(in) :: save_qtr, gqtr0
 
       ! dtend only allocated if ldiag3d == .true.
       real(kind=kind_phys), intent(inout), optional :: dtend(:,:,:)
@@ -57,11 +56,12 @@
       integer :: i, k, n, idtend, tracers
       real(kind=kind_phys) :: tem
 
-      real(kind=kind_phys), intent(in) :: dT_dt(:,:), dU_dt(:,:), dV_dt(:,:)
+      real(kind=kind_phys), intent(in) :: dT_dt(:,:), dU_dt(:,:), dV_dt(:,:), dq_dt(:,:)
 
       gt0 = gt0 + dT_dt * delt
       gu0 = gu0 + dU_dt * delt
       gv0 = gv0 + dV_dt * delt
+      gq0 = gq0 + dq_dt * delt
 
       ! Initialize CCPP error handling variables
       errmsg = ''
@@ -114,7 +114,7 @@
                    tracers = tracers + 1
                    idtend = dtidx(100+n,index_of_process_scnv)
                    if(idtend>0) then
-                      dtend(:,:,idtend) = dtend(:,:,idtend) + clw(:,:,tracers)-save_q(:,:,n) * frain
+                      dtend(:,:,idtend) = dtend(:,:,idtend) + clw(:,:,tracers)-save_qtr(:,:,n) * frain
                    endif
                 endif
              enddo
@@ -122,13 +122,13 @@
             do n=2,ntrac
                idtend = dtidx(100+n,index_of_process_scnv)
                if(idtend>0) then
-                  dtend(:,:,idtend) = dtend(:,:,idtend) + (gq0(:,:,n)-save_q(:,:,n))*frain
+                  dtend(:,:,idtend) = dtend(:,:,idtend) + (gqtr0(:,:,n)-save_qtr(:,:,n))*frain
                endif
             enddo
           endif
           idtend = dtidx(100+ntqv, index_of_process_scnv)
           if(idtend>=1) then
-             dtend(:,:,idtend) = dtend(:,:,idtend) + (gq0(:,:,ntqv) - save_q(:,:,ntqv)) * frain
+             dtend(:,:,idtend) = dtend(:,:,idtend) + (gqtr0(:,:,ntqv) - save_qtr(:,:,ntqv)) * frain
           endif
         endif
       endif
