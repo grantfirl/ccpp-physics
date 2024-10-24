@@ -282,7 +282,7 @@
   dimensions = (horizontal_loop_extent,vertical_layer_dimension)
   type = real
   kind = kind_phys
-  intent = inout
+  intent = in
 [u1]
   standard_name = x_wind_of_new_state
   long_name = updated x-direction wind
