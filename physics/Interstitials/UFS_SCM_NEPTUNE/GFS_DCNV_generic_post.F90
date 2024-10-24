@@ -29,8 +29,8 @@
 
       real(kind=kind_phys), intent(in) :: frain, dtf
       real(kind=kind_phys), dimension(:),     intent(in) :: rain1, cld1d
-      real(kind=kind_phys), dimension(:,:),   intent(in) :: gu0, gv0, gt0
-      real(kind=kind_phys), dimension(:,:),   intent(inout) :: gq0
+      real(kind=kind_phys), dimension(:,:),   intent(in) :: gu0, gv0
+      real(kind=kind_phys), dimension(:,:),   intent(inout) :: gq0, gt0
       real(kind=kind_phys), dimension(:,:,:), intent(in) :: gqtr0, save_qtr
       real(kind=kind_phys), dimension(:,:),   intent(in) :: dd_mf, dt_mf
       real(kind=kind_phys), dimension(:,:),   intent(in), optional :: ud_mf
@@ -61,6 +61,7 @@
       real(kind=kind_phys), intent(in) :: dT_dt(:,:), dU_dt(:,:), dV_dt(:,:), dq_dt(:,:)
       real(kind=kind_phys), intent(in) ::  delt
 
+      gt0 = gt0 + dT_dt*delt
       gq0 = gq0 + dq_dt*delt
       
 
