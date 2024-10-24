@@ -257,10 +257,10 @@ c  cloud water
       parameter (tf=233.16, tcr=263.16, tcrf=1.0/(tcr-tf))
 
 
-      dT_dt = 0.
-      dU_dt = 0.
-      dV_dt = 0.
-      dq_dt = 0.
+      dT_dt = 0._kind_phys
+      dU_dt = 0._kind_phys
+      dV_dt = 0._kind_phys
+      dq_dt = 0._kind_phys
 
       new_t1 = t1
       new_u1 = u1
