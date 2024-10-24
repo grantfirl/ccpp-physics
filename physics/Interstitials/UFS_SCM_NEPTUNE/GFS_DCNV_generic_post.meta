@@ -82,30 +82,6 @@
   type = real
   kind = kind_phys
   intent = in
-[save_u]
-  standard_name = x_wind_save
-  long_name = x-wind before entering a physics scheme
-  units = m s-1
-  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
-  type = real
-  kind = kind_phys
-  intent = in
-[save_v]
-  standard_name = y_wind_save
-  long_name = y-wind before entering a physics scheme
-  units = m s-1
-  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
-  type = real
-  kind = kind_phys
-  intent = in
-[save_t]
-  standard_name = air_temperature_save
-  long_name = air temperature before entering a physics scheme
-  units = K
-  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
-  type = real
-  kind = kind_phys
-  intent = in
 [gu0]
   standard_name = x_wind_of_new_state
   long_name = zonal wind updated by physics
@@ -126,6 +102,46 @@
   standard_name = air_temperature_of_new_state
   long_name = temperature updated by physics
   units = K
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[delt]
+  standard_name = timestep_for_physics
+  long_name = physics time step
+  units = s
+  dimensions = ()
+  type = real
+  kind = kind_phys
+  intent = in
+[dT_dt]
+  standard_name = instantaneous_tendency_of_air_temperature
+  long_name = instantaneous tendency of air temperature
+  units = K s-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[dU_dt]
+  standard_name = instantaneous_tendency_of_x_wind_of_state
+  long_name = instantaneous tendency of x wind of state
+  units = m s-2
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[dV_dt]
+  standard_name = instantaneous_tendency_of_y_wind_of_state
+  long_name = instantaneous tendency of y wind of state
+  units = m s-2
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = in
+[dq_dt]
+  standard_name = instantaneous_tendency_of_specific_humidity
+  long_name = instantaneous tendency of specific humidity
+  units = kg kg-1 s-1
   dimensions = (horizontal_loop_extent,vertical_layer_dimension)
   type = real
   kind = kind_phys
@@ -206,7 +222,7 @@
   dimensions = ()
   type = integer
   intent = in
-[gq0]
+[gqtr0]
   standard_name = tracer_concentration_of_new_state
   long_name = tracer concentration updated by physics
   units = kg kg-1
@@ -214,7 +230,15 @@
   type = real
   kind = kind_phys
   intent = in
-[save_q]
+[gq0]
+  standard_name = specific_humidity_of_new_state
+  long_name = updated vapor specific humidity
+  units = kg kg-1
+  dimensions = (horizontal_loop_extent,vertical_layer_dimension)
+  type = real
+  kind = kind_phys
+  intent = inout
+[save_qtr]
   standard_name = tracer_concentration_save
   long_name = tracer concentration before entering a physics scheme
   units = kg kg-1
