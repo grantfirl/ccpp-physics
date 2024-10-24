@@ -114,10 +114,10 @@
       integer, intent(inout)  :: kcnv(:)
       ! DH* TODO - check dimensions of qtr, ntr+2 correct?  *DH
       real(kind=kind_phys), intent(inout) ::   qtr(:,:,:),              &
-     &    t1(:,:),   u1(:,:), v1(:,:),                                  &
+     &    u1(:,:), v1(:,:),                                             &
      &   cnvw(:,:),  cnvc(:,:)
      
-      real(kind=kind_phys), intent(in) :: q1(:,:)
+      real(kind=kind_phys), intent(in) :: q1(:,:), t1(:,:)
 
       integer, intent(out) :: kbot(:), ktop(:)
       real(kind=kind_phys), intent(out) :: cldwrk(:),                   &
@@ -3124,7 +3124,7 @@ c
             if(k <= ktcon(i)) then
               tem2   = xmb(i) * dt2
               dellat = (dellah(i,k) - hvap * dellaq(i,k)) / cp
-              t1(i,k) = t1(i,k) + tem2 * dellat
+              new_t1(i,k) = t1(i,k) + tem2 * dellat
               new_q1(i,k) = q1(i,k) + tem2 * dellaq(i,k)
 !             tem = tem2 / rcs(i)
 !             u1(i,k) = u1(i,k) + dellau(i,k) * tem
@@ -3319,7 +3319,7 @@ c
         do i = 1, im
           if (cnvflg(i) .and. k <= kmax(i)) then
             if(k <= ktcon(i)) then
-              qeso(i,k) = 0.01 * fpvs(t1(i,k))      ! fpvs is in pa
+              qeso(i,k) = 0.01 * fpvs(new_t1(i,k))      ! fpvs is in pa
               qeso(i,k) = eps * qeso(i,k)/(pfld(i,k) + epsm1*qeso(i,k))
               val     =             1.e-8
               qeso(i,k) = max(qeso(i,k), val )
@@ -3371,7 +3371,7 @@ c
 !             if(islimsk(i) == 1) evef=edt(i) * evfactl
 !             if(islimsk(i) == 1) evef=.07
               qcond(i) = evef * (new_q1(i,k) - qeso(i,k))
-     &                 / (1. + el2orc * qeso(i,k) / t1(i,k)**2)
+     &                 / (1. + el2orc * qeso(i,k) / new_t1(i,k)**2)
               dp = 1000. * del(i,k)
               tem = grav / dp
               tem1 = dp / grav
@@ -3387,7 +3387,7 @@ c
               endif
               if(rn(i) > 0. .and. qevap(i) > 0.) then
                 new_q1(i,k) = new_q1(i,k) + qevap(i)
-                t1(i,k) = t1(i,k) - elocp * qevap(i)
+                new_t1(i,k) = new_t1(i,k) - elocp * qevap(i)
                 rn(i) = rn(i) - .001 * qevap(i) * tem1
                 deltv(i) = - elocp*qevap(i)/dt2
                 delq(i) =  + qevap(i)/dt2
@@ -3482,7 +3482,7 @@ c
 !           if (k > kb(i) .and. k <= ktcon(i)) then
             if (k >= kbcon(i) .and. k <= ktcon(i)) then
               tem  = dellal(i,k) * xmb(i) * dt2
-              tem1 = max(0.0, min(1.0, (tcr-t1(i,k))*tcrf))
+              tem1 = max(0.0, min(1.0, (tcr-new_t1(i,k))*tcrf))
               if (qtr(i,k,2) > -999.0) then
                 qtr(i,k,1) = qtr(i,k,1) + tem * tem1            ! ice
                 qtr(i,k,2) = qtr(i,k,2) + tem *(1.0-tem1)       ! water
@@ -3501,7 +3501,7 @@ c
         do i = 1, im
           if(cnvflg(i) .and. rn(i) <= 0.) then
             if (k <= kmax(i)) then
-              t1(i,k) = to(i,k)
+              new_t1(i,k) = to(i,k)
               new_q1(i,k) = qo(i,k)
               u1(i,k) = uo(i,k)
               v1(i,k) = vo(i,k)
@@ -3592,7 +3592,7 @@ c
           if(cnvflg(i) .and. rn(i) > 0.) then
             if(k > kb(i) .and. k < ktop(i)) then
               tem = 0.5 * (eta(i,k-1) + eta(i,k)) * xmb(i)
-              tem1 = pfld(i,k) * 100. / (rd * t1(i,k))
+              tem1 = pfld(i,k) * 100. / (rd * new_t1(i,k))
               if(progsigma)then
                 tem2 = sigmab(i)
               else
@@ -3610,7 +3610,7 @@ c
           if(cnvflg(i) .and. rn(i) > 0.) then
             if(k > 1 .and. k <= jmin(i)) then
               tem = 0.5*edto(i)*(etad(i,k-1)+etad(i,k))*xmb(i)
-              tem1 = pfld(i,k) * 100. / (rd * t1(i,k))
+              tem1 = pfld(i,k) * 100. / (rd * new_t1(i,k))
               if(progsigma)then
                 tem2 = sigmab(i)
               else
@@ -3631,7 +3631,7 @@ c
             QLCN(i,k)     = qtr(i,k,2) - qlcn(i,k)
             QICN(i,k)     = qtr(i,k,1) - qicn(i,k)
             cf_upi(i,k)   = cnvc(i,k)
-            w_upi(i,k)    = ud_mf(i,k)*t1(i,k)*rd /
+            w_upi(i,k)    = ud_mf(i,k)*new_t1(i,k)*rd /
      &                     (dt2*max(sigmagfm(i),1.e-12)*prslp(i,k))
             CNV_MFD(i,k)  = ud_mf(i,k)/dt2
             CLCN(i,k)     = cnvc(i,k)
@@ -3642,7 +3642,7 @@ c
       endif
       endif ! (.not.hwrf_samfdeep)
 
-      dT_dt = (t1 - new_t1)/delt 
+      dT_dt = (new_t1 - t1)/delt 
       dU_dt = (u1 - new_u1)/delt 
       dV_dt = (v1 - new_v1)/delt 
       dq_dt = (new_q1 - q1)/delt 
