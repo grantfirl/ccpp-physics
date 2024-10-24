@@ -9,12 +9,12 @@
 !! \htmlinclude GFS_DCNV_generic_post_run.html
 !!
     subroutine GFS_DCNV_generic_post_run (im, levs, lssav, ldiag3d, qdiag3d, ras, &
-      cscnv, frain, rain1, dtf, cld1d, save_u, save_v, save_t, gu0, gv0, gt0,     &
+      cscnv, frain, rain1, dtf, cld1d, gu0, gv0, gt0,gq0,                         &
       ud_mf, dd_mf, dt_mf, con_g, npdf3d, num_p3d, ncnvcld3d, nsamftrac,          &
       rainc, cldwrk, upd_mf, dwn_mf, det_mf, dtend, dtidx, index_of_process_dcnv, &
-      index_of_temperature, index_of_x_wind, index_of_y_wind, ntqv, gq0, save_q,  &
+      index_of_temperature, index_of_x_wind, index_of_y_wind,ntqv,gqtr0,save_qtr, &
       cnvw, cnvc, cnvw_phy_f3d, cnvc_phy_f3d, flag_for_dcnv_generic_tend,         &
-      ntcw,ntiw,ntclamt,ntrw,ntsw,ntrnc,ntsnc,ntgl,                               &
+      ntcw,ntiw,ntclamt,ntrw,ntsw,ntrnc,ntsnc,ntgl, dT_dt,dU_dt,dV_dt,dq_dt,delt, &
       ntgnc, nthl, nthnc, nthv, ntgv, ntrz, ntgz, nthz, ntsigma, ntrac,clw,       &
       satmedmf, trans_trac, errmsg, errflg)
 
@@ -29,9 +29,9 @@
 
       real(kind=kind_phys), intent(in) :: frain, dtf
       real(kind=kind_phys), dimension(:),     intent(in) :: rain1, cld1d
-      real(kind=kind_phys), dimension(:,:),   intent(in) :: save_u, save_v, save_t
       real(kind=kind_phys), dimension(:,:),   intent(in) :: gu0, gv0, gt0
-      real(kind=kind_phys), dimension(:,:,:), intent(in) :: gq0, save_q
+      real(kind=kind_phys), dimension(:,:),   intent(inout) :: gq0
+      real(kind=kind_phys), dimension(:,:,:), intent(in) :: gqtr0, save_qtr
       real(kind=kind_phys), dimension(:,:),   intent(in) :: dd_mf, dt_mf
       real(kind=kind_phys), dimension(:,:),   intent(in), optional :: ud_mf
       real(kind=kind_phys), intent(in) :: con_g
@@ -57,6 +57,12 @@
       integer, intent(out) :: errflg
 
       integer :: i, k, n, idtend, tracers
+
+      real(kind=kind_phys), intent(in) :: dT_dt(:,:), dU_dt(:,:), dV_dt(:,:), dq_dt(:,:)
+      real(kind=kind_phys), intent(in) ::  delt
+
+      gq0 = gq0 + dq_dt*delt
+      
 
       ! Initialize CCPP error handling variables
       errmsg = ''
@@ -94,17 +100,17 @@
         if (ldiag3d .and. flag_for_dcnv_generic_tend) then
           idtend=dtidx(index_of_temperature,index_of_process_dcnv)
           if(idtend>=1) then
-            dtend(:,:,idtend) = dtend(:,:,idtend) + (gt0-save_t)*frain
+            dtend(:,:,idtend) = dtend(:,:,idtend) + (dT_dt*delt)*frain
           endif
 
           idtend=dtidx(index_of_x_wind,index_of_process_dcnv)
           if(idtend>=1) then
-            dtend(:,:,idtend) = dtend(:,:,idtend) + (gu0-save_u)*frain
+            dtend(:,:,idtend) = dtend(:,:,idtend) + (dU_dt*delt)*frain
           endif
 
           idtend=dtidx(index_of_y_wind,index_of_process_dcnv)
           if(idtend>=1) then
-            dtend(:,:,idtend) = dtend(:,:,idtend) + (gv0-save_v)*frain
+            dtend(:,:,idtend) = dtend(:,:,idtend) + (dV_dt*delt)*frain
           endif
 
           if (cscnv .or. satmedmf .or. trans_trac .or. ras) then
@@ -119,7 +125,7 @@
                    tracers = tracers + 1
                    idtend = dtidx(100+n,index_of_process_dcnv)
                    if(idtend>0) then
-                      dtend(:,:,idtend) = dtend(:,:,idtend) + clw(:,:,tracers)-save_q(:,:,n) * frain
+                      dtend(:,:,idtend) = dtend(:,:,idtend) + clw(:,:,tracers)-save_qtr(:,:,n) * frain
                    endif
                 endif
              enddo
@@ -127,13 +133,13 @@
             do n=2,ntrac
                idtend = dtidx(100+n,index_of_process_dcnv)
                if(idtend>0) then
-                  dtend(:,:,idtend) = dtend(:,:,idtend) + (gq0(:,:,n)-save_q(:,:,n))*frain
+                  dtend(:,:,idtend) = dtend(:,:,idtend) + (gqtr0(:,:,n)-save_qtr(:,:,n))*frain
                endif
             enddo
           endif
           idtend = dtidx(100+ntqv, index_of_process_dcnv)
           if(idtend>=1) then
-             dtend(:,:,idtend) = dtend(:,:,idtend) + (gq0(:,:,ntqv) - save_q(:,:,ntqv)) * frain
+             dtend(:,:,idtend) = dtend(:,:,idtend) + (gqtr0(:,:,ntqv) - save_qtr(:,:,ntqv)) * frain
           endif
 
           ! convective mass fluxes
