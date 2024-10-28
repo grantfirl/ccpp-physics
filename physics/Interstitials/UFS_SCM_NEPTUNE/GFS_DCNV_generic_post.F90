@@ -61,10 +61,6 @@
       real(kind=kind_phys), intent(in) :: dT_dt(:,:), dU_dt(:,:), dV_dt(:,:), dq_dt(:,:)
       real(kind=kind_phys), intent(in) ::  delt
 
-      gt0 = gt0 + dT_dt*delt
-      gq0 = gq0 + dq_dt*delt
-      
-
       ! Initialize CCPP error handling variables
       errmsg = ''
       errflg = 0
@@ -99,9 +95,12 @@
         enddo
 
         if (ldiag3d .and. flag_for_dcnv_generic_tend) then
+          gq0 = gq0 + dq_dt * delt * frain
+
           idtend=dtidx(index_of_temperature,index_of_process_dcnv)
           if(idtend>=1) then
             dtend(:,:,idtend) = dtend(:,:,idtend) + (dT_dt*delt)*frain
+            gt0 = gt0 + dT_dt * delt * frain 
           endif
 
           idtend=dtidx(index_of_x_wind,index_of_process_dcnv)
