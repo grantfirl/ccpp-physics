@@ -58,10 +58,6 @@
 
       real(kind=kind_phys), intent(in) :: dT_dt(:,:), dU_dt(:,:), dV_dt(:,:), dq_dt(:,:)
 
-      gt0 = gt0 + dT_dt * delt
-      gu0 = gu0 + dU_dt * delt
-      gv0 = gv0 + dV_dt * delt
-      gq0 = gq0 + dq_dt * delt
 
       ! Initialize CCPP error handling variables
       errmsg = ''
@@ -90,19 +86,24 @@
 
       if (lssav .and. flag_for_scnv_generic_tend) then
         if (ldiag3d) then
+          gq0 = gq0 + dq_dt * delt * frain
+
           idtend = dtidx(index_of_temperature, index_of_process_scnv)
           if(idtend>=1) then
              dtend(:,:,idtend) = dtend(:,:,idtend) + (dT_dt*delt) * frain
+             gt0 = gt0 + dT_dt * delt * frain
           endif
 
           idtend = dtidx(index_of_x_wind, index_of_process_scnv)
           if(idtend>=1) then
              dtend(:,:,idtend) = dtend(:,:,idtend) + (dU_dt*delt) * frain
+             gu0 = gu0 + dU_dt * delt * frain
           endif
 
           idtend = dtidx(index_of_y_wind, index_of_process_scnv)
           if(idtend>=1) then
              dtend(:,:,idtend) = dtend(:,:,idtend) + (dV_dt*delt) * frain
+             gv0 = gv0 + dV_dt * delt * frain
           endif
 
           if (cscnv .or. satmedmf .or. trans_trac .or. ras) then
