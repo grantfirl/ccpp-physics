@@ -111,7 +111,20 @@
            errflg = 1
            return
         end if
-
+        
+        if ((debug) .and. (me == master)) then
+          print *,'   idate ', idate
+          print *,'   jdat ', jdat
+          print *,'   idat ', idat
+          print *,'   nsswr ', nsswr
+          print *,'   nslwr ', nslwr
+          print *,'   nscyc ', nscyc
+          print *,'   nhfrad', nhfrad
+          print *,'   dtp', dtp
+        end if
+        errflg = 1
+        return
+        
         !--- jdat is being updated directly inside of FV3GFS_cap.F90
         !--- update calendars and triggers
         call w3kind(w3kindreal, w3kindint)
