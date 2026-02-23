@@ -254,7 +254,7 @@
   dimensions = (horizontal_loop_extent,vertical_layer_dimension,number_of_tracers_for_convective_transport)
   type = real
   kind = kind_phys
-  intent = in
+  intent = inout
 [prsl]
   standard_name = air_pressure
   long_name = mean layer pressure

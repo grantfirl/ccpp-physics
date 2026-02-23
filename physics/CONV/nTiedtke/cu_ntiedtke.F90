@@ -210,8 +210,8 @@ contains
       real(kind=kind_phys), dimension(:,:),intent(in) :: pzz, prsi
 
 !--- inout arguments:
-      real(kind=kind_phys), dimension(:,:,:), intent(in ) :: clw
-      real(kind=kind_phys), dimension(:,:), intent(in) :: pu, pv, pt, pqv
+      real(kind=kind_phys), dimension(:,:,:), intent(inout) :: clw
+      real(kind=kind_phys), dimension(:,:), intent(inout) :: pu, pv, pt, pqv
 
 !--- output arguments:
       real(kind=kind_phys), dimension(:), intent(out) :: zprecc
@@ -390,8 +390,10 @@ contains
       if(pcte(j,k1).gt.0.) then
         fliq=foealfa(ztp1(j,k1))
         fice=1.0-fliq
-        dclw_l(j,k) = fliq*pcte(j,k1)
-        dclw_i(j,k) = fice*pcte(j,k1)
+        clw(j,k,2)=clw(j,k,2)+fliq*pcte(j,k1)*ztmst
+        clw(j,k,1)=clw(j,k,1)+fice*pcte(j,k1)*ztmst
+        !dclw_l(j,k) = fliq*pcte(j,k1)
+        !dclw_i(j,k) = fice*pcte(j,k1)
       endif
       end do
       end do
@@ -399,8 +401,10 @@ contains
       do k=1,km
         k1 = km-k+1
         do j=1,lq
-          ten_t(j,k) = ptte(j,k1)-ztt(j,k1)
-          ten_q(j,k,ntqv) = pqte(j,k1)-zqq(j,k1)
+          pt(j,k) = ztp1(j,k1)+(ptte(j,k1)-ztt(j,k1))*ztmst
+          pqv(j,k)  = zqp1(j,k1)+(pqte(j,k1)-zqq(j,k1))*ztmst
+          !ten_t(j,k) = ptte(j,k1)-ztt(j,k1)
+          !ten_q(j,k,ntqv) = pqte(j,k1)-zqq(j,k1)
           ud_mf(j,k)= zmfu(j,k1)*ztmst
           dd_mf(j,k)= -zmfd(j,k1)*ztmst
           dt_mf(j,k)= zmfude_rate(j,k1)*ztmst
@@ -427,8 +431,10 @@ contains
         do k=1,km
           k1=km-k+1
           do j=1,lq
-            ten_u(j,k) = pvom(j,k1)
-            ten_v(j,k) = pvol(j,k1)
+            pu(j,k)=pu(j,k)+pvom(j,k1)*ztmst
+            pv(j,k)=pv(j,k)+pvol(j,k1)*ztmst
+            !ten_u(j,k) = pvom(j,k1)
+            !ten_v(j,k) = pvol(j,k1)
           end do
         end do
       endif

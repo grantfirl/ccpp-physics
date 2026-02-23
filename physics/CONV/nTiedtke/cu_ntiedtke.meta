@@ -76,7 +76,7 @@
   dimensions = (horizontal_loop_extent,vertical_layer_dimension)
   type = real
   kind = kind_phys
-  intent = in
+  intent = inout
 [pv]
   standard_name = y_wind
   long_name = updated y-direction wind
@@ -84,7 +84,7 @@
   dimensions = (horizontal_loop_extent,vertical_layer_dimension)
   type = real
   kind = kind_phys
-  intent = in
+  intent = inout
 [pt]
   standard_name = air_temperature
   long_name = updated temperature
@@ -92,7 +92,7 @@
   dimensions = (horizontal_loop_extent,vertical_layer_dimension)
   type = real
   kind = kind_phys
-  intent = in
+  intent = inout
 [pqv]
   standard_name = specific_humidity
   long_name = water vapor specific humidity
@@ -100,7 +100,7 @@
   dimensions = (horizontal_loop_extent,vertical_layer_dimension)
   type = real
   kind = kind_phys
-  intent = in
+  intent = inout
 [ntqv]
   standard_name = index_of_specific_humidity_in_tracer_concentration_array
   long_name = tracer index for water vapor (specific humidity)
@@ -149,7 +149,7 @@
   dimensions = (horizontal_loop_extent,vertical_layer_dimension,number_of_tracers_for_convective_transport)
   type = real
   kind = kind_phys
-  intent = in
+  intent = inout
 [poz]
   standard_name = geopotential
   long_name = geopotential at model layer centers
