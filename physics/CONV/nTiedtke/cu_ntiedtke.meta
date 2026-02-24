@@ -149,7 +149,7 @@
   dimensions = (horizontal_loop_extent,vertical_layer_dimension,number_of_tracers_for_convective_transport)
   type = real
   kind = kind_phys
-  intent = inout
+  intent = in
 [poz]
   standard_name = geopotential
   long_name = geopotential at model layer centers

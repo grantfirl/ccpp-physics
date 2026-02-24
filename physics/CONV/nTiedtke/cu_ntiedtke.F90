@@ -210,7 +210,7 @@ contains
       real(kind=kind_phys), dimension(:,:),intent(in) :: pzz, prsi
 
 !--- inout arguments:
-      real(kind=kind_phys), dimension(:,:,:), intent(inout) :: clw
+      real(kind=kind_phys), dimension(:,:,:), intent(in) :: clw
       real(kind=kind_phys), dimension(:,:), intent(in) :: pu, pv, pt, pqv
 
 !--- output arguments:
@@ -390,10 +390,10 @@ contains
       if(pcte(j,k1).gt.0.) then
         fliq=foealfa(ztp1(j,k1))
         fice=1.0-fliq
-        clw(j,k,2)=clw(j,k,2)+fliq*pcte(j,k1)*ztmst
-        clw(j,k,1)=clw(j,k,1)+fice*pcte(j,k1)*ztmst
-        !dclw_l(j,k) = fliq*pcte(j,k1)
-        !dclw_i(j,k) = fice*pcte(j,k1)
+        !clw(j,k,2)=clw(j,k,2)+fliq*pcte(j,k1)*ztmst
+        !clw(j,k,1)=clw(j,k,1)+fice*pcte(j,k1)*ztmst
+        dclw_l(j,k) = fliq*pcte(j,k1)
+        dclw_i(j,k) = fice*pcte(j,k1)
       endif
       end do
       end do
