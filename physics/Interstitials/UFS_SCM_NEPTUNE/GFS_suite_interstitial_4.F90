@@ -325,16 +325,16 @@
                 enddo
               enddo
             end if if_convert_dry_rho
-            if(ldiag3d .and. qdiag3d) then
-              idtend = dtidx(100+ntlnc,index_of_process_conv_trans)
-              if(idtend>0) then
-                dtend(:,:,idtend) = dtend(:,:,idtend) + gq0(:,:,ntlnc) - save_lnc
-              endif
-              idtend = dtidx(100+ntinc,index_of_process_conv_trans)
-              if(idtend>0) then
-                dtend(:,:,idtend) = dtend(:,:,idtend) + gq0(:,:,ntinc) - save_inc
-              endif
-            endif
+            !if(ldiag3d .and. qdiag3d) then
+            !  idtend = dtidx(100+ntlnc,index_of_process_conv_trans)
+            !  if(idtend>0) then
+            !    dtend(:,:,idtend) = dtend(:,:,idtend) + gq0(:,:,ntlnc) - save_lnc
+            !  endif
+            !  idtend = dtidx(100+ntinc,index_of_process_conv_trans)
+            !  if(idtend>0) then
+            !    dtend(:,:,idtend) = dtend(:,:,idtend) + gq0(:,:,ntinc) - save_inc
+            !  endif
+            !endif
           endif
 
         else
