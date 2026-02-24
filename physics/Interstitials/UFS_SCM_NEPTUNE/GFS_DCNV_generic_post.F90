@@ -97,59 +97,59 @@
       ! endif   ! end if_ntcw
       ! 
       ! 
-      ! case_DCNV_ten: select case (tend_opt_dcnv)
-      !   case (1) !immediately apply tendencies
-      !             !Current state = current state + dt*current tendency
-      !             !Accumulated tendency unchanged
-      !     do k=1,levs
-      !       do i=1,im
-      !         gt0(i,k) = gt0(i,k) + delt*ten_t(i,k)
-      !         gu0(i,k) = gu0(i,k) + delt*ten_u(i,k)
-      !         gv0(i,k) = gv0(i,k) + delt*ten_v(i,k)
-      !         do n = 1, ntrac
-      !           gq0(i,k,n) = gq0(i,k,n) + delt*ten_q(i,k,n)
-      !         end do
-      !       end do
-      !     end do
-      !   case (2) !add tendencies to sum
-      !             !Accumulated tendency = accumulated tendency + current tendency
-      !             !Current state unchanged
-      !     do k=1,levs
-      !       do i=1,im
-      !         dtdt(i,k) = dtdt(i,k) + ten_t(i,k)
-      !         dudt(i,k) = dudt(i,k) + ten_u(i,k)
-      !         dvdt(i,k) = dvdt(i,k) + ten_v(i,k)
-      !         do n = 1, ntrac
-      !           dqdt(i,k,n) = dqdt(i,k,n) + ten_q(i,k,n)
-      !         end do
-      !       end do
-      !     end do
-      !   case (3) !add tendencies to sum and apply
-      !             !Current state = current state + dt*(accumulated tendency + current tendency)
-      !             !Accumulated tendency = 0
-      !     do k=1,levs
-      !       do i=1,im
-      !         gt0(i,k) = gt0(i,k) + delt*(dtdt(i,k) + ten_t(i,k))
-      !         dtdt(i,k) = 0.0
-      !         gu0(i,k) = gu0(i,k) + delt*(dudt(i,k) + ten_u(i,k))
-      !         dudt(i,k) = 0.0
-      !         gv0(i,k) = gv0(i,k) + delt*(dvdt(i,k) + ten_v(i,k))
-      !         dvdt(i,k) = 0.0
-      !         do n = 1, ntrac
-      !           gq0(i,k,n) = gq0(i,k,n) + delt*(dqdt(i,k,n) + ten_q(i,k,n))
-      !           dqdt(i,k,n) = 0.0
-      !         end do
-      !       end do
-      !     end do
-      !   case (4) !Current state unchanged
-      !             !Accumulated tendency unchanged
-      !             !Current tendency unchanged (but will be overwritten during next primary scheme)
-      !     exit case_DCNV_ten
-      !   case default
-      !     errflg = 1
-      !     errmsg = 'A tendency application control was outside of the acceptable range (1-4)'
-      !     return
-      ! end select case_DCNV_ten      
+      case_DCNV_ten: select case (tend_opt_dcnv)
+        case (1) !immediately apply tendencies
+                  !Current state = current state + dt*current tendency
+                  !Accumulated tendency unchanged
+          do k=1,levs
+            do i=1,im
+              gt0(i,k) = gt0(i,k) + delt*ten_t(i,k)
+              gu0(i,k) = gu0(i,k) + delt*ten_u(i,k)
+              gv0(i,k) = gv0(i,k) + delt*ten_v(i,k)
+              do n = 1, ntrac
+                gq0(i,k,n) = gq0(i,k,n) + delt*ten_q(i,k,n)
+              end do
+            end do
+          end do
+        case (2) !add tendencies to sum
+                  !Accumulated tendency = accumulated tendency + current tendency
+                  !Current state unchanged
+          do k=1,levs
+            do i=1,im
+              dtdt(i,k) = dtdt(i,k) + ten_t(i,k)
+              dudt(i,k) = dudt(i,k) + ten_u(i,k)
+              dvdt(i,k) = dvdt(i,k) + ten_v(i,k)
+              do n = 1, ntrac
+                dqdt(i,k,n) = dqdt(i,k,n) + ten_q(i,k,n)
+              end do
+            end do
+          end do
+        case (3) !add tendencies to sum and apply
+                  !Current state = current state + dt*(accumulated tendency + current tendency)
+                  !Accumulated tendency = 0
+          do k=1,levs
+            do i=1,im
+              gt0(i,k) = gt0(i,k) + delt*(dtdt(i,k) + ten_t(i,k))
+              dtdt(i,k) = 0.0
+              gu0(i,k) = gu0(i,k) + delt*(dudt(i,k) + ten_u(i,k))
+              dudt(i,k) = 0.0
+              gv0(i,k) = gv0(i,k) + delt*(dvdt(i,k) + ten_v(i,k))
+              dvdt(i,k) = 0.0
+              do n = 1, ntrac
+                gq0(i,k,n) = gq0(i,k,n) + delt*(dqdt(i,k,n) + ten_q(i,k,n))
+                dqdt(i,k,n) = 0.0
+              end do
+            end do
+          end do
+        case (4) !Current state unchanged
+                  !Accumulated tendency unchanged
+                  !Current tendency unchanged (but will be overwritten during next primary scheme)
+          exit case_DCNV_ten
+        case default
+          errflg = 1
+          errmsg = 'A tendency application control was outside of the acceptable range (1-4)'
+          return
+      end select case_DCNV_ten      
       
 !       if (cscnv .or. satmedmf .or. trans_trac .or. ras) then
 !         tracers = 2
