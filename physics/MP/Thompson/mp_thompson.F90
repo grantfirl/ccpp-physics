@@ -386,7 +386,8 @@ module mp_thompson
                               is_initialized, fs_fac_rain, fs_fac_snow, &
                               ten_q, dspechum, dqc, dqr,           &
                               dqi, dqs, dqg, dni, dnr, dnc, dnwfa, &
-                              dnifa, dtgrs, ten_u, ten_v, errmsg, errflg)
+                              dnifa, dtgrs, ten_u, ten_v,          &
+                              re_cloud, re_ice, re_snow, errmsg, errflg)
 
          implicit none
 
@@ -435,6 +436,10 @@ module mp_thompson
          real(kind_phys),           intent(inout) :: ice(:)
          real(kind_phys),           intent(inout) :: snow(:)
          real(kind_phys),           intent(  out) :: sr(:)
+         ! Effective radii, for coupling to radiation.
+         real(kind_phys), optional, intent(  out) :: re_cloud(:,:)
+         real(kind_phys), optional, intent(  out) :: re_ice(:,:)
+         real(kind_phys), optional, intent(  out) :: re_snow(:,:)
          ! Radar reflectivity
          real(kind_phys),           intent(inout) :: refl_10cm(:,:)
          real(kind_phys),           intent(inout) :: max_hail_diam_sfc(:)
@@ -450,7 +455,7 @@ module mp_thompson
          logical,                   intent(in)    :: ext_diag
          real(kind_phys), target,   intent(inout), optional :: diag3d(:,:,:)
          logical,                   intent(in)    :: reset_diag3d
-         
+
          real(kind_phys),           intent(  out) :: ten_q(:,:,:)
          real(kind_phys),           intent(  out) :: ten_u(:,:)
          real(kind_phys),           intent(  out) :: ten_v(:,:)
@@ -581,7 +586,7 @@ module mp_thompson
          ! Initialize the CCPP error handling variables
          errmsg = ''
          errflg = 0
-         
+
          ten_q    = 0.0 ! Since this scheme is outputting tracer tendencies individually,
                         ! we also need to initialize the entire array to 0, so that when
                         ! tendencies are applied, all tracer tendencies other than those
@@ -829,7 +834,8 @@ module mp_thompson
                               ims=ims, ime=ime, jms=jms, jme=jme, kms=kms, kme=kme,          &
                               its=its, ite=ite, jts=jts, jte=jte, kts=kts, kte=kte,          &
                               fullradar_diag=fullradar_diag, istep=istep, nsteps=nsteps,     &
-                              first_time_step=first_time_step, errmsg=errmsg, errflg=errflg, &
+                              first_time_step=first_time_step, re_cloud=re_cloud,            &
+                              re_ice=re_ice, re_snow=re_snow, errmsg=errmsg, errflg=errflg,  &
                               ! Extended diagnostics
                               ext_diag=ext_diag,                                             &
                               ! vts1=vts1, txri=txri, txrc=txrc,                             &
@@ -872,7 +878,8 @@ module mp_thompson
                                ims=ims, ime=ime, jms=jms, jme=jme, kms=kms, kme=kme,          &
                                its=its, ite=ite, jts=jts, jte=jte, kts=kts, kte=kte,          &
                                fullradar_diag=fullradar_diag, istep=istep, nsteps=nsteps,     &
-                               first_time_step=first_time_step, errmsg=errmsg, errflg=errflg, &
+                               first_time_step=first_time_step, re_cloud=re_cloud,            &
+                               re_ice=re_ice, re_snow=re_snow, errmsg=errmsg, errflg=errflg,  &
                                ! Extended diagnostics
                                ext_diag=ext_diag,                                             &
                                ! vts1=vts1, txri=txri, txrc=txrc,                             &
@@ -913,7 +920,8 @@ module mp_thompson
                               ims=ims, ime=ime, jms=jms, jme=jme, kms=kms, kme=kme,          &
                               its=its, ite=ite, jts=jts, jte=jte, kts=kts, kte=kte,          &
                               fullradar_diag=fullradar_diag, istep=istep, nsteps=nsteps,     &
-                              first_time_step=first_time_step, errmsg=errmsg, errflg=errflg, &
+                              first_time_step=first_time_step, re_cloud=re_cloud,            &
+                              re_ice=re_ice, re_snow=re_snow, errmsg=errmsg, errflg=errflg,  &
                               ! Extended diagnostics
                               ext_diag=ext_diag,                                             &
                               ! vts1=vts1, txri=txri, txrc=txrc,                             &
