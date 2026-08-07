@@ -532,9 +532,6 @@ module mp_thompson
          integer         :: do_radar_ref_mp                 ! integer instead of logical do_radar_ref
          ! Effective cloud radii - turned off in CCPP (taken care off in radiation)
          logical, parameter :: do_effective_radii = .false.
-         integer, parameter :: has_reqc = 0
-         integer, parameter :: has_reqi = 0
-         integer, parameter :: has_reqs = 0
          integer, parameter :: kme_stoch = 1
          integer         :: spp_mp_opt 
          ! Dimensions used in mp_gt_driver
@@ -824,7 +821,6 @@ module mp_thompson
                               refl_10cm=refl_10cm,                                           &
                               diagflag=diagflag, do_radar_ref=do_radar_ref_mp,               &
                               max_hail_diam_sfc=max_hail_diam_sfc,                           &
-                              has_reqc=has_reqc, has_reqi=has_reqi, has_reqs=has_reqs,       &
                               aero_ind_fdb=aero_ind_fdb, rand_perturb_on=spp_mp_opt,         &
                               kme_stoch=kme_stoch,                                           &
                               rand_pert=spp_wts_mp, spp_var_list=spp_var_list,               &
@@ -868,7 +864,6 @@ module mp_thompson
                                refl_10cm=refl_10cm,                                           &
                                diagflag=diagflag, do_radar_ref=do_radar_ref_mp,               &
                                max_hail_diam_sfc=max_hail_diam_sfc,                           &
-                               has_reqc=has_reqc, has_reqi=has_reqi, has_reqs=has_reqs,       &
                                aero_ind_fdb=aero_ind_fdb, rand_perturb_on=spp_mp_opt,         &
                                kme_stoch=kme_stoch,                                           &
                                rand_pert=spp_wts_mp, spp_var_list=spp_var_list,               &
@@ -911,7 +906,6 @@ module mp_thompson
                               refl_10cm=refl_10cm,                                           &
                               diagflag=diagflag, do_radar_ref=do_radar_ref_mp,               &
                               max_hail_diam_sfc=max_hail_diam_sfc,                           &
-                              has_reqc=has_reqc, has_reqi=has_reqi, has_reqs=has_reqs,       &
                               rand_perturb_on=spp_mp_opt, kme_stoch=kme_stoch,               &
                               rand_pert=spp_wts_mp, spp_var_list=spp_var_list,               &
                               spp_prt_list=spp_prt_list, n_var_spp=n_var_spp,                &
