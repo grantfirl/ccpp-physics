@@ -398,7 +398,9 @@ module mp_tempo
                               is_initialized, ten_q, dspechum,     &
                               dqc, dqr, dqi, dqs, dqg, dni, dnr,   &
                               dnc, dnwfa, dnifa, dchw, dvh, dtgrs, &
-                              ten_u, ten_v, errmsg, errflg)
+                              ten_u, ten_v,                        &
+                              re_cloud, re_ice, re_snow,           &
+                              errmsg, errflg)
 
          implicit none
 
@@ -481,6 +483,9 @@ module mp_tempo
          real(kind_phys), optional, intent(  out) :: dchw(:,:)
          real(kind_phys), optional, intent(  out) :: dvh(:,:)
          real(kind_phys),           intent(  out) :: dtgrs(:,:)
+         real(kind_phys), optional, intent(  out) :: re_cloud(:,:)
+         real(kind_phys), optional, intent(  out) :: re_ice(:,:)
+         real(kind_phys), optional, intent(  out) :: re_snow(:,:)
          
          ! CCPP error handling
          character(len=*),          intent(  out) :: errmsg
@@ -540,9 +545,6 @@ module mp_tempo
          integer         :: do_radar_ref_mp                 ! integer instead of logical do_radar_ref
          ! Effective cloud radii - turned off in CCPP (taken care off in radiation)
          logical, parameter :: do_effective_radii = .false.
-         integer, parameter :: has_reqc = 0
-         integer, parameter :: has_reqi = 0
-         integer, parameter :: has_reqs = 0
          integer, parameter :: kme_stoch = 1
          integer         :: spp_mp_opt 
          ! Dimensions used in mp_gt_driver
@@ -891,7 +893,6 @@ module mp_tempo
                     refl_10cm=refl_10cm,                                           &
                     diagflag=diagflag, do_radar_ref=do_radar_ref_mp,               &
                     max_hail_diam_sfc=max_hail_diam_sfc,                           &
-                    has_reqc=has_reqc, has_reqi=has_reqi, has_reqs=has_reqs,       &
                     aero_ind_fdb=aero_ind_fdb, rand_perturb_on=spp_mp_opt,         &
                     kme_stoch=kme_stoch,                                           &
                     rand_pert=spp_wts_mp, spp_var_list=spp_var_list,               &
@@ -901,7 +902,8 @@ module mp_tempo
                     ims=ims, ime=ime, jms=jms, jme=jme, kms=kms, kme=kme,          &
                     its=its, ite=ite, jts=jts, jte=jte, kts=kts, kte=kte,          &
                     fullradar_diag=fullradar_diag, istep=istep, nsteps=nsteps,     &
-                    first_time_step=first_time_step, errmsg=errmsg, errflg=errflg, &
+                    first_time_step=first_time_step,re_cloud=re_cloud,             &
+                    re_ice=re_ice, re_snow=re_snow, errmsg=errmsg, errflg=errflg,  &
                     ! Extended diagnostics
                     ext_diag=ext_diag, pfils=pfils, pflls=pflls)
             else
@@ -920,7 +922,6 @@ module mp_tempo
                               refl_10cm=refl_10cm,                                           &
                               diagflag=diagflag, do_radar_ref=do_radar_ref_mp,               &
                               max_hail_diam_sfc=max_hail_diam_sfc,                           &
-                              has_reqc=has_reqc, has_reqi=has_reqi, has_reqs=has_reqs,       &
                               aero_ind_fdb=aero_ind_fdb, rand_perturb_on=spp_mp_opt,         &
                               kme_stoch=kme_stoch,                                           &
                               rand_pert=spp_wts_mp, spp_var_list=spp_var_list,               &
@@ -930,7 +931,8 @@ module mp_tempo
                               ims=ims, ime=ime, jms=jms, jme=jme, kms=kms, kme=kme,          &
                               its=its, ite=ite, jts=jts, jte=jte, kts=kts, kte=kte,          &
                               fullradar_diag=fullradar_diag, istep=istep, nsteps=nsteps,     &
-                              first_time_step=first_time_step, errmsg=errmsg, errflg=errflg, &
+                              first_time_step=first_time_step,re_cloud=re_cloud,             &
+                              re_ice=re_ice, re_snow=re_snow, errmsg=errmsg, errflg=errflg,  &
                               ! Extended diagnostics
                               ext_diag=ext_diag, pfils=pfils, pflls=pflls)
                               ! ! vts1=vts1, txri=txri, txrc=txrc,                             &
@@ -966,7 +968,6 @@ module mp_tempo
                                refl_10cm=refl_10cm,                                           &
                                diagflag=diagflag, do_radar_ref=do_radar_ref_mp,               &
                                max_hail_diam_sfc=max_hail_diam_sfc,                           &
-                               has_reqc=has_reqc, has_reqi=has_reqi, has_reqs=has_reqs,       &
                                aero_ind_fdb=aero_ind_fdb, rand_perturb_on=spp_mp_opt,         &
                                kme_stoch=kme_stoch,                                           &
                                rand_pert=spp_wts_mp, spp_var_list=spp_var_list,               &
@@ -976,7 +977,8 @@ module mp_tempo
                                ims=ims, ime=ime, jms=jms, jme=jme, kms=kms, kme=kme,          &
                                its=its, ite=ite, jts=jts, jte=jte, kts=kts, kte=kte,          &
                                fullradar_diag=fullradar_diag, istep=istep, nsteps=nsteps,     &
-                               first_time_step=first_time_step, errmsg=errmsg, errflg=errflg, &
+                               first_time_step=first_time_step,re_cloud=re_cloud,             &
+                               re_ice=re_ice, re_snow=re_snow, errmsg=errmsg, errflg=errflg,  &
                                ! Extended diagnostics
                                ext_diag=ext_diag, pfils=pfils, pflls=pflls)
                                ! ! vts1=vts1, txri=txri, txrc=txrc,                             &
@@ -1007,7 +1009,6 @@ module mp_tempo
                               refl_10cm=refl_10cm,                                           &
                               diagflag=diagflag, do_radar_ref=do_radar_ref_mp,               &
                               max_hail_diam_sfc=max_hail_diam_sfc,                           &
-                              has_reqc=has_reqc, has_reqi=has_reqi, has_reqs=has_reqs,       &
                               rand_perturb_on=spp_mp_opt, kme_stoch=kme_stoch,               &
                               rand_pert=spp_wts_mp, spp_var_list=spp_var_list,               &
                               spp_prt_list=spp_prt_list, n_var_spp=n_var_spp,                &
@@ -1016,7 +1017,8 @@ module mp_tempo
                               ims=ims, ime=ime, jms=jms, jme=jme, kms=kms, kme=kme,          &
                               its=its, ite=ite, jts=jts, jte=jte, kts=kts, kte=kte,          &
                               fullradar_diag=fullradar_diag, istep=istep, nsteps=nsteps,     &
-                              first_time_step=first_time_step, errmsg=errmsg, errflg=errflg, &
+                              first_time_step=first_time_step,re_cloud=re_cloud,             &
+                              re_ice=re_ice, re_snow=re_snow, errmsg=errmsg, errflg=errflg,  &
                               ! Extended diagnostics
                               ext_diag=ext_diag, pfils=pfils, pflls=pflls)
                               !! vts1=vts1, txri=txri, txrc=txrc,                              &
