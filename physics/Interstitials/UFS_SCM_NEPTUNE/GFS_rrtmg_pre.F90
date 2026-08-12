@@ -112,7 +112,8 @@
                                            imp_physics_mg, imp_physics_wsm6,   &
                                            imp_physics_nssl,                   &
                                            imp_physics_fer_hires,              &
-                                           yearlen, icloud, iaermdl, iaerflg
+                                           yearlen, icloud, iaermdl, iaerflg,  &
+                                           dycore_active, dycore_fv3
 
       integer,              intent(in)  ::                                     &
          iovr,                             & ! choice of cloud-overlap method
