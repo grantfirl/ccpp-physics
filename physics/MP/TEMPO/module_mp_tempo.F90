@@ -1450,7 +1450,7 @@ contains
     !> @}
 
     !>\ingroup aathompson
-    SUBROUTINE tempo_finalize()
+    SUBROUTINE tempo_final()
 
         IMPLICIT NONE
 
@@ -1494,7 +1494,7 @@ contains
 
         if (ALLOCATED(tnccn_act)) DEALLOCATE(tnccn_act)
 
-    END SUBROUTINE tempo_finalize
+    END SUBROUTINE tempo_final
 
 end module module_mp_tempo
  !+---+-----------------------------------------------------------------+
