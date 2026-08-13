@@ -262,11 +262,6 @@ contains
 
     ! do finalization stuff if needed
     is_initialized = .false.
-<<<<<<< HEAD
-
-  end subroutine GFS_rrtmgp_setup_finalize
-=======
     
   end subroutine GFS_rrtmgp_setup_final
->>>>>>> ufs/dev
 end module GFS_rrtmgp_setup
