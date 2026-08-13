@@ -9,7 +9,7 @@ module GFS_rrtmgp_setup
   use module_radiation_gases,     only : gas_init, gas_update
   use module_ozphys,              only : ty_ozphys
   implicit none
-  
+
   public GFS_rrtmgp_setup_init, GFS_rrtmgp_setup_timestep_init, GFS_rrtmgp_setup_final
 
   private
@@ -262,6 +262,6 @@ contains
 
     ! do finalization stuff if needed
     is_initialized = .false.
-    
+
   end subroutine GFS_rrtmgp_setup_final
 end module GFS_rrtmgp_setup
