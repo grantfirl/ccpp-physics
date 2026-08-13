@@ -522,9 +522,9 @@ module mp_tempo
 
          ! We need the effective radii in the radiation. Copy from TEMPO diagnostic type
          ! to CCPP variable for coupling to radiation.
-         if (tempo_cfgs%re_cloud_flag) re_cloud = tempo_driver_diags%re_cloud(:,1,:)
-         if (tempo_cfgs%re_snow_flag)  re_snow  = tempo_driver_diags%re_snow(:,1,:)
-         if (tempo_cfgs%re_ice_flag)   re_ice   = tempo_driver_diags%re_ice(:,1,:)
+         if (tempo_cfgs%re_cloud_flag) re_cloud = tempo_driver_diags%re_cloud(:,:,1)
+         if (tempo_cfgs%re_snow_flag)  re_snow  = tempo_driver_diags%re_snow(:,:,1)
+         if (tempo_cfgs%re_ice_flag)   re_ice   = tempo_driver_diags%re_ice(:,:,1)
 
          ! diagnostics that are not precipitation don't need to be in the inner time loop
          sr = tempo_driver_diags%frozen_fraction(:,1)
